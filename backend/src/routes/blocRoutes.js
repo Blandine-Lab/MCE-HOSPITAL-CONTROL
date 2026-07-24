@@ -1,0 +1,377 @@
+const express = require('express');
+const router = express.Router();
+const pool = require('../config/db');
+const { authenticate, requireRole, requireAdmin } = require('../middleware/auth');
+
+// ============================================================
+//  PROTECTION : toutes les routes nécessitent un token
+// ============================================================
+router.use(authenticate);
+
+// ============================================================
+//  GESTION DES SALLES
+// ============================================================
+
+router.get('/salles', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT s.*, 
+        (SELECT COUNT(*) FROM interventions i WHERE i.salle_id = s.id AND i.statut = 'planifiee' AND i.date_prevue >= NOW()) AS interventions_prevues
+      FROM salles_bloc s
+      ORDER BY s.nom
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/salles', requireRole(['admin', 'medecin', 'Administrateur']), async (req, res) => {
+  const { nom, numero, disponible, localisation, notes } = req.body;
+  if (!nom) return res.status(400).json({ error: 'Nom requis' });
+  try {
+    const { rows } = await pool.query(`
+      INSERT INTO salles_bloc (nom, numero, disponible, localisation, notes)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *
+    `, [nom, numero, disponible !== undefined ? disponible : true, localisation, notes]);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/salles/:id', requireRole(['admin', 'medecin', 'Administrateur']), async (req, res) => {
+  const { nom, numero, disponible, localisation, notes } = req.body;
+  try {
+    const { rows } = await pool.query(`
+      UPDATE salles_bloc SET nom=$1, numero=$2, disponible=$3, localisation=$4, notes=$5, updated_at=NOW()
+      WHERE id=$6 RETURNING *
+    `, [nom, numero, disponible, localisation, notes, req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Salle non trouvée' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ DELETE /salles/:id – réservé aux administrateurs
+router.delete('/salles/:id', requireAdmin, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT id FROM interventions WHERE salle_id = $1 AND statut = $2', [req.params.id, 'planifiee']);
+    if (rows.length > 0) {
+      return res.status(400).json({ error: 'Cette salle a des interventions planifiées. Impossible de la supprimer.' });
+    }
+    await pool.query('DELETE FROM salles_bloc WHERE id = $1', [req.params.id]);
+    res.sendStatus(204);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  GESTION DES INTERVENTIONS
+// ============================================================
+
+// ----- Récupérer la liste des interventions (avec filtres) -----
+router.get('/interventions', async (req, res) => {
+  const { date_debut, date_fin, salle_id, statut, patient_id } = req.query;
+  let query = `
+    SELECT i.*,
+      p.nom AS patient_nom, p.prenom AS patient_prenom,
+      e.nom AS chirurgien_nom, e.prenom AS chirurgien_prenom,
+      s.nom AS salle_nom
+    FROM interventions i
+    LEFT JOIN patients p ON i.patient_id = p.id
+    LEFT JOIN employes e ON i.chirurgien_principal_id = e.id
+    LEFT JOIN salles_bloc s ON i.salle_id = s.id
+    WHERE 1=1
+  `;
+  const params = [];
+  let paramIndex = 1;
+
+  if (date_debut) {
+    query += ` AND i.date_prevue >= $${paramIndex}`;
+    params.push(date_debut);
+    paramIndex++;
+  }
+  if (date_fin) {
+    query += ` AND i.date_prevue <= $${paramIndex}`;
+    params.push(date_fin);
+    paramIndex++;
+  }
+  if (salle_id) {
+    query += ` AND i.salle_id = $${paramIndex}`;
+    params.push(salle_id);
+    paramIndex++;
+  }
+  if (statut) {
+    query += ` AND i.statut = $${paramIndex}`;
+    params.push(statut);
+    paramIndex++;
+  }
+  if (patient_id) {
+    query += ` AND i.patient_id = $${paramIndex}`;
+    params.push(patient_id);
+    paramIndex++;
+  }
+
+  query += ` ORDER BY i.date_prevue ASC`;
+
+  try {
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ----- Récupérer une intervention spécifique (pour édition) -----
+router.get('/interventions/:id', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT i.*,
+        p.nom AS patient_nom, p.prenom AS patient_prenom,
+        e.nom AS chirurgien_nom, e.prenom AS chirurgien_prenom,
+        s.nom AS salle_nom,
+        a.nom AS anesthesiste_nom, a.prenom AS anesthesiste_prenom
+      FROM interventions i
+      LEFT JOIN patients p ON i.patient_id = p.id
+      LEFT JOIN employes e ON i.chirurgien_principal_id = e.id
+      LEFT JOIN employes a ON i.anesthesiste_id = a.id
+      LEFT JOIN salles_bloc s ON i.salle_id = s.id
+      WHERE i.id = $1
+    `, [req.params.id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Intervention non trouvée' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ----- Fonction pour transformer les chaînes vides en null -----
+const sanitize = (val) => {
+  if (val === '' || val === undefined || val === null) return null;
+  return val;
+};
+
+// ----- Créer une intervention -----
+router.post('/interventions', requireRole(['admin', 'medecin', 'Administrateur']), async (req, res) => {
+  const {
+    patient_id, salle_id, type_intervention, date_prevue, duree_estimee,
+    priorite, chirurgien_principal_id, co_chirurgiens, infirmiere_scolper,
+    infirmiere_circulante, anesthesiste_id, notes_preoperatoires, motifs
+  } = req.body;
+
+  if (!patient_id || !date_prevue) {
+    return res.status(400).json({ error: 'patient_id et date_prevue sont requis' });
+  }
+
+  // Nettoyage des valeurs vides
+  const sanitizedSalleId = sanitize(salle_id);
+  const sanitizedChirurgien = sanitize(chirurgien_principal_id);
+  const sanitizedInfirmiereSc = sanitize(infirmiere_scolper);
+  const sanitizedInfirmiereCi = sanitize(infirmiere_circulante);
+  const sanitizedAnesthesiste = sanitize(anesthesiste_id);
+  const sanitizedCoChirurgiens = (co_chirurgiens && Array.isArray(co_chirurgiens)) ? co_chirurgiens : [];
+
+  const dureeMinutes = parseInt(duree_estimee) || 60;
+  const startTime = new Date(date_prevue);
+  const endTime = new Date(startTime.getTime() + dureeMinutes * 60000);
+
+  // Vérification des conflits de planning (si une salle est spécifiée)
+  if (sanitizedSalleId) {
+    try {
+      const conflictCheck = await pool.query(`
+        SELECT id FROM interventions 
+        WHERE salle_id = $1 
+          AND date_prevue < $2
+          AND date_prevue + (duree_estimee * INTERVAL '1 minute') > $3
+          AND statut != 'annulee'
+      `, [sanitizedSalleId, endTime, startTime]);
+      if (conflictCheck.rows.length > 0) {
+        return res.status(409).json({ 
+          error: 'Conflit de planning : une autre intervention est déjà programmée dans cette salle à cette heure.',
+          conflict: conflictCheck.rows[0]
+        });
+      }
+    } catch (err) {
+      console.error('Erreur lors du contrôle de conflit :', err);
+      return res.status(500).json({ error: 'Erreur interne lors du contrôle de planning' });
+    }
+  }
+
+  // Insertion
+  try {
+    const { rows } = await pool.query(`
+      INSERT INTO interventions (
+        patient_id, salle_id, type_intervention, date_prevue, duree_estimee,
+        priorite, chirurgien_principal_id, co_chirurgiens, infirmiere_scolper,
+        infirmiere_circulante, anesthesiste_id, notes_preoperatoires, motifs
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING *
+    `, [
+      patient_id, 
+      sanitizedSalleId,
+      type_intervention, 
+      date_prevue, 
+      dureeMinutes,
+      priorite || 'normale', 
+      sanitizedChirurgien, 
+      sanitizedCoChirurgiens,
+      sanitizedInfirmiereSc,
+      sanitizedInfirmiereCi,
+      sanitizedAnesthesiste,
+      notes_preoperatoires, 
+      motifs
+    ]);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error('Erreur création intervention:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ----- Mettre à jour une intervention -----
+router.put('/interventions/:id', requireRole(['admin', 'medecin', 'Administrateur']), async (req, res) => {
+  const {
+    patient_id, salle_id, type_intervention, date_prevue, duree_estimee,
+    statut, priorite, chirurgien_principal_id, co_chirurgiens, infirmiere_scolper,
+    infirmiere_circulante, anesthesiste_id, notes_preoperatoires, notes_postoperatoires, motifs
+  } = req.body;
+
+  try {
+    const existing = await pool.query('SELECT * FROM interventions WHERE id = $1', [req.params.id]);
+    if (existing.rows.length === 0) return res.status(404).json({ error: 'Intervention non trouvée' });
+
+    // Nettoyage
+    const sanitizedSalleId = sanitize(salle_id);
+    const sanitizedChirurgien = sanitize(chirurgien_principal_id);
+    const sanitizedInfirmiereSc = sanitize(infirmiere_scolper);
+    const sanitizedInfirmiereCi = sanitize(infirmiere_circulante);
+    const sanitizedAnesthesiste = sanitize(anesthesiste_id);
+    const sanitizedCoChirurgiens = (co_chirurgiens && Array.isArray(co_chirurgiens)) ? co_chirurgiens : [];
+
+    if (date_prevue && sanitizedSalleId) {
+      const duree = parseInt(duree_estimee) || 60;
+      const startTime = new Date(date_prevue);
+      const endTime = new Date(startTime.getTime() + duree * 60000);
+      const conflictCheck = await pool.query(`
+        SELECT id FROM interventions 
+        WHERE salle_id = $1 
+          AND id != $2
+          AND date_prevue < $3
+          AND date_prevue + (duree_estimee * INTERVAL '1 minute') > $4
+          AND statut != 'annulee'
+      `, [sanitizedSalleId, req.params.id, endTime, startTime]);
+      if (conflictCheck.rows.length > 0) {
+        return res.status(409).json({ error: 'Conflit de planning avec une autre intervention.' });
+      }
+    }
+
+    const { rows } = await pool.query(`
+      UPDATE interventions SET
+        patient_id = COALESCE($1, patient_id),
+        salle_id = COALESCE($2, salle_id),
+        type_intervention = COALESCE($3, type_intervention),
+        date_prevue = COALESCE($4, date_prevue),
+        duree_estimee = COALESCE($5, duree_estimee),
+        statut = COALESCE($6, statut),
+        priorite = COALESCE($7, priorite),
+        chirurgien_principal_id = COALESCE($8, chirurgien_principal_id),
+        co_chirurgiens = COALESCE($9, co_chirurgiens),
+        infirmiere_scolper = COALESCE($10, infirmiere_scolper),
+        infirmiere_circulante = COALESCE($11, infirmiere_circulante),
+        anesthesiste_id = COALESCE($12, anesthesiste_id),
+        notes_preoperatoires = COALESCE($13, notes_preoperatoires),
+        notes_postoperatoires = COALESCE($14, notes_postoperatoires),
+        motifs = COALESCE($15, motifs),
+        updated_at = NOW()
+      WHERE id = $16
+      RETURNING *
+    `, [
+      patient_id, sanitizedSalleId, type_intervention, date_prevue, duree_estimee,
+      statut, priorite, sanitizedChirurgien, sanitizedCoChirurgiens,
+      sanitizedInfirmiereSc, sanitizedInfirmiereCi, sanitizedAnesthesiste,
+      notes_preoperatoires, notes_postoperatoires, motifs,
+      req.params.id
+    ]);
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ DELETE /interventions/:id – Annulation (soft delete) réservée aux administrateurs
+router.delete('/interventions/:id', requireAdmin, async (req, res) => {
+  try {
+    await pool.query('UPDATE interventions SET statut = $1, updated_at = NOW() WHERE id = $2', ['annulee', req.params.id]);
+    res.sendStatus(204);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  PLANNING HEBDOMADAIRE
+// ============================================================
+
+router.get('/planning', async (req, res) => {
+  const { semaine } = req.query;
+  const startDate = semaine ? new Date(semaine) : new Date();
+  const day = startDate.getDay();
+  const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(startDate);
+  monday.setDate(diff);
+  monday.setHours(0,0,0,0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23,59,59,999);
+
+  try {
+    const { rows } = await pool.query(`
+      SELECT i.*, 
+        p.nom AS patient_nom, p.prenom AS patient_prenom,
+        e.nom AS chirurgien_nom, e.prenom AS chirurgien_prenom,
+        s.nom AS salle_nom
+      FROM interventions i
+      LEFT JOIN patients p ON i.patient_id = p.id
+      LEFT JOIN employes e ON i.chirurgien_principal_id = e.id
+      LEFT JOIN salles_bloc s ON i.salle_id = s.id
+      WHERE i.date_prevue BETWEEN $1 AND $2
+        AND i.statut != 'annulee'
+      ORDER BY i.date_prevue, i.salle_id
+    `, [monday, sunday]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  STATISTIQUES POUR LE DASHBOARD
+// ============================================================
+
+router.get('/stats', async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const { rows } = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM interventions WHERE date_prevue BETWEEN $1 AND $2 AND statut = 'planifiee') AS aujourdhui,
+        (SELECT COUNT(*) FROM interventions WHERE date_prevue BETWEEN $1 AND $2 AND statut = 'en_cours') AS en_cours,
+        (SELECT COUNT(*) FROM interventions WHERE statut = 'planifiee') AS total_prevues,
+        (SELECT COUNT(*) FROM interventions WHERE statut = 'terminee' AND date_prevue >= NOW() - INTERVAL '7 days') AS sept_derniers_jours
+    `, [today, tomorrow]);
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;

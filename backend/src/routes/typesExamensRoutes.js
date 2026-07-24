@@ -1,0 +1,81 @@
+const express = require('express');
+const router = express.Router();
+const pool = require('../../config/db');
+const { authenticate, requireAdmin } = require('../middleware/auth'); // ✅ import requireAdmin
+
+// GET tous les types
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM types_examens ORDER BY nom');
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /types-examens :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET un type par ID
+router.get('/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query('SELECT * FROM types_examens WHERE id = $1', [id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Type non trouvé' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('GET /types-examens/:id :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST créer un type
+router.post('/', authenticate, async (req, res) => {
+  try {
+    const { nom, categorie, description, duree_estimee, prix, preparation } = req.body;
+    const { rows } = await pool.query(
+      `INSERT INTO types_examens (nom, categorie, description, duree_estimee, prix, preparation)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [nom, categorie, description, duree_estimee, prix, preparation]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error('POST /types-examens :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT modifier un type
+router.put('/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nom, categorie, description, duree_estimee, prix, preparation } = req.body;
+    const { rows } = await pool.query(
+      `UPDATE types_examens 
+       SET nom = $1, categorie = $2, description = $3,
+           duree_estimee = $4, prix = $5, preparation = $6
+       WHERE id = $7
+       RETURNING *`,
+      [nom, categorie, description, duree_estimee, prix, preparation, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Type non trouvé' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('PUT /types-examens/:id :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ DELETE supprimer un type (réservé aux administrateurs)
+router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rowCount } = await pool.query('DELETE FROM types_examens WHERE id = $1', [id]);
+    if (rowCount === 0) return res.status(404).json({ error: 'Type non trouvé' });
+    res.status(204).send();
+  } catch (err) {
+    console.error('DELETE /types-examens/:id :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;
