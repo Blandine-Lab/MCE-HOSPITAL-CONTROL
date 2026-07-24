@@ -1,7 +1,6 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Vérification stricte : si DATABASE_URL n'est pas définie, on arrête
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   console.error('❌ DATABASE_URL non définie !');

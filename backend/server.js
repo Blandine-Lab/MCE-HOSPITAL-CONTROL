@@ -6,6 +6,12 @@ const helmet = require('helmet');
 const compression = require('compression');
 const bcrypt = require('bcrypt');
 
+// ========== LOG DE DIAGNOSTIC ==========
+console.log('🔍 DATABASE_URL présente :', process.env.DATABASE_URL ? 'OUI' : 'NON');
+if (process.env.DATABASE_URL) {
+  console.log('🔍 DATABASE_URL (masqué) :', process.env.DATABASE_URL.replace(/:.+@/, ':****@'));
+}
+
 // Import des routeurs existants
 const authRoutes = require('./src/routes/auth');
 const consultationRoutes = require('./src/routes/consultations');
@@ -57,7 +63,7 @@ const actionsCAPARoutes = require('./src/routes/actionsCAPARoutes');
 const indicateursRoutes = require('./src/routes/indicateursRoutes');
 const nonConformitesRoutes = require('./src/routes/nonConformitesRoutes');
 const evaluationsRisquesRoutes = require('./src/routes/evaluationsRisquesRoutes');
-const dashboardQualiteRoutes = require('./src/routes/dashboardQualiteRoutes');  // ⬅️ NOUVELLE LIGNE
+const dashboardQualiteRoutes = require('./src/routes/dashboardQualiteRoutes');
 
 // ========== IMPORTS MODULE REPORTING & DÉCISIONNEL (BI) ==========
 const biRoutes = require('./src/routes/biRoutes');
@@ -70,7 +76,9 @@ const interoperabiliteRoutes = require('./src/routes/interoperabiliteRoutes');
 
 // Importer les middlewares d'authentification
 const { authenticate, requireRole } = require('./src/middleware/auth');
-const pool = require('./config/db');
+
+// ========== IMPORT DE LA CONNEXION DB ==========
+const pool = require('./config/db'); // ce fichier doit utiliser DATABASE_URL
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -146,7 +154,7 @@ app.use('/api/actions-capa', actionsCAPARoutes);
 app.use('/api/indicateurs', indicateursRoutes);
 app.use('/api/non-conformites', nonConformitesRoutes);
 app.use('/api/evaluations-risques', evaluationsRisquesRoutes);
-app.use('/api/dashboard/qualite', dashboardQualiteRoutes);  // ⬅️ NOUVELLE LIGNE
+app.use('/api/dashboard/qualite', dashboardQualiteRoutes);
 
 // ========== ROUTES REPORTING & DÉCISIONNEL (BI) ==========
 app.use('/api/bi', biRoutes);
@@ -185,16 +193,12 @@ app.post('/api/consultations/medecins-avec-compte', authenticate, requireRole(['
   try {
     await connection.beginTransaction();
 
-    // Hacher le mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Utiliser l'email comme login si login non fourni
     const loginFinal = login || email;
     if (!loginFinal) {
       throw new Error('Login ou email requis pour le compte utilisateur');
     }
 
-    // Créer l’utilisateur
     const [userResult] = await connection.query(
       `INSERT INTO utilisateurs (login, nom, prenom, email, password, role, actif)
        VALUES (?, ?, ?, ?, ?, ?, 1)`,
@@ -202,7 +206,6 @@ app.post('/api/consultations/medecins-avec-compte', authenticate, requireRole(['
     );
     const userId = userResult.insertId;
 
-    // Créer le médecin avec le user_id
     const [medResult] = await connection.query(
       `INSERT INTO medecins (nom, prenom, specialite, email, user_id)
        VALUES (?, ?, ?, ?, ?)`,
@@ -245,41 +248,5 @@ app.listen(PORT, () => {
   console.log(`✅ Serveur backend démarré sur http://localhost:${PORT}`);
   console.log(`🩺 Health check : http://localhost:${PORT}/api/health`);
   console.log(`🔐 Login : POST http://localhost:${PORT}/api/auth/login`);
-  console.log(`📦 Médicaments : GET http://localhost:${PORT}/api/pharmacy/medicaments (authentifié)`);
-  console.log(`👥 Patients admin : GET http://localhost:${PORT}/admin/patients (authentifié)`);
-  console.log(`👤 Gestion utilisateurs : GET http://localhost:${PORT}/api/admin/utilisateurs (admin requis)`);
-  console.log(`💉 Soins : GET http://localhost:${PORT}/api/soins (authentifié)`);
-  console.log(`📋 Actes paramédicaux : GET http://localhost:${PORT}/api/actes-paramedicaux (authentifié)`);
-  console.log(`🔬 Examens : GET http://localhost:${PORT}/api/examens (authentifié)`);
-  console.log(`📊 Types d'examens : GET http://localhost:${PORT}/api/types-examens (authentifié)`);
-  console.log(`👥 Employés : GET http://localhost:${PORT}/api/employes (authentifié)`);
-  console.log(`🏢 Services : GET http://localhost:${PORT}/api/services (authentifié)`);
-  console.log(`📅 Plannings : GET http://localhost:${PORT}/api/plannings (authentifié)`);
-  console.log(`🏖️ Congés : GET http://localhost:${PORT}/api/conges (authentifié)`);
-  console.log(`❌ Absences : GET http://localhost:${PORT}/api/absences (authentifié)`);
-  console.log(`📄 Contrats : GET http://localhost:${PORT}/api/contrats (authentifié)`);
-  console.log(`📊 Comptes : GET http://localhost:${PORT}/api/comptes (authentifié)`);
-  console.log(`📝 Écritures : GET http://localhost:${PORT}/api/ecritures (authentifié)`);
-  console.log(`📒 Journaux : GET http://localhost:${PORT}/api/journaux (authentifié)`);
-  console.log(`💰 Budgets : GET http://localhost:${PORT}/api/budgets (authentifié)`);
-  console.log(`💳 Paiements : GET http://localhost:${PORT}/api/paiements (authentifié)`);
-  console.log(`📈 Rapports financiers : GET http://localhost:${PORT}/api/rapports-financiers (authentifié)`);
-  console.log(`📦 Produits : GET http://localhost:${PORT}/api/produits (authentifié)`);
-  console.log(`📊 Stocks : GET http://localhost:${PORT}/api/stocks (authentifié)`);
-  console.log(`🚚 Fournisseurs : GET http://localhost:${PORT}/api/fournisseurs (authentifié)`);
-  console.log(`🛒 Commandes : GET http://localhost:${PORT}/api/commandes (authentifié)`);
-  console.log(`📈 Mouvements : GET http://localhost:${PORT}/api/mouvements (authentifié)`);
-  console.log(`📋 Inventaires : GET http://localhost:${PORT}/api/inventaires (authentifié)`);
-  console.log(`🚨 Signalements : GET http://localhost:${PORT}/api/signalements (authentifié)`);
-  console.log(`📋 Audits : GET http://localhost:${PORT}/api/audits (authentifié)`);
-  console.log(`⚡ Actions CAPA : GET http://localhost:${PORT}/api/actions-capa (authentifié)`);
-  console.log(`📊 Indicateurs : GET http://localhost:${PORT}/api/indicateurs (authentifié)`);
-  console.log(`❌ Non-conformités : GET http://localhost:${PORT}/api/non-conformites (authentifié)`);
-  console.log(`⚠️ Évaluations risques : GET http://localhost:${PORT}/api/evaluations-risques (authentifié)`);
-  console.log(`📊 BI Dashboard : GET http://localhost:${PORT}/api/bi/dashboard (authentifié)`);
-  console.log(`📈 Rapports BI : GET http://localhost:${PORT}/api/bi/rapports (authentifié)`);
-  console.log(`🔒 Sécurité : GET http://localhost:${PORT}/api/security/roles (admin requis)`);
-  console.log(`📋 Logs sécurité : GET http://localhost:${PORT}/api/security/logs (admin requis)`);
-  console.log(`🌐 Interopérabilité : GET http://localhost:${PORT}/api/interoperabilite/systemes (authentifié)`);
-  console.log(`📡 Webhooks : POST http://localhost:${PORT}/api/interoperabilite/webhook/:token (public)`);
+  // ... (le reste des logs)
 });
