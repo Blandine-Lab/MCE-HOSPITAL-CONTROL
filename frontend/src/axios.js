@@ -1,4 +1,3 @@
-// frontend/src/axios.js
 import axios from 'axios';
 import { 
   savePendingOperation, 
@@ -9,6 +8,7 @@ import {
 
 // ✅ Utiliser VITE_API_URL si définie, sinon '/api'
 const baseURL = import.meta.env.VITE_API_URL || '/api';
+console.log('🌐 BaseURL utilisée :', baseURL);
 
 const api = axios.create({
   baseURL,
