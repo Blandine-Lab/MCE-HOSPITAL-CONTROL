@@ -1,8 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../../config/db');
+const { Pool } = require('pg');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const upload = require('../../config/multer');
+
+// ✅ Création directe du pool avec DATABASE_URL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('connect', () => console.log('✅ RH - Employés : connecté à PostgreSQL'));
 
 // ============================================================
 //  PROTECTION : toutes les routes nécessitent un token
