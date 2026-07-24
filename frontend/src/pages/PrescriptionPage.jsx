@@ -1,10 +1,10 @@
 // src/pages/PrescriptionPage.jsx
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const PrescriptionPage = () => {
-  const { patientId } = useParams(); // attention : le paramètre s'appelle patientId dans la route
+  const { patientId } = useParams();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [medicament, setMedicament] = useState('');
@@ -13,7 +13,7 @@ const PrescriptionPage = () => {
 
   useEffect(() => {
     if (!patientId) return;
-    axios.get(`http://localhost:5000/api/patients/${patientId}`)
+    api.get(`/patients/${patientId}`) // ✅ Suppression de l'URL absolue
       .then(res => {
         setPatient(res.data);
         setLoading(false);

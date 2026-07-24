@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { FaExclamationTriangle, FaShoppingCart } from 'react-icons/fa';
+import api from '../../axios';
 
 const RupturesSuggestions = () => {
   const [ruptures, setRuptures] = useState([]);
@@ -8,18 +8,11 @@ const RupturesSuggestions = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
-  const axiosAuth = axios.create({ baseURL: 'http://localhost:5000' });
-  axiosAuth.interceptors.request.use(config => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
   const fetchData = async () => {
     try {
       const [ruptRes, suggRes] = await Promise.all([
-        axiosAuth.get('/api/pharmacy/ruptures'),
-        axiosAuth.get('/api/pharmacy/suggestions-commandes')
+        api.get('/pharmacy/ruptures'),
+        api.get('/pharmacy/suggestions-commandes')
       ]);
       setRuptures(ruptRes.data);
       setSuggestions(suggRes.data);

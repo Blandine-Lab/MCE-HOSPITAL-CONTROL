@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { FaPills, FaExclamationTriangle, FaShoppingCart, FaBoxes, FaClipboardList } from 'react-icons/fa';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const PharmacyDashboard = () => {
   const [stats, setStats] = useState({
@@ -13,20 +13,13 @@ const PharmacyDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
 
-  const axiosAuth = axios.create({ baseURL: 'http://localhost:5000' });
-  axiosAuth.interceptors.request.use(config => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const [meds, alertes, commandes] = await Promise.all([
-          axiosAuth.get('/api/pharmacy/medicaments'),
-          axiosAuth.get('/api/pharmacy/alertes'),
-          axiosAuth.get('/api/pharmacy/commandes')
+          api.get('/pharmacy/medicaments'),
+          api.get('/pharmacy/alertes'),
+          api.get('/pharmacy/commandes')
         ]);
         
         // Compter les lots (on pourrait faire une requête dédiée, mais on utilise les données existantes)

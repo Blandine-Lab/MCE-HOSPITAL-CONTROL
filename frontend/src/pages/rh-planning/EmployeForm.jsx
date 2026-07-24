@@ -40,7 +40,9 @@ const EmployeForm = () => {
           photo: data.photo || null,
         });
         if (data.photo) {
-          setPhotoPreview(`http://localhost:5000${data.photo}`);
+          // ✅ Construction de l'URL dynamique avec VITE_API_URL
+          const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
+          setPhotoPreview(`${baseUrl}${data.photo}`);
         }
       }).catch(console.error);
     }

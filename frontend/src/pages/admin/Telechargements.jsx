@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const Telechargements = () => {
   const [logs, setLogs] = useState([]);
+  
   useEffect(() => {
-    axios.get('http://localhost:5000/api/logs')
+    api.get('/logs')
       .then(res => setLogs(res.data))
       .catch(err => console.error(err));
   }, []);

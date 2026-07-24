@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { FaSignOutAlt, FaUser, FaCalendar, FaComment } from 'react-icons/fa';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const SortieForm = () => {
   const navigate = useNavigate();
@@ -14,8 +14,8 @@ const SortieForm = () => {
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://localhost:5000/api/consultations/patients/hospitalises'),
-      axios.get('http://localhost:5000/api/consultations/admissions/en_cours')
+      api.get('/consultations/patients/hospitalises'), // ✅ Suppression de l'URL absolue
+      api.get('/consultations/admissions/en_cours')
     ]).then(([patRes, admRes]) => {
       setPatients(patRes.data);
       setAdmissions(admRes.data);
@@ -33,7 +33,7 @@ const SortieForm = () => {
     setForm({ ...form, patient_id: patientId, admission_id: '' });
     if (patientId) {
       try {
-        const res = await axios.get(`http://localhost:5000/api/consultations/admissions/patient/${patientId}`);
+        const res = await api.get(`/consultations/admissions/patient/${patientId}`);
         setAdmissions(res.data);
       } catch (err) {
         console.error(err);
@@ -44,7 +44,7 @@ const SortieForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/consultations/sorties', form);
+      await api.post('/consultations/sorties', form);
       setToast('Sortie enregistrée avec succès');
       setTimeout(() => setToast(null), 3000);
       setTimeout(() => navigate('/patients'), 1500);
@@ -54,6 +54,7 @@ const SortieForm = () => {
     }
   };
 
+  // Styles (inchangés)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#fef2f2',

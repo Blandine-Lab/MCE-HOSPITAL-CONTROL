@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api'; // Import de l'instance Axios configurée
 
 const AdmissionForm = () => {
   const navigate = useNavigate();
@@ -18,21 +18,21 @@ const AdmissionForm = () => {
 
   useEffect(() => {
     // Patients hospitalisés (non sortis)
-    axios.get('http://localhost:5000/api/patients')
+    api.get('/patients')
       .then(res => setPatients(res.data.filter(p => p.statut !== 'sorti')))
-      .catch(err => console.error(err));
+      .catch(err => console.error('Erreur chargement patients :', err));
     // Lits disponibles
-    axios.get('http://localhost:5000/api/consultations/lits/disponibles')
+    api.get('/consultations/lits/disponibles')
       .then(res => setLits(res.data))
-      .catch(err => console.error(err));
+      .catch(err => console.error('Erreur chargement lits :', err));
     // Services
-    axios.get('http://localhost:5000/api/consultations/services')
+    api.get('/consultations/services')
       .then(res => setServices(res.data))
-      .catch(err => console.error(err));
+      .catch(err => console.error('Erreur chargement services :', err));
     // Médecins
-    axios.get('http://localhost:5000/api/consultations/medecins')
+    api.get('/consultations/medecins')
       .then(res => setMedecins(res.data))
-      .catch(err => console.error(err));
+      .catch(err => console.error('Erreur chargement médecins :', err));
   }, []);
 
   const handleChange = (e) => {
@@ -42,11 +42,11 @@ const AdmissionForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/consultations/admissions', form);
+      await api.post('/consultations/admissions', form);
       alert('Patient admis avec succès – séjour créé');
       navigate('/patients');
     } catch (err) {
-      console.error(err);
+      console.error('Erreur lors de l’admission :', err);
       alert('Erreur lors de l’admission');
     }
   };

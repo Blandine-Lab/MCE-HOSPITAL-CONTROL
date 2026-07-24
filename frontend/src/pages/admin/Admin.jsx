@@ -1,7 +1,7 @@
 // frontend/src/pages/Admin.jsx
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaFlask, FaXRay } from 'react-icons/fa';
+import api from '../axios'; // ✅ Utilisation de l'instance partagée
 import DispositifsList from './DispositifsList';
 import PharmacovigilanceList from './PharmacovigilanceList';
 import RupturesSuggestions from './RupturesSuggestions';
@@ -19,16 +19,9 @@ const FournisseursList = () => {
   const [form, setForm] = useState({ nom: '', contact_email: '', telephone: '', adresse: '', actif: true });
   const [editId, setEditId] = useState(null);
 
-  const axiosAuth = axios.create({ baseURL: 'http://localhost:5000' });
-  axiosAuth.interceptors.request.use(config => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
   const fetchFournisseurs = async () => {
     try {
-      const res = await axiosAuth.get('/api/pharmacy/fournisseurs');
+      const res = await api.get('/pharmacy/fournisseurs');
       setFournisseurs(res.data);
       setLoading(false);
     } catch (err) {
@@ -46,10 +39,10 @@ const FournisseursList = () => {
     e.preventDefault();
     try {
       if (editId) {
-        await axiosAuth.put(`/api/pharmacy/fournisseurs/${editId}`, form);
+        await api.put(`/pharmacy/fournisseurs/${editId}`, form);
         setToast('Fournisseur modifié');
       } else {
-        await axiosAuth.post('/api/pharmacy/fournisseurs', form);
+        await api.post('/pharmacy/fournisseurs', form);
         setToast('Fournisseur ajouté');
       }
       setShowForm(false);
@@ -67,7 +60,7 @@ const FournisseursList = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer ce fournisseur ?')) return;
     try {
-      await axiosAuth.delete(`/api/pharmacy/fournisseurs/${id}`);
+      await api.delete(`/pharmacy/fournisseurs/${id}`);
       fetchFournisseurs();
       setToast('Fournisseur supprimé');
       setTimeout(() => setToast(null), 3000);
@@ -157,7 +150,7 @@ const FournisseursList = () => {
   );
 };
 
-// ===================== COMPOSANT : TYPES D'EXAMENS (ADMIN) - VERSION CORRIGÉE =====================
+// ===================== COMPOSANT : TYPES D'EXAMENS (ADMIN) =====================
 const TypesExamensAdmin = () => {
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -173,17 +166,10 @@ const TypesExamensAdmin = () => {
     parametres_defaut: ''
   });
   const [editingId, setEditingId] = useState(null);
-  const axiosAuth = axios.create({ baseURL: 'http://localhost:5000' });
-  axiosAuth.interceptors.request.use(config => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
 
   const fetchTypes = async () => {
     try {
-      // ✅ Correction : /api/types-examens au lieu de /types-examens
-      const res = await axiosAuth.get('/api/types-examens');
+      const res = await api.get('/types-examens');
       setTypes(res.data);
       setLoading(false);
     } catch (err) {
@@ -213,12 +199,10 @@ const TypesExamensAdmin = () => {
       }
       const payload = { ...formData, parametres_defaut: params };
       if (editingId) {
-        // ✅ Correction : /api/types-examens
-        await axiosAuth.put(`/api/types-examens/${editingId}`, payload);
+        await api.put(`/types-examens/${editingId}`, payload);
         setToast('Type modifié');
       } else {
-        // ✅ Correction : /api/types-examens
-        await axiosAuth.post('/api/types-examens', payload);
+        await api.post('/types-examens', payload);
         setToast('Type ajouté');
       }
       setShowForm(false);
@@ -236,8 +220,7 @@ const TypesExamensAdmin = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer ce type d\'examen ?')) return;
     try {
-      // ✅ Correction : /api/types-examens
-      await axiosAuth.delete(`/api/types-examens/${id}`);
+      await api.delete(`/types-examens/${id}`);
       fetchTypes();
       setToast('Type supprimé');
       setTimeout(() => setToast(null), 3000);
@@ -452,14 +435,6 @@ const Admin = () => {
   const [deliveryMessage, setDeliveryMessage] = useState("");
   const [patients, setPatients] = useState([]);
 
-  // Axios avec intercepteur
-  const axiosAuth = axios.create({ baseURL: 'http://localhost:5000' });
-  axiosAuth.interceptors.request.use(config => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
@@ -469,13 +444,13 @@ const Admin = () => {
   const fetchData = async () => {
     try {
       const [batRes, etageRes, chambreRes, litRes, servRes, medRes, prestaRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/consultations/batiments'),
-        axios.get('http://localhost:5000/api/consultations/etages'),
-        axios.get('http://localhost:5000/api/consultations/chambres/list'),
-        axios.get('http://localhost:5000/api/consultations/lits/all'),
-        axios.get('http://localhost:5000/api/consultations/services/all'),
-        axios.get('http://localhost:5000/api/consultations/medecins/all'),
-        axios.get('http://localhost:5000/api/billing/prestations')
+        api.get('/consultations/batiments'),
+        api.get('/consultations/etages'),
+        api.get('/consultations/chambres/list'),
+        api.get('/consultations/lits/all'),
+        api.get('/consultations/services/all'),
+        api.get('/consultations/medecins/all'),
+        api.get('/billing/prestations')
       ]);
       setBatiments(batRes.data);
       setEtages(etageRes.data);
@@ -492,32 +467,32 @@ const Admin = () => {
   // ========== CHARGEMENT PHARMACIE ==========
   const fetchMedicaments = async () => {
     try {
-      const res = await axiosAuth.get('/api/pharmacy/medicaments');
+      const res = await api.get('/pharmacy/medicaments');
       setMedicaments(res.data);
     } catch (err) { console.error(err); }
   };
   const fetchAlertes = async () => {
     try {
-      const res = await axiosAuth.get('/api/pharmacy/alertes');
+      const res = await api.get('/pharmacy/alertes');
       setAlertes(res.data);
     } catch (err) { console.error(err); }
   };
   const fetchLots = async (medicamentId) => {
     if (!medicamentId) return;
     try {
-      const res = await axiosAuth.get(`/api/pharmacy/lots/disponibles/${medicamentId}`);
+      const res = await api.get(`/pharmacy/lots/disponibles/${medicamentId}`);
       setLots(res.data);
     } catch (err) { console.error(err); }
   };
   const fetchCommandes = async () => {
     try {
-      const res = await axiosAuth.get('/api/pharmacy/commandes');
+      const res = await api.get('/pharmacy/commandes');
       setCommandes(res.data);
     } catch (err) { console.error(err); }
   };
   const fetchPatients = async () => {
     try {
-      const res = await axiosAuth.get('/admin/patients');
+      const res = await api.get('/admin/patients');
       setPatients(res.data);
     } catch (err) { console.error(err); }
   };
@@ -525,7 +500,7 @@ const Admin = () => {
   // ========== CHARGEMENT DES UTILISATEURS ==========
   const fetchUtilisateurs = async () => {
     try {
-      const res = await axiosAuth.get('/api/admin/utilisateurs');
+      const res = await api.get('/admin/utilisateurs');
       setUtilisateurs(res.data);
     } catch (err) {
       showToast('Erreur chargement des utilisateurs', 'error');
@@ -535,7 +510,7 @@ const Admin = () => {
   // ===== CHARGEMENT DES RÔLES (pour le select utilisateur) =====
   const fetchRoles = async () => {
     try {
-      const res = await axiosAuth.get('/api/security/roles');
+      const res = await api.get('/security/roles');
       console.log('📦 Rôles reçus (brut) :', res.data);
       setRolesList(res.data);
     } catch (err) {
@@ -546,7 +521,7 @@ const Admin = () => {
   // ===== CHARGEMENT DES RÔLES (pour l'onglet Rôles) =====
   const fetchRolesList = async () => {
     try {
-      const res = await axiosAuth.get('/api/security/roles');
+      const res = await api.get('/security/roles');
       setRoles(res.data);
     } catch (err) {
       showToast('Erreur chargement des rôles', 'error');
@@ -556,7 +531,7 @@ const Admin = () => {
   // ========== NOUVELLES FONCTIONS POUR AUTORISATIONS ==========
   const fetchRolesForAuth = async () => {
     try {
-      const res = await axiosAuth.get('/api/security/roles');
+      const res = await api.get('/security/roles');
       setRolesListForAuth(res.data);
     } catch (err) {
       showToast('Erreur chargement rôles', 'error');
@@ -565,7 +540,7 @@ const Admin = () => {
 
   const fetchModules = async () => {
     try {
-      const res = await axiosAuth.get('/api/security/modules');
+      const res = await api.get('/security/modules');
       setModulesList(res.data);
     } catch (err) {
       showToast('Erreur chargement modules', 'error');
@@ -576,7 +551,7 @@ const Admin = () => {
     if (!roleId) return;
     setLoadingAuth(true);
     try {
-      const res = await axiosAuth.get(`/api/security/roles/${roleId}/authorizations`);
+      const res = await api.get(`/security/roles/${roleId}/authorizations`);
       setRoleAuthorizations(res.data);
     } catch (err) {
       showToast('Erreur chargement autorisations', 'error');
@@ -588,7 +563,7 @@ const Admin = () => {
   const saveAuthorizations = async () => {
     if (!selectedRoleId) return;
     try {
-      await axiosAuth.put(`/api/security/roles/${selectedRoleId}/authorizations`, {
+      await api.put(`/security/roles/${selectedRoleId}/authorizations`, {
         authorizations: roleAuthorizations
       });
       showToast('Autorisations enregistrées');
@@ -602,10 +577,10 @@ const Admin = () => {
     e.preventDefault();
     try {
       if (editingMedicamentId) {
-        await axiosAuth.put(`/api/pharmacy/medicaments/${editingMedicamentId}`, medicamentForm);
+        await api.put(`/pharmacy/medicaments/${editingMedicamentId}`, medicamentForm);
         showToast('Médicament modifié');
       } else {
-        await axiosAuth.post('/api/pharmacy/medicaments', medicamentForm);
+        await api.post('/pharmacy/medicaments', medicamentForm);
         showToast('Médicament ajouté');
       }
       setShowMedicamentForm(false);
@@ -618,7 +593,7 @@ const Admin = () => {
   const deleteMedicament = async (id) => {
     if (!window.confirm('Supprimer ce médicament ?')) return;
     try {
-      await axiosAuth.delete(`/api/pharmacy/medicaments/${id}`);
+      await api.delete(`/pharmacy/medicaments/${id}`);
       showToast('Médicament supprimé');
       fetchMedicaments();
       fetchAlertes();
@@ -636,11 +611,11 @@ const Admin = () => {
     try {
       const payload = { ...userForm };
       if (!editUserId) {
-        await axiosAuth.post('/api/admin/utilisateurs', payload);
+        await api.post('/admin/utilisateurs', payload);
         showToast('Utilisateur créé');
       } else {
         if (!payload.password) delete payload.password;
-        await axiosAuth.put(`/api/admin/utilisateurs/${editUserId}`, payload);
+        await api.put(`/admin/utilisateurs/${editUserId}`, payload);
         showToast('Utilisateur modifié');
       }
       setShowUserForm(false);
@@ -655,7 +630,7 @@ const Admin = () => {
   const deleteUser = async (id) => {
     if (!window.confirm('Supprimer définitivement cet utilisateur ?')) return;
     try {
-      await axiosAuth.delete(`/api/admin/utilisateurs/${id}`);
+      await api.delete(`/admin/utilisateurs/${id}`);
       showToast('Utilisateur supprimé');
       fetchUtilisateurs();
     } catch (err) {
@@ -665,7 +640,7 @@ const Admin = () => {
 
   const toggleActif = async (id, currentActif) => {
     try {
-      await axiosAuth.patch(`/api/admin/utilisateurs/${id}/actif`, { actif: !currentActif });
+      await api.patch(`/admin/utilisateurs/${id}/actif`, { actif: !currentActif });
       showToast(`Utilisateur ${!currentActif ? 'activé' : 'désactivé'}`);
       fetchUtilisateurs();
     } catch (err) {
@@ -682,10 +657,10 @@ const Admin = () => {
     }
     try {
       if (editingRoleId) {
-        await axiosAuth.put(`/api/security/roles/${editingRoleId}`, { nom: roleForm.nom });
+        await api.put(`/security/roles/${editingRoleId}`, { nom: roleForm.nom });
         showToast('Rôle modifié');
       } else {
-        await axiosAuth.post('/api/security/roles', { nom: roleForm.nom });
+        await api.post('/security/roles', { nom: roleForm.nom });
         showToast('Rôle ajouté');
       }
       setShowRoleForm(false);
@@ -702,7 +677,7 @@ const Admin = () => {
   const deleteRole = async (id) => {
     if (!window.confirm('Supprimer ce rôle ? Les utilisateurs avec ce rôle ne seront pas supprimés.')) return;
     try {
-      await axiosAuth.delete(`/api/security/roles/${id}`);
+      await api.delete(`/security/roles/${id}`);
       showToast('Rôle supprimé');
       fetchRolesList();
       fetchRoles();
@@ -717,7 +692,7 @@ const Admin = () => {
     e.preventDefault();
     if (!selectedMedicamentId) return;
     try {
-      await axiosAuth.post('/api/pharmacy/lots', {
+      await api.post('/pharmacy/lots', {
         ...lotForm,
         medicament_id: selectedMedicamentId,
         quantite: parseInt(lotForm.quantite)
@@ -748,7 +723,7 @@ const Admin = () => {
       return;
     }
     try {
-      await axiosAuth.post('/api/pharmacy/commandes', { fournisseur_id: 1, lignes: lignesValides });
+      await api.post('/pharmacy/commandes', { fournisseur_id: 1, lignes: lignesValides });
       showToast('Commande créée');
       setShowCommandeForm(false);
       setCommandeLignes([{ medicament_id: "", quantite_commandee: 0, prix_unitaire_ht: 0 }]);
@@ -764,7 +739,7 @@ const Admin = () => {
       return;
     }
     try {
-      await axiosAuth.post('/api/pharmacy/delivrance', deliveryForm);
+      await api.post('/pharmacy/delivrance', deliveryForm);
       setDeliveryMessage('✅ Délivrance enregistrée');
       setDeliveryForm({ medicament_id: "", quantite: 1, patient_id: "", posologie: "", prescripteur_nom: "" });
       fetchMedicaments();
@@ -818,7 +793,7 @@ const Admin = () => {
   const addService = async () => {
     if (!newService.trim()) return;
     try {
-      await axios.post('http://localhost:5000/api/consultations/services', { nom: newService });
+      await api.post('/consultations/services', { nom: newService });
       setNewService('');
       fetchData();
       showToast('Service ajouté');
@@ -827,7 +802,7 @@ const Admin = () => {
   const deleteService = async (id) => {
     if (!window.confirm('Supprimer ce service ?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/consultations/services/${id}`);
+      await api.delete(`/consultations/services/${id}`);
       fetchData();
       showToast('Service supprimé');
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
@@ -839,7 +814,7 @@ const Admin = () => {
       return;
     }
     try {
-      await axiosAuth.post('/api/consultations/medecins-avec-compte', {
+      await api.post('/consultations/medecins-avec-compte', {
         ...newMedecin,
         login: newMedecin.login || newMedecin.email
       });
@@ -854,7 +829,7 @@ const Admin = () => {
   const deleteMedecin = async (id) => {
     if (!window.confirm('Supprimer ce médecin ?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/consultations/medecins/${id}`);
+      await api.delete(`/consultations/medecins/${id}`);
       fetchData();
       showToast('Médecin supprimé');
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
@@ -862,7 +837,7 @@ const Admin = () => {
   const addBatiment = async () => {
     if (!newBatiment.nom) return;
     try {
-      await axios.post('http://localhost:5000/api/consultations/batiments', newBatiment);
+      await api.post('/consultations/batiments', newBatiment);
       setNewBatiment({ nom: '' });
       fetchData();
       showToast('Bâtiment ajouté');
@@ -871,7 +846,7 @@ const Admin = () => {
   const deleteBatiment = async (id) => {
     if (!window.confirm('Supprimer ce bâtiment ?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/consultations/batiments/${id}`);
+      await api.delete(`/consultations/batiments/${id}`);
       fetchData();
       showToast('Bâtiment supprimé');
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
@@ -879,7 +854,7 @@ const Admin = () => {
   const addEtage = async () => {
     if (!newEtage.batiment_id || !newEtage.numero) return;
     try {
-      await axios.post('http://localhost:5000/api/consultations/etages', newEtage);
+      await api.post('/consultations/etages', newEtage);
       setNewEtage({ batiment_id: '', numero: '' });
       fetchData();
       showToast('Étage ajouté');
@@ -888,7 +863,7 @@ const Admin = () => {
   const deleteEtage = async (id) => {
     if (!window.confirm('Supprimer cet étage ?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/consultations/etages/${id}`);
+      await api.delete(`/consultations/etages/${id}`);
       fetchData();
       showToast('Étage supprimé');
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
@@ -896,7 +871,7 @@ const Admin = () => {
   const addChambre = async () => {
     if (!newChambre.nom || !newChambre.batiment_id || !newChambre.etage_id) return;
     try {
-      await axios.post('http://localhost:5000/api/consultations/chambres', newChambre);
+      await api.post('/consultations/chambres', newChambre);
       setNewChambre({ nom: '', batiment_id: '', etage_id: '', type: 'public', capacite: 2 });
       fetchData();
       showToast('Chambre ajoutée');
@@ -905,7 +880,7 @@ const Admin = () => {
   const deleteChambre = async (id) => {
     if (!window.confirm('Supprimer cette chambre ?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/consultations/chambres/${id}`);
+      await api.delete(`/consultations/chambres/${id}`);
       fetchData();
       showToast('Chambre supprimée');
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
@@ -913,7 +888,7 @@ const Admin = () => {
   const addLit = async () => {
     if (!newLit.chambre_id || !newLit.numero) return;
     try {
-      await axios.post('http://localhost:5000/api/consultations/lits', {
+      await api.post('/consultations/lits', {
         chambre_id: parseInt(newLit.chambre_id),
         numero: newLit.numero,
         statut: newLit.statut
@@ -926,7 +901,7 @@ const Admin = () => {
   const deleteLit = async (id) => {
     if (!window.confirm('Supprimer ce lit ?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/consultations/lits/${id}`);
+      await api.delete(`/consultations/lits/${id}`);
       fetchData();
       showToast('Lit supprimé');
     } catch (err) { showToast('Erreur', 'error'); }
@@ -935,10 +910,10 @@ const Admin = () => {
     e.preventDefault();
     try {
       if (editPrestationId) {
-        await axios.put(`http://localhost:5000/api/billing/prestations/${editPrestationId}`, newPrestation);
+        await api.put(`/billing/prestations/${editPrestationId}`, newPrestation);
         showToast('Prestation modifiée');
       } else {
-        await axios.post('http://localhost:5000/api/billing/prestations', newPrestation);
+        await api.post('/billing/prestations', newPrestation);
         showToast('Prestation ajoutée');
       }
       setShowPrestationModal(false);
@@ -950,7 +925,7 @@ const Admin = () => {
   const deletePrestation = async (id) => {
     if (!window.confirm('Supprimer cette prestation ?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/billing/prestations/${id}`);
+      await api.delete(`/billing/prestations/${id}`);
       fetchData();
       showToast('Prestation supprimée');
     } catch (err) { showToast('Erreur', 'error'); }
@@ -985,7 +960,6 @@ const Admin = () => {
         <button onClick={() => setActiveTab('utilisateurs')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'utilisateurs' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>👤 Utilisateurs</button>
         <button onClick={() => setActiveTab('roles')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'roles' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🔑 Rôles</button>
         <button onClick={() => setActiveTab('authorizations')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'authorizations' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🔓 Autorisations</button>
-        {/* NOUVEAU BOUTON POUR LES TYPES D'EXAMENS */}
         <button onClick={() => setActiveTab('typesexamens')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'typesexamens' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🔬 Types examens</button>
       </div>
 
@@ -1635,7 +1609,7 @@ const Admin = () => {
         </div>
       )}
 
-      {/* ========== NOUVEL ONGLET : TYPES D'EXAMENS (corrigé) ========== */}
+      {/* ========== TYPES D'EXAMENS ========== */}
       {activeTab === 'typesexamens' && <TypesExamensAdmin />}
 
       {/* MODAL PRESTATIONS */}
