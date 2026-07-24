@@ -1,7 +1,7 @@
 // src/pages/PrescriptionPage.jsx
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../axios'; // ✅ Utilisation de l'instance partagée
 
 const PrescriptionPage = () => {
   const { patientId } = useParams();
