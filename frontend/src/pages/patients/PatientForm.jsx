@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const PatientForm = () => {
   const { id } = useParams();
@@ -23,12 +23,12 @@ const PatientForm = () => {
     allergies: '',
     traitements: '',
     consentements: false,
-    date_admission: new Date().toISOString().split('T')[0]  // date par défaut aujourd'hui
+    date_admission: new Date().toISOString().split('T')[0]
   });
 
   useEffect(() => {
     if (id) {
-      axios.get(`http://localhost:5000/api/patients/${id}`)
+      api.get(`/patients/${id}`) // ✅ Suppression de l'URL absolue
         .then(res => {
           const patient = res.data;
           if (patient.date_naissance) patient.date_naissance = patient.date_naissance.split('T')[0];
@@ -48,9 +48,9 @@ const PatientForm = () => {
     e.preventDefault();
     try {
       if (id) {
-        await axios.put(`http://localhost:5000/api/patients/${id}`, form);
+        await api.put(`/patients/${id}`, form);
       } else {
-        await axios.post('http://localhost:5000/api/patients', form);
+        await api.post('/patients', form);
       }
       navigate('/patients');
     } catch (err) {

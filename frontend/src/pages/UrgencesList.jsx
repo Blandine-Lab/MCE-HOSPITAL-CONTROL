@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../axios'; // ✅ Utilisation de l'instance partagée
 
 const UrgencesList = () => {
   const [urgences, setUrgences] = useState([]);
@@ -8,26 +8,38 @@ const UrgencesList = () => {
 
   useEffect(() => {
     fetchUrgences();
-    axios.get('http://localhost:5000/api/patients')
+    api.get('/patients')
       .then(res => setPatients(res.data))
       .catch(err => console.error(err));
   }, []);
 
   const fetchUrgences = async () => {
-    const res = await axios.get('http://localhost:5000/api/consultations/urgences');
-    setUrgences(res.data);
+    try {
+      const res = await api.get('/consultations/urgences');
+      setUrgences(res.data);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    await axios.post('http://localhost:5000/api/consultations/urgences', newUrgence);
-    setNewUrgence({ patient_id: '', niveau: 'Jaune', priorite: 3, motif: '' });
-    fetchUrgences();
+    try {
+      await api.post('/consultations/urgences', newUrgence);
+      setNewUrgence({ patient_id: '', niveau: 'Jaune', priorite: 3, motif: '' });
+      fetchUrgences();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleTakeCharge = async (id) => {
-    await axios.put(`http://localhost:5000/api/consultations/urgences/${id}`, { statut: 'pris_en_charge' });
-    fetchUrgences();
+    try {
+      await api.put(`/consultations/urgences/${id}`, { statut: 'pris_en_charge' });
+      fetchUrgences();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const getColor = (priorite) => {

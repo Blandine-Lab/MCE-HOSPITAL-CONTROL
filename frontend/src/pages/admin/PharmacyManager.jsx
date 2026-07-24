@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const PharmacyManager = () => {
   const [medicaments, setMedicaments] = useState([]);
@@ -22,30 +22,23 @@ const PharmacyManager = () => {
   const [patients, setPatients] = useState([]);
   const [subTab, setSubTab] = useState('medicaments');
 
-  const axiosAuth = axios.create({ baseURL: 'http://localhost:5000' });
-  axiosAuth.interceptors.request.use(config => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
   const showToast = (msg) => { alert(msg); }; // simplifié
 
   const fetchMedicaments = async () => {
-    try { const res = await axiosAuth.get('/api/pharmacy/medicaments'); setMedicaments(res.data); } catch(e) { console.error(e); }
+    try { const res = await api.get('/pharmacy/medicaments'); setMedicaments(res.data); } catch(e) { console.error(e); }
   };
   const fetchAlertes = async () => {
-    try { const res = await axiosAuth.get('/api/pharmacy/alertes'); setAlertes(res.data); } catch(e) { console.error(e); }
+    try { const res = await api.get('/pharmacy/alertes'); setAlertes(res.data); } catch(e) { console.error(e); }
   };
   const fetchLots = async (id) => {
     if (!id) return;
-    try { const res = await axiosAuth.get(`/api/pharmacy/lots/disponibles/${id}`); setLots(res.data); } catch(e) { console.error(e); }
+    try { const res = await api.get(`/pharmacy/lots/disponibles/${id}`); setLots(res.data); } catch(e) { console.error(e); }
   };
   const fetchCommandes = async () => {
-    try { const res = await axiosAuth.get('/api/pharmacy/commandes'); setCommandes(res.data); } catch(e) { console.error(e); }
+    try { const res = await api.get('/pharmacy/commandes'); setCommandes(res.data); } catch(e) { console.error(e); }
   };
   const fetchPatients = async () => {
-    try { const res = await axiosAuth.get('/admin/patients'); setPatients(res.data); } catch(e) { console.error(e); }
+    try { const res = await api.get('/admin/patients'); setPatients(res.data); } catch(e) { console.error(e); }
   };
 
   useEffect(() => {
@@ -63,9 +56,9 @@ const PharmacyManager = () => {
     e.preventDefault();
     try {
       if (editingMedicamentId) {
-        await axiosAuth.put(`/api/pharmacy/medicaments/${editingMedicamentId}`, medicamentForm);
+        await api.put(`/pharmacy/medicaments/${editingMedicamentId}`, medicamentForm);
       } else {
-        await axiosAuth.post('/api/pharmacy/medicaments', medicamentForm);
+        await api.post('/pharmacy/medicaments', medicamentForm);
       }
       setShowMedicamentForm(false);
       setEditingMedicamentId(null);
@@ -79,7 +72,7 @@ const PharmacyManager = () => {
   const deleteMedicament = async (id) => {
     if (!confirm('Supprimer ?')) return;
     try {
-      await axiosAuth.delete(`/api/pharmacy/medicaments/${id}`);
+      await api.delete(`/pharmacy/medicaments/${id}`);
       fetchMedicaments();
       fetchAlertes();
     } catch(err) { showToast('Erreur'); }
@@ -95,7 +88,7 @@ const PharmacyManager = () => {
     e.preventDefault();
     if (!selectedMedicamentId) return;
     try {
-      await axiosAuth.post('/api/pharmacy/lots', {
+      await api.post('/pharmacy/lots', {
         ...lotForm,
         medicament_id: selectedMedicamentId,
         quantite: parseInt(lotForm.quantite)
@@ -120,7 +113,7 @@ const PharmacyManager = () => {
     const lignesValides = commandeLignes.filter(l => l.medicament_id && l.quantite_commandee > 0);
     if (lignesValides.length === 0) return;
     try {
-      await axiosAuth.post('/api/pharmacy/commandes', { fournisseur_id: 1, lignes: lignesValides });
+      await api.post('/pharmacy/commandes', { fournisseur_id: 1, lignes: lignesValides });
       setShowCommandeForm(false);
       setCommandeLignes([{ medicament_id: "", quantite_commandee: 0, prix_unitaire_ht: 0 }]);
       fetchCommandes();
@@ -131,7 +124,7 @@ const PharmacyManager = () => {
   const handleDeliverySubmit = async (e) => {
     e.preventDefault();
     try {
-      await axiosAuth.post('/api/pharmacy/delivrance', deliveryForm);
+      await api.post('/pharmacy/delivrance', deliveryForm);
       setDeliveryMessage('✅ Délivrance enregistrée');
       setDeliveryForm({ medicament_id: "", quantite: 1, patient_id: "", posologie: "", prescripteur_nom: "" });
       fetchMedicaments();

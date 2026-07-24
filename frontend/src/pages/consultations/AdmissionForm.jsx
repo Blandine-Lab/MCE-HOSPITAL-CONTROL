@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const AdmissionForm = () => {
   const navigate = useNavigate();
@@ -21,12 +21,12 @@ const AdmissionForm = () => {
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://localhost:5000/api/patients'),
-      axios.get('http://localhost:5000/api/consultations/lits/disponibles'),
-      axios.get('http://localhost:5000/api/consultations/services'),
-      axios.get('http://localhost:5000/api/consultations/medecins')
+      api.get('/patients'), // ✅ Suppression de l'URL absolue
+      api.get('/consultations/lits/disponibles'),
+      api.get('/consultations/services'),
+      api.get('/consultations/medecins')
     ]).then(([patRes, litRes, servRes, medRes]) => {
-      console.log('Services reçus :', servRes.data); // Vérifiez la console
+      console.log('Services reçus :', servRes.data);
       setPatients(patRes.data.filter(p => p.statut !== 'sorti'));
       setLits(litRes.data);
       setServices(servRes.data);
@@ -43,7 +43,7 @@ const AdmissionForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/consultations/admissions', form);
+      await api.post('/consultations/admissions', form);
       setToast('Patient admis avec succès – séjour créé');
       setTimeout(() => setToast(null), 3000);
       setTimeout(() => navigate('/patients'), 1500);
@@ -53,6 +53,7 @@ const AdmissionForm = () => {
     }
   };
 
+  // Styles (inchangés)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#f0fdf4',

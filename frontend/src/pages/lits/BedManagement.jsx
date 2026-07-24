@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const BedManagement = () => {
   const [chambres, setChambres] = useState([]);
@@ -7,7 +7,7 @@ const BedManagement = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/consultations/lits/all')
+    api.get('/consultations/lits/all') // ✅ Suppression de l'URL absolue
       .then(res => {
         const lits = res.data;
         // Regrouper les lits par chambre (nom)

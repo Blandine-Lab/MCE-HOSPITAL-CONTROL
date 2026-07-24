@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const PrescriptionForm = () => {
   const { patientId } = useParams();
@@ -17,7 +17,7 @@ const PrescriptionForm = () => {
   useEffect(() => {
     // Charger le patient
     if (patientId) {
-      axios.get(`http://localhost:5000/api/patients/${patientId}`)
+      api.get(`/patients/${patientId}`)
         .then(res => {
           setPatient(res.data);
           setLoading(false);
@@ -31,23 +31,18 @@ const PrescriptionForm = () => {
     }
 
     // Charger la liste des médecins
-    axios.get('http://localhost:5000/api/consultations/medecins/all')
+    api.get('/consultations/medecins/all')
       .then(res => {
         console.log('✅ Médecins reçus :', res.data);
         setMedecins(res.data);
       })
       .catch(err => {
         console.error('❌ Erreur chargement médecins :', err);
-        // Pour le débogage, on peut afficher une alerte
         alert('Erreur chargement des médecins : ' + (err.response?.data?.error || err.message));
       });
   }, [patientId]);
 
-  // ... fonctions addItem, removeItem, handleItemChange, handleSubmit (inchangées) ...
-
-  // (recopier les fonctions addItem, removeItem, handleItemChange, handleSubmit depuis le code précédent)
-
-  // ===== FONCTIONS =====
+  // Fonctions addItem, removeItem, handleItemChange, handleSubmit
   const addItem = () => {
     setItems([...items, { medicament: '', posologie: '', duree: '', quantite: 1 }]);
   };
@@ -76,7 +71,7 @@ const PrescriptionForm = () => {
       return;
     }
     try {
-      await axios.post('http://localhost:5000/api/prescriptions', {
+      await api.post('/prescriptions', {
         patient_id: patientId,
         medecin_id: selectedMedecinId,
         items: items,
@@ -89,7 +84,7 @@ const PrescriptionForm = () => {
     }
   };
 
-  // ===== RENDU =====
+  // RENDU
   if (loading) return <div>Chargement du patient...</div>;
   if (!patient && patientId) return <div>Patient non trouvé</div>;
 
@@ -102,7 +97,7 @@ const PrescriptionForm = () => {
         </div>
       )}
       <form onSubmit={handleSubmit}>
-        {/* ========== CHAMP MÉDECIN ========== */}
+        {/* Médecin prescripteur */}
         <div style={{ marginBottom: '16px' }}>
           <label>Médecin prescripteur *</label>
           <select
@@ -129,7 +124,7 @@ const PrescriptionForm = () => {
           )}
         </div>
 
-        {/* ========== LISTE DES MÉDICAMENTS ========== */}
+        {/* Liste des médicaments */}
         {items.map((item, index) => (
           <div key={index} style={{ border: '1px solid #ccc', padding: '16px', marginBottom: '16px', borderRadius: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const RendezVousList = () => {
   const [rdvs, setRdvs] = useState([]);
@@ -10,26 +10,38 @@ const RendezVousList = () => {
 
   useEffect(() => {
     fetchRdvs();
-    axios.get('http://localhost:5000/api/patients').then(res => setPatients(res.data));
-    axios.get('http://localhost:5000/api/consultations/medecins').then(res => setMedecins(res.data));
-    axios.get('http://localhost:5000/api/consultations/services').then(res => setServices(res.data));
+    api.get('/patients').then(res => setPatients(res.data)).catch(console.error);
+    api.get('/consultations/medecins').then(res => setMedecins(res.data)).catch(console.error);
+    api.get('/consultations/services').then(res => setServices(res.data)).catch(console.error);
   }, []);
 
   const fetchRdvs = async () => {
-    const res = await axios.get('http://localhost:5000/api/consultations/rendezvous');
-    setRdvs(res.data);
+    try {
+      const res = await api.get('/consultations/rendezvous');
+      setRdvs(res.data);
+    } catch (err) {
+      console.error('Erreur chargement rendez-vous:', err);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await axios.post('http://localhost:5000/api/consultations/rendezvous', form);
-    setForm({ patient_id: '', medecin_id: '', service_id: '', date_rdv: '', motif: '' });
-    fetchRdvs();
+    try {
+      await api.post('/consultations/rendezvous', form);
+      setForm({ patient_id: '', medecin_id: '', service_id: '', date_rdv: '', motif: '' });
+      fetchRdvs();
+    } catch (err) {
+      console.error('Erreur ajout rendez-vous:', err);
+    }
   };
 
   const updateStatut = async (id, statut) => {
-    await axios.put(`http://localhost:5000/api/consultations/rendezvous/${id}`, { statut });
-    fetchRdvs();
+    try {
+      await api.put(`/consultations/rendezvous/${id}`, { statut });
+      fetchRdvs();
+    } catch (err) {
+      console.error('Erreur mise à jour statut:', err);
+    }
   };
 
   return (

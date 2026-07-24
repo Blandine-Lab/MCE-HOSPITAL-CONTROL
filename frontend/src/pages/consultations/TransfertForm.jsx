@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { FaExchangeAlt, FaBed, FaStethoscope, FaClipboardList, FaSave } from 'react-icons/fa';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const TransfertForm = () => {
   const navigate = useNavigate();
@@ -15,9 +15,9 @@ const TransfertForm = () => {
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://localhost:5000/api/consultations/patients/hospitalises'),
-      axios.get('http://localhost:5000/api/consultations/lits/disponibles'),
-      axios.get('http://localhost:5000/api/consultations/services')
+      api.get('/consultations/patients/hospitalises'),
+      api.get('/consultations/lits/disponibles'),
+      api.get('/consultations/services')
     ]).then(([patRes, litRes, servRes]) => {
       setPatients(patRes.data);
       setLitsDispo(litRes.data);
@@ -35,7 +35,7 @@ const TransfertForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/consultations/transferts', form);
+      await api.post('/consultations/transferts', form);
       setToast('Transfert effectué avec succès');
       setTimeout(() => setToast(null), 3000);
       setTimeout(() => navigate('/patients'), 1500);
@@ -45,6 +45,7 @@ const TransfertForm = () => {
     }
   };
 
+  // Styles (inchangés)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#f0f9ff',

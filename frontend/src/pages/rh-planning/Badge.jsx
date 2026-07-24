@@ -32,7 +32,9 @@ const Badge = () => {
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>{error}</div>;
   if (!employe) return null;
 
-  const photoUrl = employe.photo ? `http://localhost:5000${employe.photo}` : null;
+  // ✅ Construction de l'URL de la photo avec VITE_API_URL
+  const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
+  const photoUrl = employe.photo ? `${baseUrl}${employe.photo}` : null;
   const logoUrl = '/logo.jpeg';
 
   return (
@@ -46,7 +48,7 @@ const Badge = () => {
         </button>
       </div>
 
-      {/* Badge imprimable – version écran (inchangée) */}
+      {/* Badge imprimable */}
       <div ref={badgeRef} className="badge-print" style={{
         backgroundColor: 'white',
         borderRadius: '16px',
@@ -100,17 +102,14 @@ const Badge = () => {
 
       <style>{`
         @media print {
-          /* Masquer tout sauf le badge */
           body * { visibility: hidden; }
           .badge-print, .badge-print * { visibility: visible; }
 
-          /* Page A4 avec marges réduites */
           @page {
-            size: A4;                /* 210mm × 297mm */
-            margin: 15mm;           /* marges confortables */
+            size: A4;
+            margin: 15mm;
           }
 
-          /* Le badge occupe toute la zone imprimable, centré */
           html, body {
             margin: 0 !important;
             padding: 0 !important;
@@ -121,7 +120,6 @@ const Badge = () => {
           }
 
           .badge-print {
-            /* Dimensions du badge : 85mm de large, 55mm de haut (carte standard) */
             width: 85mm;
             height: 55mm;
             padding: 4mm !important;
@@ -133,13 +131,12 @@ const Badge = () => {
             box-shadow: none !important;
             display: flex;
             flex-direction: column;
-            justify-content: center;   /* centrage vertical interne */
-            overflow: hidden !important; /* sécurité */
+            justify-content: center;
+            overflow: hidden !important;
             page-break-after: avoid;
             page-break-inside: avoid;
           }
 
-          /* --- Ajustements pour que tout rentre --- */
           .badge-print img[alt="Photo"] {
             width: 45px !important;
             height: 45px !important;

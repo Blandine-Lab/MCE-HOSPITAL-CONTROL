@@ -1,19 +1,12 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const HistoriqueExecutions = () => {
   const [executions, setExecutions] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const axiosAuth = axios.create({ baseURL: 'http://localhost:5000' });
-  axiosAuth.interceptors.request.use(config => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
   useEffect(() => {
-    axiosAuth.get('/api/pharmacy/preparations/executions')
+    api.get('/pharmacy/preparations/executions')
       .then(res => {
         setExecutions(res.data);
         setLoading(false);

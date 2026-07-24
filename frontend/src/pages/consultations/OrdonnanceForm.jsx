@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaPlus, FaTrash, FaSave, FaTimes } from 'react-icons/fa';
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const OrdonnanceForm = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const [patient, setPatient] = useState(null);
   const [medicaments, setMedicaments] = useState([]);
-  const [medecins, setMedecins] = useState([]); // Liste des médecins
-  const [selectedMedecinId, setSelectedMedecinId] = useState(''); // ID du médecin sélectionné
+  const [medecins, setMedecins] = useState([]);
+  const [selectedMedecinId, setSelectedMedecinId] = useState('');
   const [lignes, setLignes] = useState([{ medicament_id: '', quantite_prescrit: 1, posologie: '' }]);
   const [observations, setObservations] = useState('');
   const [loading, setLoading] = useState(true);
@@ -17,24 +17,17 @@ const OrdonnanceForm = () => {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const axiosAuth = axios.create({ baseURL: 'http://localhost:5000' });
-  axiosAuth.interceptors.request.use(config => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
   useEffect(() => {
     const fetchData = async () => {
       if (!patientId) {
-        navigate('/patients'); // Redirection immédiate vers la liste
+        navigate('/patients');
         return;
       }
       try {
         const [patientRes, medsRes, medecinsRes] = await Promise.all([
-          axiosAuth.get(`/api/patients/${patientId}`),
-          axiosAuth.get('/api/pharmacy/medicaments'),
-          axiosAuth.get('/api/consultations/medecins/all') // Route qui liste les médecins
+          api.get(`/patients/${patientId}`),
+          api.get('/pharmacy/medicaments'),
+          api.get('/consultations/medecins/all')
         ]);
         setPatient(patientRes.data);
         setMedicaments(medsRes.data);
@@ -68,7 +61,6 @@ const OrdonnanceForm = () => {
     e.preventDefault();
     setSaving(true);
     
-    // Validation : au moins un médicament
     const validLignes = lignes.filter(l => l.medicament_id && l.quantite_prescrit > 0);
     if (validLignes.length === 0) {
       setToast('Ajoutez au moins un médicament');
@@ -77,7 +69,6 @@ const OrdonnanceForm = () => {
       return;
     }
     
-    // Validation : médecin sélectionné
     if (!selectedMedecinId) {
       setToast('Veuillez sélectionner un médecin prescripteur.');
       setSaving(false);
@@ -86,9 +77,9 @@ const OrdonnanceForm = () => {
     }
 
     try {
-      await axiosAuth.post('/api/consultations/ordonnances', {
+      await api.post('/consultations/ordonnances', {
         patient_id: parseInt(patientId),
-        medecin_id: parseInt(selectedMedecinId), // 🔥 Envoi du médecin sélectionné
+        medecin_id: parseInt(selectedMedecinId),
         lignes: validLignes,
         observations
       });
@@ -114,7 +105,6 @@ const OrdonnanceForm = () => {
       <h2 style={{ marginBottom: '20px' }}>📝 Prescrire pour {patient.nom} {patient.prenom}</h2>
       
       <form onSubmit={handleSubmit}>
-        {/* ========== CHAMP MÉDECIN PRESCRIPTEUR ========== */}
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
             Médecin prescripteur *
@@ -134,7 +124,6 @@ const OrdonnanceForm = () => {
           </select>
         </div>
 
-        {/* ========== MÉDICAMENTS ========== */}
         <div style={{ marginBottom: '20px' }}>
           <h3>Médicaments prescrits</h3>
           {lignes.map((ligne, index) => (
@@ -174,7 +163,6 @@ const OrdonnanceForm = () => {
           </button>
         </div>
 
-        {/* ========== OBSERVATIONS ========== */}
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Observations</label>
           <textarea
@@ -186,7 +174,6 @@ const OrdonnanceForm = () => {
           />
         </div>
 
-        {/* ========== BOUTONS ========== */}
         <div style={{ display: 'flex', gap: '10px' }}>
           <button type="submit" disabled={saving} style={{ background: '#16a34a', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '4px', cursor: 'pointer' }}>
             <FaSave /> {saving ? 'Enregistrement...' : 'Prescrire'}
