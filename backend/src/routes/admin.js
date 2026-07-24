@@ -1,8 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const db = require('../../config/db');
+const { Pool } = require('pg');
 const { authenticate, requireRole } = require('../middleware/auth');
+
+// ✅ Création directe du pool avec DATABASE_URL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('connect', () => console.log('✅ Admin : connecté à PostgreSQL'));
 
 // Toutes ces routes sont réservées à l'admin
 router.use(authenticate);
@@ -11,7 +19,7 @@ router.use(requireRole(['admin']));
 // GET /api/admin/utilisateurs – liste des utilisateurs
 router.get('/utilisateurs', async (req, res) => {
   try {
-    const { rows } = await db.query(
+    const { rows } = await pool.query(
       `SELECT id, login, nom, prenom, role, actif, created_at
        FROM utilisateurs
        ORDER BY id`
@@ -33,14 +41,14 @@ router.post('/utilisateurs', async (req, res) => {
     }
 
     // Vérifier si le login existe déjà
-    const check = await db.query('SELECT id FROM utilisateurs WHERE login = $1', [login]);
+    const check = await pool.query('SELECT id FROM utilisateurs WHERE login = $1', [login]);
     if (check.rows.length > 0) {
       return res.status(409).json({ error: 'Ce login est déjà utilisé' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const { rows } = await db.query(
+    const { rows } = await pool.query(
       `INSERT INTO utilisateurs (login, password_hash, nom, prenom, role, actif)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, login, nom, prenom, role, actif, created_at`,
@@ -59,7 +67,7 @@ router.put('/utilisateurs/:id', async (req, res) => {
     const { id } = req.params;
     const { login, nom, prenom, role, password, actif } = req.body;
 
-    const user = await db.query('SELECT * FROM utilisateurs WHERE id = $1', [id]);
+    const user = await pool.query('SELECT * FROM utilisateurs WHERE id = $1', [id]);
     if (user.rows.length === 0) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
@@ -90,7 +98,7 @@ router.put('/utilisateurs/:id', async (req, res) => {
       WHERE id = $${paramCount}
       RETURNING id, login, nom, prenom, role, actif, created_at
     `;
-    const { rows } = await db.query(query, values);
+    const { rows } = await pool.query(query, values);
     res.json(rows[0]);
   } catch (err) {
     console.error('❌ PUT /admin/utilisateurs/:id :', err);
@@ -105,7 +113,7 @@ router.delete('/utilisateurs/:id', async (req, res) => {
     if (parseInt(id) === req.user.id) {
       return res.status(403).json({ error: 'Vous ne pouvez pas supprimer votre propre compte' });
     }
-    const result = await db.query('DELETE FROM utilisateurs WHERE id = $1 RETURNING id', [id]);
+    const result = await pool.query('DELETE FROM utilisateurs WHERE id = $1 RETURNING id', [id]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
@@ -124,7 +132,7 @@ router.patch('/utilisateurs/:id/actif', async (req, res) => {
     if (typeof actif !== 'boolean') {
       return res.status(400).json({ error: 'Le champ "actif" doit être un booléen' });
     }
-    const result = await db.query(
+    const result = await pool.query(
       `UPDATE utilisateurs SET actif = $1 WHERE id = $2
        RETURNING id, login, actif`,
       [actif, id]
