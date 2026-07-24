@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const compression = require('compression');
 const bcrypt = require('bcrypt');
+const path = require('path');
 
 // ========== LOG DE DIAGNOSTIC ==========
 console.log('🔍 DATABASE_URL présente :', process.env.DATABASE_URL ? 'OUI' : 'NON');
@@ -12,7 +13,28 @@ if (process.env.DATABASE_URL) {
   console.log('🔍 DATABASE_URL (masqué) :', process.env.DATABASE_URL.replace(/:.+@/, ':****@'));
 }
 
-// Import des routeurs existants
+// ========== CONNEXION À LA BASE DE DONNÉES ==========
+const { Pool } = require('pg');
+
+// Vérifier que DATABASE_URL est définie
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL non définie !');
+  process.exit(1);
+}
+
+console.log('🔗 Connexion à PostgreSQL avec DATABASE_URL');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('connect', () => console.log('✅ Connecté à PostgreSQL'));
+
+// Exporter le pool pour les routeurs
+module.exports.pool = pool;
+
+// ========== IMPORTS DES ROUTEURS ==========
 const authRoutes = require('./src/routes/auth');
 const consultationRoutes = require('./src/routes/consultations');
 const billingRoutes = require('./src/routes/billing');
@@ -23,16 +45,11 @@ const logRoutes = require('./src/routes/logs');
 const prescriptionsRoutes = require('./src/routes/prescriptions');
 const adminRoutes = require('./src/routes/admin');
 
-// ========== IMPORTS MODULE PARAMÉDICAL ==========
 const soinsRoutes = require('./src/routes/soinsRoutes');
 const actesRoutes = require('./src/routes/actesRoutes');
-
-// ========== IMPORTS MODULE LABORATOIRE & IMAGERIE ==========
 const examensRoutes = require('./src/routes/examensRoutes');
 const typesExamensRoutes = require('./src/routes/typesExamensRoutes');
-const path = require('path');
 
-// ========== IMPORTS MODULE RESSOURCES HUMAINES & PLANNING ==========
 const employesRoutes = require('./src/routes/employesRoutes');
 const servicesRoutes = require('./src/routes/servicesRoutes');
 const planningsRoutes = require('./src/routes/planningsRoutes');
@@ -40,7 +57,6 @@ const congesRoutes = require('./src/routes/congesRoutes');
 const absencesRoutes = require('./src/routes/absencesRoutes');
 const contratsRoutes = require('./src/routes/contratsRoutes');
 
-// ========== IMPORTS MODULE FINANCES & COMPTABILITÉ ==========
 const comptesRoutes = require('./src/routes/comptesRoutes');
 const ecrituresRoutes = require('./src/routes/ecrituresRoutes');
 const journauxRoutes = require('./src/routes/journauxRoutes');
@@ -48,7 +64,6 @@ const budgetsRoutes = require('./src/routes/budgetsRoutes');
 const paiementsRoutes = require('./src/routes/paiementsRoutes');
 const rapportsFinanciersRoutes = require('./src/routes/rapportsFinanciersRoutes');
 
-// ========== IMPORTS MODULE STOCK & APPROVISIONNEMENT ==========
 const produitsRoutes = require('./src/routes/produitsRoutes');
 const stocksRoutes = require('./src/routes/stocksRoutes');
 const fournisseursRoutes = require('./src/routes/fournisseursRoutes');
@@ -56,7 +71,6 @@ const commandesAchatRoutes = require('./src/routes/commandesAchatRoutes');
 const mouvementsRoutes = require('./src/routes/mouvementsRoutes');
 const inventairesRoutes = require('./src/routes/inventairesRoutes');
 
-// ========== IMPORTS MODULE QUALITÉ & RISQUES ==========
 const signalementsRoutes = require('./src/routes/signalementsRoutes');
 const auditsRoutes = require('./src/routes/auditsRoutes');
 const actionsCAPARoutes = require('./src/routes/actionsCAPARoutes');
@@ -65,24 +79,17 @@ const nonConformitesRoutes = require('./src/routes/nonConformitesRoutes');
 const evaluationsRisquesRoutes = require('./src/routes/evaluationsRisquesRoutes');
 const dashboardQualiteRoutes = require('./src/routes/dashboardQualiteRoutes');
 
-// ========== IMPORTS MODULE REPORTING & DÉCISIONNEL (BI) ==========
 const biRoutes = require('./src/routes/biRoutes');
-
-// ========== IMPORTS MODULE SÉCURITÉ ==========
 const securityRoutes = require('./src/routes/securityRoutes');
-
-// ========== IMPORTS MODULE INTEROPÉRABILITÉ ==========
 const interoperabiliteRoutes = require('./src/routes/interoperabiliteRoutes');
+const blocRoutes = require('./src/routes/blocRoutes');
 
-// Importer les middlewares d'authentification
 const { authenticate, requireRole } = require('./src/middleware/auth');
 
-// ========== IMPORT DE LA CONNEXION DB ==========
-const pool = require('./config/db'); // ce fichier doit utiliser DATABASE_URL
-
+// ========== APPLICATION EXPRESS ==========
 const app = express();
 const PORT = process.env.PORT || 5000;
-const blocRoutes = require('./src/routes/blocRoutes');
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ========== 1. Middlewares globaux ==========
@@ -105,7 +112,7 @@ app.get('/api/health', (req, res) => {
 // ========== 3. Routes publiques ==========
 app.use('/api/auth', authRoutes);
 
-// ========== 4. Routes protégées (authentification requise) ==========
+// ========== 4. Routes protégées ==========
 app.use('/api/consultations', consultationRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/pharmacy', pharmacyRoutes);
@@ -115,15 +122,12 @@ app.use('/api/logs', logRoutes);
 app.use('/api/prescriptions', prescriptionsRoutes);
 app.use('/api/admin', adminRoutes);
 
-// ========== ROUTES PARAMÉDICALES ==========
 app.use('/api/soins', soinsRoutes);
 app.use('/api/actes-paramedicaux', actesRoutes);
 
-// ========== ROUTES LABORATOIRE & IMAGERIE ==========
 app.use('/api/examens', examensRoutes);
 app.use('/api/types-examens', typesExamensRoutes);
 
-// ========== ROUTES RESSOURCES HUMAINES & PLANNING ==========
 app.use('/api/employes', employesRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/plannings', planningsRoutes);
@@ -131,7 +135,6 @@ app.use('/api/conges', congesRoutes);
 app.use('/api/absences', absencesRoutes);
 app.use('/api/contrats', contratsRoutes);
 
-// ========== ROUTES FINANCES & COMPTABILITÉ ==========
 app.use('/api/comptes', comptesRoutes);
 app.use('/api/ecritures', ecrituresRoutes);
 app.use('/api/journaux', journauxRoutes);
@@ -139,7 +142,6 @@ app.use('/api/budgets', budgetsRoutes);
 app.use('/api/paiements', paiementsRoutes);
 app.use('/api/rapports-financiers', rapportsFinanciersRoutes);
 
-// ========== ROUTES STOCK & APPROVISIONNEMENT ==========
 app.use('/api/produits', produitsRoutes);
 app.use('/api/stocks', stocksRoutes);
 app.use('/api/fournisseurs', fournisseursRoutes);
@@ -147,7 +149,6 @@ app.use('/api/commandes', commandesAchatRoutes);
 app.use('/api/mouvements', mouvementsRoutes);
 app.use('/api/inventaires', inventairesRoutes);
 
-// ========== ROUTES QUALITÉ & RISQUES ==========
 app.use('/api/signalements', signalementsRoutes);
 app.use('/api/audits', auditsRoutes);
 app.use('/api/actions-capa', actionsCAPARoutes);
@@ -156,13 +157,8 @@ app.use('/api/non-conformites', nonConformitesRoutes);
 app.use('/api/evaluations-risques', evaluationsRisquesRoutes);
 app.use('/api/dashboard/qualite', dashboardQualiteRoutes);
 
-// ========== ROUTES REPORTING & DÉCISIONNEL (BI) ==========
 app.use('/api/bi', biRoutes);
-
-// ========== ROUTES SÉCURITÉ ==========
 app.use('/api/security', securityRoutes.router);
-
-// ========== ROUTES INTEROPÉRABILITÉ ==========
 app.use('/api/interoperabilite', interoperabiliteRoutes);
 app.use('/api/bloc', blocRoutes);
 
@@ -189,9 +185,9 @@ app.post('/api/consultations/medecins-avec-compte', authenticate, requireRole(['
     return res.status(400).json({ error: 'Nom, prénom et mot de passe sont requis' });
   }
 
-  const connection = await pool.getConnection();
+  const client = await pool.connect(); // ✅ PostgreSQL : pool.connect()
   try {
-    await connection.beginTransaction();
+    await client.query('BEGIN');
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const loginFinal = login || email;
@@ -199,31 +195,31 @@ app.post('/api/consultations/medecins-avec-compte', authenticate, requireRole(['
       throw new Error('Login ou email requis pour le compte utilisateur');
     }
 
-    const [userResult] = await connection.query(
-      `INSERT INTO utilisateurs (login, nom, prenom, email, password, role, actif)
-       VALUES (?, ?, ?, ?, ?, ?, 1)`,
+    const userResult = await client.query(
+      `INSERT INTO utilisateurs (login, nom, prenom, email, password_hash, role, actif)
+       VALUES ($1, $2, $3, $4, $5, $6, 1) RETURNING id`,
       [loginFinal, nom, prenom, email, hashedPassword, role]
     );
-    const userId = userResult.insertId;
+    const userId = userResult.rows[0].id;
 
-    const [medResult] = await connection.query(
+    const medResult = await client.query(
       `INSERT INTO medecins (nom, prenom, specialite, email, user_id)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [nom, prenom, specialite || null, email || null, userId]
     );
 
-    await connection.commit();
+    await client.query('COMMIT');
     res.status(201).json({
       message: 'Médecin et compte créés avec succès',
-      medecinId: medResult.insertId,
+      medecinId: medResult.rows[0].id,
       userId: userId
     });
   } catch (error) {
-    await connection.rollback();
+    await client.query('ROLLBACK');
     console.error('Erreur création médecin+compte :', error);
     res.status(500).json({ error: error.message });
   } finally {
-    connection.release();
+    client.release();
   }
 });
 
@@ -248,5 +244,4 @@ app.listen(PORT, () => {
   console.log(`✅ Serveur backend démarré sur http://localhost:${PORT}`);
   console.log(`🩺 Health check : http://localhost:${PORT}/api/health`);
   console.log(`🔐 Login : POST http://localhost:${PORT}/api/auth/login`);
-  // ... (le reste des logs)
 });
