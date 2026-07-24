@@ -1,7 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../../server'); // ✅ Utilisation du pool centralisé
+const { Pool } = require('pg');
 const { authenticate, requirePermission, requireAdmin } = require('../middleware/auth');
+
+// ✅ Création directe du pool avec DATABASE_URL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('connect', () => console.log('✅ Patients route : connecté à PostgreSQL'));
 
 const toNull = (val) => (val === '' || val === undefined || val === null) ? null : val;
 
