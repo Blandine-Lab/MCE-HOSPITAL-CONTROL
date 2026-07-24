@@ -1,7 +1,7 @@
 // frontend/src/pages/Admin.jsx
 import { useEffect, useState } from 'react';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaFlask, FaXRay } from 'react-icons/fa';
-import api from '../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 import DispositifsList from './DispositifsList';
 import PharmacovigilanceList from './PharmacovigilanceList';
 import RupturesSuggestions from './RupturesSuggestions';
