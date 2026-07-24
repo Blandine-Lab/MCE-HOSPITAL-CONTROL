@@ -1,11 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
 const bcrypt = require('bcrypt');
-const pool = require(path.join(__dirname, '../../config/db'));
-const { authenticate, requireRole, requirePermission, requireAdmin } = require(path.join(__dirname, '../../middleware/auth'));
-const { getFifoLot } = require(path.join(__dirname, '../../utils/fifo'));
-const { logAudit } = require(path.join(__dirname, '../../utils/audit'));
+const { Pool } = require('pg');
+const { authenticate, requireRole, requirePermission, requireAdmin } = require('../middleware/auth');
+const { getFifoLot } = require('../utils/fifo');
+const { logAudit } = require('../utils/audit');
+
+// ✅ Création directe du pool avec DATABASE_URL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('connect', () => console.log('✅ Pharmacie : connecté à PostgreSQL'));
 
 router.use(authenticate);
 
