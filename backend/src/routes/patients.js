@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');
-const { authenticate, requirePermission, requireAdmin } = require('../middleware/auth'); // ✅ ajout de requireAdmin
+const { pool } = require('../../server'); // ✅ Utilisation du pool centralisé
+const { authenticate, requirePermission, requireAdmin } = require('../middleware/auth');
 
 const toNull = (val) => (val === '' || val === undefined || val === null) ? null : val;
 
