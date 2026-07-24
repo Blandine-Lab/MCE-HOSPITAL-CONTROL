@@ -7,8 +7,11 @@ import {
   countPendingOperations 
 } from './services/offlineStorage';
 
+// ✅ Utiliser VITE_API_URL si définie, sinon '/api'
+const baseURL = import.meta.env.VITE_API_URL || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
 });
 
 // ============================
@@ -25,11 +28,9 @@ api.interceptors.request.use(
     if (!isOnline() && config.method && config.method.toLowerCase() !== 'get') {
       console.log('📴 Mode hors ligne : sauvegarde de l\'opération', config.url);
       
-      // Sauvegarder l'opération en attente
       const entity = config.url.split('/')[1] || 'unknown';
       const action = config.method.toLowerCase();
       
-      // Sauvegarder dans IndexedDB
       const promise = savePendingOperation(
         config.url,
         config.method,
@@ -38,7 +39,6 @@ api.interceptors.request.use(
         action
       );
       
-      // Retourner une promesse rejetée avec l'opération sauvegardée
       return Promise.reject({
         __offline: true,
         message: 'Mode hors ligne - Opération sauvegardée',
@@ -65,14 +65,11 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    // Gestion des erreurs offline (notre interception)
     if (error && error.__offline) {
       console.log('📴 Mode hors ligne - Opération en attente');
-      // Attendre que l'opération soit sauvegardée
       if (error.promise) {
         await error.promise;
       }
-      // Retourner une réponse simulée
       return Promise.resolve({
         data: {
           message: 'Opération sauvegardée pour synchronisation ultérieure',
@@ -85,7 +82,6 @@ api.interceptors.response.use(
       });
     }
     
-    // Erreur réseau classique (pas de réponse)
     if (!error.response && !navigator.onLine) {
       console.warn('⚠️ Pas de connexion réseau');
       return Promise.reject({
@@ -94,7 +90,6 @@ api.interceptors.response.use(
       });
     }
     
-    // Gestion du refresh token (code existant)
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
       // ... votre logique de refresh token existante
