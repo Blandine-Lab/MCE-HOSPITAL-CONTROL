@@ -13,10 +13,9 @@ if (process.env.DATABASE_URL) {
   console.log('🔍 DATABASE_URL (masqué) :', process.env.DATABASE_URL.replace(/:.+@/, ':****@'));
 }
 
-// ========== CONNEXION À LA BASE DE DONNÉES ==========
+// ========== CONNEXION UNIQUE À LA BASE DE DONNÉES ==========
 const { Pool } = require('pg');
 
-// Vérifier que DATABASE_URL est définie
 if (!process.env.DATABASE_URL) {
   console.error('❌ DATABASE_URL non définie !');
   process.exit(1);
@@ -31,7 +30,7 @@ const pool = new Pool({
 
 pool.on('connect', () => console.log('✅ Connecté à PostgreSQL'));
 
-// Exporter le pool pour les routeurs
+// Exporter le pool pour qu'il soit accessible par les routeurs
 module.exports.pool = pool;
 
 // ========== IMPORTS DES ROUTEURS ==========
@@ -185,7 +184,7 @@ app.post('/api/consultations/medecins-avec-compte', authenticate, requireRole(['
     return res.status(400).json({ error: 'Nom, prénom et mot de passe sont requis' });
   }
 
-  const client = await pool.connect(); // ✅ PostgreSQL : pool.connect()
+  const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
