@@ -1,9 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../../config/db');
-const { authenticate, requireAdmin } = require('../middleware/auth'); // ✅ import requireAdmin
+const { Pool } = require('pg');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 const axios = require('axios');
 const crypto = require('crypto');
+
+// ✅ Création directe du pool avec DATABASE_URL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('connect', () => console.log('✅ Interopérabilité : connecté à PostgreSQL'));
 
 // ============================================================
 // 1. SYSTÈMES EXTERNES
