@@ -1,7 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../../config/db');
+const { Pool } = require('pg');
 const { authenticate } = require('../middleware/auth');
+
+// ✅ Création directe du pool avec DATABASE_URL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('connect', () => console.log('✅ Finances - Rapports : connecté à PostgreSQL'));
 
 // GET - Bilan comptable (synthèse des comptes)
 router.get('/bilan', authenticate, async (req, res) => {
