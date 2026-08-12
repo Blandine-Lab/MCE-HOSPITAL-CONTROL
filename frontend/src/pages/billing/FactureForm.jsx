@@ -170,7 +170,7 @@ const FactureForm = () => {
     }
   }, [patient]);
 
-  // ✅ Charger les médicaments du patient (non facturés) FC auto-sélection
+  // ✅ Charger les médicaments du patient (non facturés)FCauto-sélection
   useEffect(() => {
     console.log('🔄 useEffect medicaments - patient =', patient);
     if (patient && patient.id) {

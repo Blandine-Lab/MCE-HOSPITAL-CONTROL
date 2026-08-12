@@ -334,7 +334,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route element={<Layout />}>
                   <Route path="/badge/:id" element={<Badge />} />
 
-                  {/* Page d'accueil (Home) â€“ visible par tous les utilisateurs connectÃ©s */}
+                  {/* Page d'accueil (Home) âFC“ visible par tous les utilisateurs connectÃ©s */}
                   <Route
                     path="/"
                     element={
@@ -749,7 +749,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   />
 
                   {/* ============================================================ */}
-                  {/* MODULE MÃ‰DICAL (DME) â€“ AVEC NOUVELLES ROUTES                 */}
+                  {/* MODULE MÃ‰DICAL (DME) âFC“ AVEC NOUVELLES ROUTES                 */}
                   {/* ============================================================ */}
                   <Route
                     path="/medical"
@@ -820,7 +820,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   {/* ============================================================ */}
 
                   {/* ============================================================ */}
-                  {/* MODULE RH (RESSOURCES HUMAINES & PLANNING) â€“ ROUTES COMPLÃˆTES */}
+                  {/* MODULE RH (RESSOURCES HUMAINES & PLANNING) âFC“ ROUTES COMPLÃˆTES */}
                   {/* ============================================================ */}
                   <Route
                     path="/rh"
