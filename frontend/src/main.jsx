@@ -107,6 +107,8 @@ import StatsRH from './pages/rh-planning/StatsRH';
 import ContratsList from './pages/rh-planning/ContratsList';
 import ContratForm from './pages/rh-planning/ContratForm';
 import ContratDetail from './pages/rh-planning/ContratDetail';
+import ContratPrint from './pages/rh-planning/ContratPrint';        // Ajout
+import GenerationContrat from './pages/rh-planning/GenerationContrat'; // Ajout
 
 // ========== IMPORTS MODULE FINANCES & COMPTABILIT ==========
 import FinancesModule from './pages/finances/FinancesModule';
@@ -855,6 +857,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="contrats/nouveau" element={<ContratForm />} />
                     <Route path="contrats/:id" element={<ContratDetail />} />
                     <Route path="contrats/edit/:id" element={<ContratForm />} />
+                    <Route path="contrats/print/:id" element={<ContratPrint />} />          {/* NOUVEAU */}
+                    <Route path="contrats/generer" element={<GenerationContrat />} />        {/* NOUVEAU */}
                     <Route path="stats" element={<StatsRH />} />
                   </Route>
                   <Route path="/hr" element={<Navigate to="/rh" replace />} />
