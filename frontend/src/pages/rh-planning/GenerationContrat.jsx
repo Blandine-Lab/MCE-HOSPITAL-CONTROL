@@ -125,7 +125,7 @@ const GenerationContrat = () => {
       {contratGenere && (
         <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, marginTop: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h3 style={{ margin: 0 }}>Contrat généré FC {contratGenere.reference}</h3>
+            <h3 style={{ margin: 0 }}>Contrat généréFC{contratGenere.reference}</h3>
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={handleSave} style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 16px', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
                 <FaSave /> Sauvegarder
