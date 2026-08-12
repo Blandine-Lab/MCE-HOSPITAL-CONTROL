@@ -93,11 +93,28 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ========== 1. Middlewares globaux ==========
 app.use(helmet());
-app.use(cors());
 app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+
+// ========== CONFIGURATION CORS EXPLICITE ==========
+const corsOptions = {
+  origin: [
+    'https://mce-hospital-control.netlify.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:5000'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
+// Répondre aux requêtes OPTIONS (préflight)
+app.options('*', cors(corsOptions));
 
 // ========== 2. Route de santé (publique) ==========
 app.get('/api/health', (req, res) => {
