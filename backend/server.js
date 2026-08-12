@@ -255,9 +255,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ========== 7. Démarrage du serveur ==========
-app.listen(PORT, () => {
-  console.log(`✅ Serveur backend démarré sur http://localhost:${PORT}`);
-  console.log(`🩺 Health check : http://localhost:${PORT}/api/health`);
-  console.log(`🔐 Login : POST http://localhost:${PORT}/api/auth/login`);
+// ========== 7. Démarrage du serveur (écoute sur 0.0.0.0) ==========
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Serveur backend démarré sur http://0.0.0.0:${PORT}`);
+  console.log(`🩺 Health check : http://0.0.0.0:${PORT}/api/health`);
+  console.log(`🔐 Login : POST http://0.0.0.0:${PORT}/api/auth/login`);
 });
