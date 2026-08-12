@@ -1,3 +1,4 @@
+// src/pages/rh-planning/GenerationContrat.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../axios';
@@ -19,38 +20,53 @@ const GenerationContrat = () => {
   const [articles, setArticles] = useState([]);
 
   useEffect(() => {
-    Promise.all([
-      api.get('/employes'),
-      api.get('/modeles-contrats')
-    ]).then(([empRes, modRes]) => {
-      setEmployes(empRes.data);
-      setModeles(modRes.data);
-    }).catch(console.error);
+    // Charger les employés
+    api.get('/employes')
+      .then(res => setEmployes(res.data))
+      .catch(console.error);
+
+    // Charger les modèles - avec fallback en cas d'erreur 404
+    api.get('/modeles-contrats')
+      .then(res => setModeles(res.data))
+      .catch(err => {
+        if (err.response?.status === 404) {
+          // Modèles fictifs si l'API n'existe pas
+          setModeles([
+            { id: 1, nom: 'Contrat CDI standard' },
+            { id: 2, nom: 'Contrat CDD standard' },
+            { id: 3, nom: 'Contrat d\'intérim' },
+            { id: 4, nom: 'Contrat de stage' }
+          ]);
+          console.warn('⚠️ Utilisation de modèles fictifs (API /modeles-contrats introuvable)');
+        } else {
+          console.error('Erreur chargement modèles:', err);
+        }
+      });
   }, []);
 
   const handleGenerer = async (e) => {
     e.preventDefault();
     if (!selectedEmploye || !selectedModele) {
-      setError('Veuillez sïlectionner un employï et un modïle');
+      setError('Veuillez sélectionner un employé et un modèle');
       return;
     }
     setLoading(true);
     setError('');
     try {
       const res = await api.post('/contrats/generer', {
-        employe_id: selectedEmploye,
-        modele_id: selectedModele,
+        employe_id: parseInt(selectedEmploye, 10),
+        modele_id: parseInt(selectedModele, 10),
         date_debut: dateDebut,
         date_fin: dateFin,
         salaire: salaire
       });
       setContratGenere(res.data.contrat);
-      // Rïcupïrer les articles du contrat gïnïrï
+      // Récupérer les articles du contrat généré
       const detailRes = await api.get(`/contrats/${res.data.contrat.id}`);
-      setArticles(detailRes.data.articles);
+      setArticles(detailRes.data.articles || []);
       setLoading(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Erreur lors de la gïnïration');
+      setError(err.response?.data?.error || 'Erreur lors de la génération');
       setLoading(false);
     }
   };
@@ -65,7 +81,7 @@ const GenerationContrat = () => {
     if (!contratGenere) return;
     try {
       await api.put(`/contrats/${contratGenere.id}/articles`, { articles });
-      navigate(`/rh/contrats/${contratGenere.id}`);
+      navigate(`/rh/contrats/print/${contratGenere.id}`);
     } catch (err) {
       setError('Erreur lors de la sauvegarde');
     }
@@ -84,26 +100,26 @@ const GenerationContrat = () => {
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ marginTop: 0 }}>Gïnïrer un contrat</h2>
+        <h2 style={{ marginTop: 0 }}>Générer un contrat</h2>
         {error && <div style={{ color: '#ef4444', padding: 12, backgroundColor: '#fee2e2', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
         
         <form onSubmit={handleGenerer} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employï *</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employé *</label>
             <select value={selectedEmploye} onChange={e => setSelectedEmploye(e.target.value)} required style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}>
-              <option value="">Sïlectionner</option>
+              <option value="">Sélectionner</option>
               {employes.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Modïle de contrat *</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Modèle de contrat *</label>
             <select value={selectedModele} onChange={e => setSelectedModele(e.target.value)} required style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}>
-              <option value="">Sïlectionner</option>
+              <option value="">Sélectionner</option>
               {modeles.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Date de dïbut</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Date de début</label>
             <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
           <div>
@@ -116,7 +132,7 @@ const GenerationContrat = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <button type="submit" disabled={loading} style={{ backgroundColor: '#3b82f6', color: 'white', padding: '10px 24px', border: 'none', borderRadius: 6, fontWeight: 500, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
-              <FaFileAlt /> {loading ? 'Gïnïration...' : 'Gïnïrer le contrat'}
+              <FaFileAlt /> {loading ? 'Génération...' : 'Générer le contrat'}
             </button>
           </div>
         </form>
@@ -125,7 +141,7 @@ const GenerationContrat = () => {
       {contratGenere && (
         <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, marginTop: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h3 style={{ margin: 0 }}>Contrat gïnïrïFC{contratGenere.reference}</h3>
+            <h3 style={{ margin: 0 }}>Contrat généré : {contratGenere.reference || 'N/A'}</h3>
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={handleSave} style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 16px', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
                 <FaSave /> Sauvegarder
@@ -140,17 +156,21 @@ const GenerationContrat = () => {
             <h2 style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: 16 }}>
               CONTRAT DE TRAVAIL
             </h2>
-            {articles.map((art, idx) => (
-              <div key={art.id} style={{ marginBottom: 16 }}>
-                <h4 style={{ margin: '8px 0 4px 0', color: '#0f172a' }}>{art.titre}</h4>
-                <textarea
-                  value={art.contenu}
-                  onChange={e => handleUpdateArticle(idx, e.target.value)}
-                  rows={3}
-                  style={{ width: '100%', padding: 8, border: '1px solid #e2e8f0', borderRadius: 6, fontFamily: 'inherit' }}
-                />
-              </div>
-            ))}
+            {articles && articles.length > 0 ? (
+              articles.map((art, idx) => (
+                <div key={art.id || idx} style={{ marginBottom: 16 }}>
+                  <h4 style={{ margin: '8px 0 4px 0', color: '#0f172a' }}>{art.titre || `Article ${idx+1}`}</h4>
+                  <textarea
+                    value={art.contenu || ''}
+                    onChange={e => handleUpdateArticle(idx, e.target.value)}
+                    rows={3}
+                    style={{ width: '100%', padding: 8, border: '1px solid #e2e8f0', borderRadius: 6, fontFamily: 'inherit' }}
+                  />
+                </div>
+              ))
+            ) : (
+              <p>Aucun article disponible pour ce contrat.</p>
+            )}
           </div>
 
           <style>{`
