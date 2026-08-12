@@ -83,7 +83,7 @@ const Badge = () => {
             <h3 style={{ fontSize: '16px', fontWeight: '600', margin: '2px 0', color: '#1f2937' }}>{employe.prenom} {employe.nom}</h3>
             <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Poste :</strong> {employe.poste || 'Non défini'}</p>
             <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Service :</strong> {employe.service_nom || employe.service || 'Non défini'}</p>
-            <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Matricule :</strong> {employe.id}</p>
+            <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Matricule :</strong> {employe.matricule || employe.id}</p>
             <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Email :</strong> {employe.email || '?FC?'}</p>
             <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Tél :</strong> {employe.telephone || '?FC?'}</p>
           </div>
