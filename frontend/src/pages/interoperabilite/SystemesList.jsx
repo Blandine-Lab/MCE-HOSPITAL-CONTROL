@@ -14,7 +14,7 @@ const SystemesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -22,7 +22,7 @@ const SystemesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -41,8 +41,8 @@ const SystemesList = () => {
         setLoading(false);
       })
       .catch(err => {
-        console.error('Erreur chargement systèmes:', err);
-        showToast('Erreur lors du chargement des systèmes', 'error');
+        console.error('Erreur chargement systmes:', err);
+        showToast('Erreur lors du chargement des systmes', 'error');
         setLoading(false);
       });
   };
@@ -58,7 +58,7 @@ const SystemesList = () => {
       setSystemes([...systemes, res.data]);
       setShowForm(false);
       setFormData({ nom: '', code: '', description: '', type: 'API', url_base: '', auth_type: 'api_key', auth_config: { api_key: '' }, actif: true });
-      showToast('Système ajouté avec succès');
+      showToast('Systme ajout avec succs');
     } catch (err) {
       console.error(err);
       showToast('Erreur lors de l\'ajout', 'error');
@@ -70,33 +70,33 @@ const SystemesList = () => {
       const sys = systemes.find(s => s.id === id);
       await api.put(`/interoperabilite/systemes/${id}`, { ...sys, actif: !current });
       setSystemes(systemes.map(s => s.id === id ? { ...s, actif: !current } : s));
-      showToast(`Système ${current ? 'désactivé' : 'activé'}`);
+      showToast(`Systme ${current ? 'dsactiv' : 'activ'}`);
     } catch (err) {
       console.error(err);
       showToast('Erreur lors du changement de statut', 'error');
     }
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce système ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement ce systme ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/interoperabilite/systemes/${id}`);
       setSystemes(systemes.filter(s => s.id !== id));
-      showToast('Système supprimé avec succès');
+      showToast('Systme supprim avec succs');
     } catch (err) {
-      console.error('Erreur suppression système:', err);
+      console.error('Erreur suppression systme:', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un système.', 'error');
+        showToast('? Seul un administrateur peut supprimer un systme.', 'error');
       } else {
-        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -117,7 +117,7 @@ const SystemesList = () => {
         </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '28px', color: '#0f172a' }}><FaServer style={{ color: '#3b82f6', marginRight: '12px' }} /> Systèmes externes</h1>
+        <h1 style={{ fontSize: '28px', color: '#0f172a' }}><FaServer style={{ color: '#3b82f6', marginRight: '12px' }} /> Systmes externes</h1>
         <button onClick={() => setShowForm(!showForm)} style={{ backgroundColor: '#3b82f6', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
           <FaPlus /> Ajouter
         </button>
@@ -131,12 +131,12 @@ const SystemesList = () => {
             <input name="url_base" placeholder="URL de base" value={formData.url_base} onChange={e => setFormData({ ...formData, url_base: e.target.value })} style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
             <input name="description" placeholder="Description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
             <select value={formData.auth_type} onChange={e => setFormData({ ...formData, auth_type: e.target.value })} style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="api_key">Clé API</option>
+              <option value="api_key">Cl API</option>
               <option value="basic">Basic Auth</option>
               <option value="oauth2">OAuth2</option>
             </select>
             <div style={{ gridColumn: 'span 2' }}>
-              <button type="submit" style={{ backgroundColor: '#3b82f6', color: 'white', padding: '8px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Créer</button>
+              <button type="submit" style={{ backgroundColor: '#3b82f6', color: 'white', padding: '8px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Crer</button>
               <button type="button" onClick={() => setShowForm(false)} style={{ marginLeft: '12px', padding: '8px 24px', border: '1px solid #e2e8f0', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>Annuler</button>
             </div>
           </form>
@@ -154,7 +154,7 @@ const SystemesList = () => {
                 <td>{s.code}</td>
                 <td>{s.type}</td>
                 <td>{s.url_base}</td>
-                <td>{s.actif ? '🟢 Actif' : '🔴 Inactif'}</td>
+                <td>{s.actif ? '?? Actif' : '?? Inactif'}</td>
                 <td style={{ textAlign: 'center' }}>
                   <button onClick={() => handleToggle(s.id, s.actif)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: s.actif ? '#10b981' : '#ef4444', marginRight: '8px' }}>{s.actif ? <FaToggleOn /> : <FaToggleOff />}</button>
                   <Link to={`/interoperabilite/systemes/${s.id}/edit`} style={{ color: '#f59e0b', marginRight: '8px' }}><FaEdit /></Link>
@@ -163,7 +163,7 @@ const SystemesList = () => {
                       <FaTrash />
                     </button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

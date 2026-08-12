@@ -16,7 +16,7 @@ const LotsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -24,7 +24,7 @@ const LotsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -50,7 +50,7 @@ const LotsList = () => {
       const found = res.data.find(m => m.id == medicamentId);
       setMedicament(found);
     } catch (err) {
-      console.error('Erreur chargement médicament:', err);
+      console.error('Erreur chargement mdicament:', err);
     }
   };
 
@@ -78,26 +78,26 @@ const LotsList = () => {
       setShowForm(false);
       setForm({ numero_lot: '', date_peremption: '', quantite: 1 });
       fetchLots();
-      showToast('✅ Lot ajouté');
+      showToast('? Lot ajout');
     } catch (err) {
       console.error('Erreur ajout lot:', err);
-      showToast('❌ Erreur lors de l\'ajout du lot', 'error');
+      showToast('? Erreur lors de l\'ajout du lot', 'error');
     }
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (lotId) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce lot ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement ce lot ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/pharmacy/lots/${lotId}`);
       setLots(lots.filter(l => l.id !== lotId));
-      showToast('Lot supprimé avec succès');
+      showToast('Lot supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression lot:', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un lot.', 'error');
+        showToast('? Seul un administrateur peut supprimer un lot.', 'error');
       } else {
-        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
@@ -110,8 +110,8 @@ const LotsList = () => {
   const thStyle = { backgroundColor: '#f3f4f6', padding: '10px', textAlign: 'left' };
   const tdStyle = { padding: '10px', borderBottom: '1px solid #e5e7eb' };
 
-  if (loading) return <div>⏳ Chargement...</div>;
-  if (!medicament) return <div>Médicament non trouvé</div>;
+  if (loading) return <div>? Chargement...</div>;
+  if (!medicament) return <div>Mdicament non trouv</div>;
 
   return (
     <div style={containerStyle}>
@@ -145,9 +145,9 @@ const LotsList = () => {
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Numéro lot</th>
-                <th style={thStyle}>Date péremption</th>
-                <th style={thStyle}>Quantité</th>
+                <th style={thStyle}>Numro lot</th>
+                <th style={thStyle}>Date premption</th>
+                <th style={thStyle}>Quantit</th>
                 <th style={thStyle}>Stock actuel</th>
                 <th style={thStyle}>Actions</th>
               </tr>
@@ -164,12 +164,12 @@ const LotsList = () => {
                       <button
                         onClick={() => handleDelete(l.id)}
                         style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                        title="Supprimer définitivement (admin)"
+                        title="Supprimer dfinitivement (admin)"
                       >
                         <FaTrash />
                       </button>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                     )}
                   </td>
                 </tr>
@@ -181,7 +181,7 @@ const LotsList = () => {
           onClick={() => navigate('/medicaments')}
           style={{ marginTop: '20px', backgroundColor: '#6b7280', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
         >
-          Retour à la liste
+          Retour  la liste
         </button>
       </div>
 
@@ -203,7 +203,7 @@ const LotsList = () => {
             <form onSubmit={handleSubmit}>
               <input
                 type="text"
-                placeholder="Numéro de lot"
+                placeholder="Numro de lot"
                 value={form.numero_lot}
                 onChange={e => setForm({...form, numero_lot: e.target.value})}
                 required
@@ -211,7 +211,7 @@ const LotsList = () => {
               />
               <input
                 type="date"
-                placeholder="Date de péremption"
+                placeholder="Date de premption"
                 value={form.date_peremption}
                 onChange={e => setForm({...form, date_peremption: e.target.value})}
                 required
@@ -219,7 +219,7 @@ const LotsList = () => {
               />
               <input
                 type="number"
-                placeholder="Quantité"
+                placeholder="Quantit"
                 value={form.quantite}
                 onChange={e => setForm({...form, quantite: parseInt(e.target.value) || 1})}
                 required

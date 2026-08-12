@@ -13,7 +13,7 @@ const ComptesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -21,7 +21,7 @@ const ComptesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -56,19 +56,19 @@ const ComptesList = () => {
     c.type?.toLowerCase().includes(search.toLowerCase())
   );
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce compte ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement ce compte ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/comptes/${id}`);
       setComptes(comptes.filter(c => c.id !== id));
-      showToast('Compte supprimé avec succès');
+      showToast('Compte supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression compte:', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un compte.', 'error');
+        showToast('? Seul un administrateur peut supprimer un compte.', 'error');
       } else {
-        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
@@ -90,7 +90,7 @@ const ComptesList = () => {
     );
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -146,7 +146,7 @@ const ComptesList = () => {
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Aucun compte trouvé</td></tr>
+              <tr><td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Aucun compte trouv</td></tr>
             ) : (
               filtered.map((c, i) => (
                 <tr key={c.id} style={{ borderBottom: i === filtered.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
@@ -161,7 +161,7 @@ const ComptesList = () => {
                         <FaTrash />
                       </button>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                     )}
                   </td>
                 </tr>

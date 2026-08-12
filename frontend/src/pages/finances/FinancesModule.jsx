@@ -18,7 +18,7 @@ const linkStyle = ({ isActive }) => ({
 const FinancesModule = () => {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Menu latéral */}
+      {/* Menu latral */}
       <nav style={{
         width: '250px',
         backgroundColor: '#0f172a',
@@ -44,8 +44,8 @@ const FinancesModule = () => {
         <ul style={{ listStyle: 'none', padding: 0 }}>
           <li><NavLink to="/finance" end style={linkStyle}><FaChartBar /> Tableau de bord</NavLink></li>
           <li><NavLink to="/finance/comptes" style={linkStyle}><FaBook /> Plan comptable</NavLink></li>
-          <li><NavLink to="/finance/ecritures" style={linkStyle}><FaList /> Écritures</NavLink></li>
-          <li><NavLink to="/finance/ecritures/nouveau" style={linkStyle}><FaPlus /> Nouvelle écriture</NavLink></li>
+          <li><NavLink to="/finance/ecritures" style={linkStyle}><FaList /> critures</NavLink></li>
+          <li><NavLink to="/finance/ecritures/nouveau" style={linkStyle}><FaPlus /> Nouvelle criture</NavLink></li>
           <li><NavLink to="/finance/journaux" style={linkStyle}><FaFileInvoice /> Journaux</NavLink></li>
           <li><NavLink to="/finance/budgets" style={linkStyle}><FaWallet /> Budgets</NavLink></li>
           <li><NavLink to="/finance/paiements" style={linkStyle}><FaBuilding /> Paiements</NavLink></li>

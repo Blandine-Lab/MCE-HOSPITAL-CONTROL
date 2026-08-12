@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FaPills, FaExclamationTriangle, FaShoppingCart, FaBoxes, FaClipboardList } from 'react-icons/fa';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partage
 
 const PharmacyDashboard = () => {
   const [stats, setStats] = useState({
@@ -22,7 +22,7 @@ const PharmacyDashboard = () => {
           api.get('/pharmacy/commandes')
         ]);
         
-        // Compter les lots (on pourrait faire une requête dédiée, mais on utilise les données existantes)
+        // Compter les lots (on pourrait faire une requte ddie, mais on utilise les donnes existantes)
         const lotsCount = meds.data.reduce((acc, m) => acc + (m.stock_reel_lots || 0), 0);
         
         setStats({
@@ -31,7 +31,7 @@ const PharmacyDashboard = () => {
           alertesStock: alertes.data.stockCritique?.length || 0,
           alertesPeremption: alertes.data.peremptionProche?.length || 0,
           commandesEnCours: commandes.data.filter(c => c.statut === 'en_cours').length || 0,
-          delivrancesAujourdhui: 0 // �FC compléter avec une requête dédiée si besoin
+          delivrancesAujourdhui: 0 // ?FC complter avec une requte ddie si besoin
         });
         setLoading(false);
       } catch (err) {
@@ -64,19 +64,19 @@ const PharmacyDashboard = () => {
 
   return (
     <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
-      <h2 style={{ marginBottom: '20px' }}>📊 Tableau de bord de la Pharmacie</h2>
+      <h2 style={{ marginBottom: '20px' }}>?? Tableau de bord de la Pharmacie</h2>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '30px' }}>
-        <Card icon={<FaPills />} title="Médicaments" value={stats.totalMedicaments} color="#3b82f6" />
+        <Card icon={<FaPills />} title="Mdicaments" value={stats.totalMedicaments} color="#3b82f6" />
         <Card icon={<FaBoxes />} title="Total lots" value={stats.totalLots} color="#8b5cf6" />
         <Card icon={<FaExclamationTriangle />} title="Alertes stock" value={stats.alertesStock} color="#ef4444" />
-        <Card icon={<FaExclamationTriangle />} title="Péremption proche" value={stats.alertesPeremption} color="#f59e0b" />
+        <Card icon={<FaExclamationTriangle />} title="Premption proche" value={stats.alertesPeremption} color="#f59e0b" />
         <Card icon={<FaShoppingCart />} title="Commandes en cours" value={stats.commandesEnCours} color="#10b981" />
-        <Card icon={<FaClipboardList />} title="Délivrances aujourd'hui" value={stats.delivrancesAujourdhui} color="#6366f1" />
+        <Card icon={<FaClipboardList />} title="Dlivrances aujourd'hui" value={stats.delivrancesAujourdhui} color="#6366f1" />
       </div>
       <div style={{ padding: '16px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
         <p style={{ color: '#6b7280', fontSize: '14px' }}>
-          💡 Ce tableau de bord vous donne une vue d'ensemble de l'activité de la pharmacie.
-          Les données sont mises à jour automatiquement.
+          ?? Ce tableau de bord vous donne une vue d'ensemble de l'activit de la pharmacie.
+          Les donnes sont mises  jour automatiquement.
         </p>
       </div>
     </div>

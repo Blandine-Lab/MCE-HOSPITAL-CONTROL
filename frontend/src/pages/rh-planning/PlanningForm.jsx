@@ -8,7 +8,7 @@ const PlanningForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = !!id;
-  const [formData, setFormData] = useState({ employe_id:'', date:'', heure_debut:'', heure_fin:'', type:'présentiel', notes:'' });
+  const [formData, setFormData] = useState({ employe_id:'', date:'', heure_debut:'', heure_fin:'', type:'prsentiel', notes:'' });
   const [employes, setEmployes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,20 +37,20 @@ const PlanningForm = () => {
         <h2>{isEdit ? 'Modifier' : 'Nouveau'} planning</h2>
         {error && <div style={{color:'red'}}>{error}</div>}
         <form onSubmit={handleSubmit} style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
-          <div><label>Employé *</label>
+          <div><label>Employ *</label>
             <select name="employe_id" value={formData.employe_id} onChange={handleChange} required style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {employes.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}
             </select>
           </div>
           <div><label>Date *</label><input name="date" type="date" value={formData.date} onChange={handleChange} required style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
-          <div><label>Heure début</label><input name="heure_debut" type="time" value={formData.heure_debut} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
+          <div><label>Heure dbut</label><input name="heure_debut" type="time" value={formData.heure_debut} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
           <div><label>Heure fin</label><input name="heure_fin" type="time" value={formData.heure_fin} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
           <div><label>Type</label>
             <select name="type" value={formData.type} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}}>
-              <option value="présentiel">Présentiel</option>
-              <option value="télétravail">Télétravail</option>
-              <option value="congé">Congé</option>
+              <option value="prsentiel">Prsentiel</option>
+              <option value="tltravail">Tltravail</option>
+              <option value="cong">Cong</option>
               <option value="formation">Formation</option>
             </select>
           </div>

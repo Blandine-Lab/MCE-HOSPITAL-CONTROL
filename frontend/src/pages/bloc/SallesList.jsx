@@ -33,10 +33,10 @@ const SallesList = () => {
     try {
       if (editing) {
         await api.put(`/bloc/salles/${editing}`, form);
-        setToast('Salle modifiée');
+        setToast('Salle modifie');
       } else {
         await api.post('/bloc/salles', form);
-        setToast('Salle ajoutée');
+        setToast('Salle ajoute');
       }
       setTimeout(() => setToast(null), 3000);
       setEditing(null);
@@ -52,7 +52,7 @@ const SallesList = () => {
     if (window.confirm('Supprimer cette salle ?')) {
       try {
         await api.delete(`/bloc/salles/${id}`);
-        setToast('Salle supprimée');
+        setToast('Salle supprime');
         setTimeout(() => setToast(null), 3000);
         loadSalles();
       } catch (err) {
@@ -106,7 +106,7 @@ const SallesList = () => {
         </div>
       )}
 
-      <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', margin: '0 0 20px 0' }}>🏥 Gestion des salles</h2>
+      <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', margin: '0 0 20px 0' }}>?? Gestion des salles</h2>
 
       <form onSubmit={handleSubmit} style={{ marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap', backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', alignItems: 'flex-end' }}>
         <div>
@@ -114,8 +114,8 @@ const SallesList = () => {
           <input value={form.nom} onChange={(e) => setForm({...form, nom: e.target.value})} placeholder="Nom" required style={{ ...inputStyle, width: '180px' }} />
         </div>
         <div>
-          <label style={labelStyle}>Numéro</label>
-          <input value={form.numero} onChange={(e) => setForm({...form, numero: e.target.value})} placeholder="Numéro" style={{ ...inputStyle, width: '120px' }} />
+          <label style={labelStyle}>Numro</label>
+          <input value={form.numero} onChange={(e) => setForm({...form, numero: e.target.value})} placeholder="Numro" style={{ ...inputStyle, width: '120px' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '4px' }}>
           <input type="checkbox" checked={form.disponible} onChange={(e) => setForm({...form, disponible: e.target.checked})} />
@@ -136,21 +136,21 @@ const SallesList = () => {
           <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
               <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Nom</th>
-              <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Numéro</th>
+              <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Numro</th>
               <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Disponible</th>
-              <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Interventions prévues</th>
+              <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Interventions prvues</th>
               <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {salles.length === 0 ? (
-              <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>Aucune salle enregistrée</td></tr>
+              <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>Aucune salle enregistre</td></tr>
             ) : (
               salles.map(s => (
                 <tr key={s.id} style={{ borderBottom: '1px solid #f3f4f6' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                   <td style={{ padding: '12px' }}><strong>{s.nom}</strong></td>
                   <td style={{ padding: '12px' }}>{s.numero}</td>
-                  <td style={{ padding: '12px' }}>{s.disponible ? <span style={{ color: '#10b981' }}>✅ Disponible</span> : <span style={{ color: '#ef4444' }}>❌ Indisponible</span>}</td>
+                  <td style={{ padding: '12px' }}>{s.disponible ? <span style={{ color: '#10b981' }}>? Disponible</span> : <span style={{ color: '#ef4444' }}>? Indisponible</span>}</td>
                   <td style={{ padding: '12px' }}>{s.interventions_prevues || 0}</td>
                   <td style={{ padding: '12px' }}>
                     <FaEdit style={{ color: '#2563eb', marginRight: '12px', cursor: 'pointer' }} onClick={() => { setEditing(s.id); setForm({ nom: s.nom, numero: s.numero, disponible: s.disponible }); }} />

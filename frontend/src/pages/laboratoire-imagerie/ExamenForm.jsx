@@ -23,7 +23,7 @@ const ExamenForm = () => {
     date_demande: new Date().toISOString().split('T')[0],
     date_prevue: '',
     medecin_prescripteur: '',
-    statut: 'demandé',
+    statut: 'demand',
     notes: '',
     instructions_preparation: '',
     type_prelevement: '',
@@ -36,14 +36,14 @@ const ExamenForm = () => {
   const [services, setServices] = useState([]);
   const [consultations, setConsultations] = useState([]);
   const [employes, setEmployes] = useState([]);
-  const [medecins, setMedecins] = useState([]); // ✅ Liste des médecins
+  const [medecins, setMedecins] = useState([]); // ? Liste des mdecins
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [errors, setErrors] = useState({});
 
-  // Chargement initial des données
+  // Chargement initial des donnes
   useEffect(() => {
     const fetchData = async () => {
       setLoadingData(true);
@@ -53,7 +53,7 @@ const ExamenForm = () => {
           api.get('/types-examens'),
           api.get('/services'),
           api.get('/employes'),
-          api.get('/consultations/medecins/all') // ✅ Récupération des médecins
+          api.get('/consultations/medecins/all') // ? Rcupration des mdecins
         ]);
         setPatients(patientsRes.data);
         setTypesExamens(typesRes.data);
@@ -61,8 +61,8 @@ const ExamenForm = () => {
         setEmployes(employesRes.data);
         setMedecins(medecinsRes.data);
       } catch (err) {
-        console.error('Erreur chargement données', err);
-        setError('Erreur de chargement des données');
+        console.error('Erreur chargement donnes', err);
+        setError('Erreur de chargement des donnes');
       } finally {
         setLoadingData(false);
       }
@@ -70,7 +70,7 @@ const ExamenForm = () => {
     fetchData();
   }, []);
 
-  // Chargement de l'examen en édition
+  // Chargement de l'examen en dition
   useEffect(() => {
     if (isEdit && !loadingData) {
       api.get(`/examens/${id}`)
@@ -87,7 +87,7 @@ const ExamenForm = () => {
             date_demande: data.date_demande ? data.date_demande.split('T')[0] : '',
             date_prevue: data.date_prevue ? data.date_prevue.split('T')[0] : '',
             medecin_prescripteur: data.medecin_prescripteur || '',
-            statut: data.statut || 'demandé',
+            statut: data.statut || 'demand',
             notes: data.notes || '',
             instructions_preparation: data.instructions_preparation || '',
             type_prelevement: data.type_prelevement || '',
@@ -102,7 +102,7 @@ const ExamenForm = () => {
     }
   }, [id, isEdit, loadingData]);
 
-  // Récupération des consultations du patient sélectionné
+  // Rcupration des consultations du patient slectionn
   useEffect(() => {
     if (formData.patient_id) {
       api.get(`/consultations/patient/${formData.patient_id}`)
@@ -118,7 +118,7 @@ const ExamenForm = () => {
     }
   }, [formData.patient_id]);
 
-  // Mise à jour du médecin prescripteur quand une consultation est sélectionnée
+  // Mise  jour du mdecin prescripteur quand une consultation est slectionne
   useEffect(() => {
     if (formData.consultation_id) {
       const consultation = consultations.find(c => c.id === parseInt(formData.consultation_id));
@@ -128,7 +128,7 @@ const ExamenForm = () => {
     }
   }, [formData.consultation_id, consultations]);
 
-  // Mise à jour de la catégorie quand le type d'examen change
+  // Mise  jour de la catgorie quand le type d'examen change
   useEffect(() => {
     if (formData.type_examen_id) {
       const type = typesExamens.find(t => t.id === parseInt(formData.type_examen_id));
@@ -151,7 +151,7 @@ const ExamenForm = () => {
     if (!formData.patient_id) newErrors.patient_id = 'Patient requis';
     if (!formData.type_examen_id) newErrors.type_examen_id = 'Type d\'examen requis';
     if (formData.date_prevue && new Date(formData.date_prevue) < new Date()) {
-      newErrors.date_prevue = 'La date prévue ne peut pas être dans le passé';
+      newErrors.date_prevue = 'La date prvue ne peut pas tre dans le pass';
     }
     if (formData.priorite === 'urgent' && !formData.service_id) {
       newErrors.service_id = 'Service requis pour les urgences';
@@ -171,10 +171,10 @@ const ExamenForm = () => {
     try {
       if (isEdit) {
         await api.put(`/examens/${id}`, formData);
-        setSuccess('Examen modifié avec succès');
+        setSuccess('Examen modifi avec succs');
       } else {
         await api.post('/examens', formData);
-        setSuccess('Examen créé avec succès');
+        setSuccess('Examen cr avec succs');
         setTimeout(() => navigate('/laboratoire'), 1500);
         return;
       }
@@ -189,7 +189,7 @@ const ExamenForm = () => {
   if (loadingData) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>⏳ Chargement des données...</div>
+        <div style={{ fontSize: '24px' }}>? Chargement des donnes...</div>
       </div>
     );
   }
@@ -262,7 +262,7 @@ const ExamenForm = () => {
                   fontSize: '16px'
                 }}
               >
-                <option value="">Sélectionner un patient</option>
+                <option value="">Slectionner un patient</option>
                 {patients.map(p => (
                   <option key={p.id} value={p.id}>
                     {p.nom} {p.prenom}
@@ -274,7 +274,7 @@ const ExamenForm = () => {
 
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>
-                Consultation associée
+                Consultation associe
               </label>
               <select
                 name="consultation_id"
@@ -289,7 +289,7 @@ const ExamenForm = () => {
                 }}
                 disabled={!formData.patient_id}
               >
-                <option value="">Sélectionner une consultation</option>
+                <option value="">Slectionner une consultation</option>
                 {consultations.map(c => (
                   <option key={c.id} value={c.id}>
                     {new Date(c.date).toLocaleDateString()} - {c.motif || 'Consultation'}
@@ -315,7 +315,7 @@ const ExamenForm = () => {
                 }}
                 required={formData.priorite === 'urgent'}
               >
-                <option value="">Sélectionner un service</option>
+                <option value="">Slectionner un service</option>
                 {services.map(s => (
                   <option key={s.id} value={s.id}>{s.nom}</option>
                 ))}
@@ -324,11 +324,11 @@ const ExamenForm = () => {
             </div>
           </div>
 
-          {/* Ligne 2 : Catégorie, Type examen, Priorité */}
+          {/* Ligne 2 : Catgorie, Type examen, Priorit */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '20px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>
-                Catégorie *
+                Catgorie *
               </label>
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center', paddingTop: '6px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
@@ -371,7 +371,7 @@ const ExamenForm = () => {
                   fontSize: '16px'
                 }}
               >
-                <option value="">Sélectionner</option>
+                <option value="">Slectionner</option>
                 {typesExamens
                   .filter(t => t.categorie === formData.categorie)
                   .map(t => (
@@ -385,7 +385,7 @@ const ExamenForm = () => {
 
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>
-                Priorité *
+                Priorit *
               </label>
               <select
                 name="priorite"
@@ -400,11 +400,11 @@ const ExamenForm = () => {
                 }}
               >
                 <option value="normal">Normal</option>
-                <option value="urgent">🔴 Urgent</option>
+                <option value="urgent">?? Urgent</option>
               </select>
               {formData.priorite === 'urgent' && (
                 <div style={{ color: '#dc2626', fontSize: '14px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <FaExclamationTriangle /> Priorité urgente �FC� délai réduit
+                  <FaExclamationTriangle /> Priorit urgente ?FC? dlai rduit
                 </div>
               )}
             </div>
@@ -434,7 +434,7 @@ const ExamenForm = () => {
 
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>
-                Date prévue
+                Date prvue
               </label>
               <input
                 type="date"
@@ -453,11 +453,11 @@ const ExamenForm = () => {
             </div>
           </div>
 
-          {/* Ligne 4 : Médecin prescripteur (liste déroulante), Type prélèvement, Date prélèvement */}
+          {/* Ligne 4 : Mdecin prescripteur (liste droulante), Type prlvement, Date prlvement */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '20px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>
-                Médecin prescripteur
+                Mdecin prescripteur
               </label>
               <select
                 name="medecin_prescripteur"
@@ -471,7 +471,7 @@ const ExamenForm = () => {
                   fontSize: '16px'
                 }}
               >
-                <option value="">Sélectionner un médecin</option>
+                <option value="">Slectionner un mdecin</option>
                 {medecins.map(m => (
                   <option key={m.id} value={`${m.nom} ${m.prenom}`}>
                     {m.nom} {m.prenom} {m.specialite ? `(${m.specialite})` : ''}
@@ -482,7 +482,7 @@ const ExamenForm = () => {
 
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>
-                Type de prélèvement
+                Type de prlvement
               </label>
               <select
                 name="type_prelevement"
@@ -496,19 +496,19 @@ const ExamenForm = () => {
                   fontSize: '16px'
                 }}
               >
-                <option value="">Non spécifié</option>
+                <option value="">Non spcifi</option>
                 <option value="sang">Sang</option>
                 <option value="urine">Urine</option>
                 <option value="salive">Salive</option>
                 <option value="selles">Selles</option>
-                <option value="liquide_cephalo">Liquide céphalo-rachidien</option>
+                <option value="liquide_cephalo">Liquide cphalo-rachidien</option>
                 <option value="autres">Autres</option>
               </select>
             </div>
 
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>
-                Date de prélèvement
+                Date de prlvement
               </label>
               <input
                 type="date"
@@ -549,14 +549,14 @@ const ExamenForm = () => {
 
           <div style={{ marginTop: '20px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>
-              Instructions de préparation (pour le patient)
+              Instructions de prparation (pour le patient)
             </label>
             <textarea
               name="instructions_preparation"
               value={formData.instructions_preparation}
               onChange={handleChange}
               rows="2"
-              placeholder="Jeûne, arrêt de médicaments, etc."
+              placeholder="Jene, arrt de mdicaments, etc."
               style={{
                 width: '100%',
                 padding: '10px 14px',
@@ -577,7 +577,7 @@ const ExamenForm = () => {
               value={formData.notes}
               onChange={handleChange}
               rows="2"
-              placeholder="Informations complémentaires pour le laboratoire"
+              placeholder="Informations complmentaires pour le laboratoire"
               style={{
                 width: '100%',
                 padding: '10px 14px',

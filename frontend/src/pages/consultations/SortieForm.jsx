@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaSignOutAlt, FaUser, FaCalendar, FaComment } from 'react-icons/fa';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partage
 
 const SortieForm = () => {
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ const SortieForm = () => {
 
   useEffect(() => {
     Promise.all([
-      api.get('/consultations/patients/hospitalises'), // ✅ Suppression de l'URL absolue
+      api.get('/consultations/patients/hospitalises'), // ? Suppression de l'URL absolue
       api.get('/consultations/admissions/en_cours')
     ]).then(([patRes, admRes]) => {
       setPatients(patRes.data);
@@ -24,7 +24,7 @@ const SortieForm = () => {
     }).catch(err => {
       console.error(err);
       setLoading(false);
-      setToast('Erreur chargement des données');
+      setToast('Erreur chargement des donnes');
       setTimeout(() => setToast(null), 3000);
     });
   }, []);
@@ -45,16 +45,16 @@ const SortieForm = () => {
     e.preventDefault();
     try {
       await api.post('/consultations/sorties', form);
-      setToast('Sortie enregistrée avec succès');
+      setToast('Sortie enregistre avec succs');
       setTimeout(() => setToast(null), 3000);
       setTimeout(() => navigate('/patients'), 1500);
     } catch (err) {
-      setToast('Erreur lors de l�FC�enregistrement');
+      setToast('Erreur lors de l?FC?enregistrement');
       setTimeout(() => setToast(null), 3000);
     }
   };
 
-  // Styles (inchangés)
+  // Styles (inchangs)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#fef2f2',
@@ -133,20 +133,20 @@ const SortieForm = () => {
     <div style={containerStyle}>
       {toast && (
         <div style={{
-          position: 'fixed', top: '20px', right: '20px', backgroundColor: toast.includes('succès') ? '#10b981' : '#ef4444', color: 'white',
+          position: 'fixed', top: '20px', right: '20px', backgroundColor: toast.includes('succs') ? '#10b981' : '#ef4444', color: 'white',
           padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 1000, animation: 'slideIn 0.3s ease-out'
         }}>
           {toast}
         </div>
       )}
       <div style={innerStyle}>
-        <h1 style={titleStyle}>🚪 Sortie de patient</h1>
+        <h1 style={titleStyle}>?? Sortie de patient</h1>
         <div style={cardStyle}>
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Patient hospitalisé *</label>
+              <label style={labelStyle}>Patient hospitalis *</label>
               <select value={form.patient_id} onChange={e => handlePatientChange(e.target.value)} style={selectStyle} required>
-                <option value="">-- Sélectionner --</option>
+                <option value="">-- Slectionner --</option>
                 {patients.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom} (Lit {p.lit_numero})</option>)}
               </select>
             </div>
@@ -161,15 +161,15 @@ const SortieForm = () => {
               <label style={labelStyle}>Mode de sortie *</label>
               <select value={form.mode_sortie} onChange={e => setForm({...form, mode_sortie: e.target.value})} style={selectStyle} required>
                 <option value="">-- Choisir --</option>
-                <option value="gueri">Guéri</option>
-                <option value="transfert">Transféré</option>
-                <option value="deces">Décès</option>
+                <option value="gueri">Guri</option>
+                <option value="transfert">Transfr</option>
+                <option value="deces">Dcs</option>
                 <option value="autre">Autre</option>
               </select>
             </div>
             <div style={{ marginBottom: '24px' }}>
               <label style={labelStyle}>Remarques</label>
-              <textarea value={form.remarques} onChange={e => setForm({...form, remarques: e.target.value})} rows="3" style={textareaStyle} placeholder="Informations complémentaires..."></textarea>
+              <textarea value={form.remarques} onChange={e => setForm({...form, remarques: e.target.value})} rows="3" style={textareaStyle} placeholder="Informations complmentaires..."></textarea>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button type="button" style={cancelButtonStyle} onClick={() => navigate('/consultations')} onMouseEnter={e => e.target.style.backgroundColor = '#d1d5db'} onMouseLeave={e => e.target.style.backgroundColor = '#e5e7eb'}>Annuler</button>

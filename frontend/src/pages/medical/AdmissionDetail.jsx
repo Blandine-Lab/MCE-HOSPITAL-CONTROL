@@ -37,23 +37,23 @@ const AdmissionDetail = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>? Chargement...</div>;
   if (error) return <div style={{ padding: '40px', color: '#ef4444', textAlign: 'center' }}>{error}</div>;
-  if (!admission) return <div style={{ padding: '40px', textAlign: 'center' }}>Admission non trouvée</div>;
+  if (!admission) return <div style={{ padding: '40px', textAlign: 'center' }}>Admission non trouve</div>;
 
   return (
     <div>
       <div style={{ marginBottom: '24px' }}>
         <Link to="/medical/admissions" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#3b82f6', textDecoration: 'none', fontWeight: '500' }}>
-          <FaArrowLeft /> Retour à la liste
+          <FaArrowLeft /> Retour  la liste
         </Link>
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, color: '#0f172a' }}>Détail de l�FC�admission #{admission.id}</h2>
+          <h2 style={{ margin: 0, color: '#0f172a' }}>Dtail de l?FC?admission #{admission.id}</h2>
           <div style={{ display: 'flex', gap: '12px' }}>
-            {/* ✅ Correction : "/medical/admissions/edit/..." (pluriel) */}
+            {/* ? Correction : "/medical/admissions/edit/..." (pluriel) */}
             <Link
               to={`/medical/admissions/edit/${admission.id}`}
               style={{
@@ -97,29 +97,29 @@ const AdmissionDetail = () => {
           </div>
           <div>
             <p><strong><FaHospital style={{ marginRight: '8px' }} /> Service</strong></p>
-            <p style={{ color: '#0f172a', marginTop: '4px' }}>{admission.service_nom || 'Non spécifié'}</p>
+            <p style={{ color: '#0f172a', marginTop: '4px' }}>{admission.service_nom || 'Non spcifi'}</p>
           </div>
           <div>
-            <p><strong><FaUserMd style={{ marginRight: '8px' }} /> Médecin référent</strong></p>
+            <p><strong><FaUserMd style={{ marginRight: '8px' }} /> Mdecin rfrent</strong></p>
             <p style={{ color: '#0f172a', marginTop: '4px' }}>{admission.medecin_prenom} {admission.medecin_nom}</p>
           </div>
           <div>
             <p><strong><FaBed style={{ marginRight: '8px' }} /> Lit</strong></p>
-            <p style={{ color: '#0f172a', marginTop: '4px' }}>{admission.lit_numero || 'Non attribué'}</p>
+            <p style={{ color: '#0f172a', marginTop: '4px' }}>{admission.lit_numero || 'Non attribu'}</p>
           </div>
           <div>
-            <p><strong><FaCalendar style={{ marginRight: '8px' }} /> Date d�FC�admission</strong></p>
+            <p><strong><FaCalendar style={{ marginRight: '8px' }} /> Date d?FC?admission</strong></p>
             <p style={{ color: '#0f172a', marginTop: '4px' }}>{new Date(admission.date_admission).toLocaleString('fr-FR')}</p>
           </div>
           <div>
-            <p><strong><FaCalendar style={{ marginRight: '8px' }} /> Date de sortie (prévue)</strong></p>
+            <p><strong><FaCalendar style={{ marginRight: '8px' }} /> Date de sortie (prvue)</strong></p>
             <p style={{ color: '#0f172a', marginTop: '4px' }}>
-              {admission.date_sortie_prevue ? new Date(admission.date_sortie_prevue).toLocaleDateString('fr-FR') : 'Non renseignée'}
+              {admission.date_sortie_prevue ? new Date(admission.date_sortie_prevue).toLocaleDateString('fr-FR') : 'Non renseigne'}
             </p>
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
-            <p><strong>Motif de l�FC�admission</strong></p>
-            <p style={{ color: '#0f172a', marginTop: '4px' }}>{admission.motif || 'Non renseigné'}</p>
+            <p><strong>Motif de l?FC?admission</strong></p>
+            <p style={{ color: '#0f172a', marginTop: '4px' }}>{admission.motif || 'Non renseign'}</p>
           </div>
           {admission.notes && (
             <div style={{ gridColumn: '1 / -1' }}>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaPlus, FaTrash, FaSave, FaTimes } from 'react-icons/fa';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partage
 
 const OrdonnanceForm = () => {
   const { patientId } = useParams();
@@ -35,7 +35,7 @@ const OrdonnanceForm = () => {
         setLoading(false);
       } catch (err) {
         console.error('Erreur chargement:', err);
-        setError('Erreur chargement des données. Vérifiez que le patient existe et que le serveur est accessible.');
+        setError('Erreur chargement des donnes. Vrifiez que le patient existe et que le serveur est accessible.');
         setLoading(false);
       }
     };
@@ -63,14 +63,14 @@ const OrdonnanceForm = () => {
     
     const validLignes = lignes.filter(l => l.medicament_id && l.quantite_prescrit > 0);
     if (validLignes.length === 0) {
-      setToast('Ajoutez au moins un médicament');
+      setToast('Ajoutez au moins un mdicament');
       setSaving(false);
       setTimeout(() => setToast(null), 3000);
       return;
     }
     
     if (!selectedMedecinId) {
-      setToast('Veuillez sélectionner un médecin prescripteur.');
+      setToast('Veuillez slectionner un mdecin prescripteur.');
       setSaving(false);
       setTimeout(() => setToast(null), 3000);
       return;
@@ -83,31 +83,31 @@ const OrdonnanceForm = () => {
         lignes: validLignes,
         observations
       });
-      setToast('Ordonnance créée avec succès');
+      setToast('Ordonnance cre avec succs');
       setTimeout(() => setToast(null), 3000);
       navigate(`/patients/${patientId}`);
     } catch (err) {
-      console.error('Erreur création ordonnance:', err);
-      setToast('Erreur lors de la création de l\'ordonnance');
+      console.error('Erreur cration ordonnance:', err);
+      setToast('Erreur lors de la cration de l\'ordonnance');
       setTimeout(() => setToast(null), 3000);
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
   if (error) return <div style={{ color: 'red', textAlign: 'center', marginTop: '50px' }}>{error}</div>;
-  if (!patient) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Patient non trouvé.</div>;
+  if (!patient) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Patient non trouv.</div>;
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
       {toast && <div style={{ backgroundColor: '#10b981', color: 'white', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>{toast}</div>}
-      <h2 style={{ marginBottom: '20px' }}>📝 Prescrire pour {patient.nom} {patient.prenom}</h2>
+      <h2 style={{ marginBottom: '20px' }}>?? Prescrire pour {patient.nom} {patient.prenom}</h2>
       
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-            Médecin prescripteur *
+            Mdecin prescripteur *
           </label>
           <select
             value={selectedMedecinId}
@@ -115,17 +115,17 @@ const OrdonnanceForm = () => {
             required
             style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
           >
-            <option value="">-- Choisir un médecin --</option>
+            <option value="">-- Choisir un mdecin --</option>
             {medecins.map(m => (
               <option key={m.id} value={m.id}>
-                {m.prenom} {m.nom} ({m.specialite || 'Généraliste'})
+                {m.prenom} {m.nom} ({m.specialite || 'Gnraliste'})
               </option>
             ))}
           </select>
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <h3>Médicaments prescrits</h3>
+          <h3>Mdicaments prescrits</h3>
           {lignes.map((ligne, index) => (
             <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
               <select
@@ -134,12 +134,12 @@ const OrdonnanceForm = () => {
                 required
                 style={{ flex: 2, padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
               >
-                <option value="">Médicament</option>
+                <option value="">Mdicament</option>
                 {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom} (stock: {m.stock})</option>)}
               </select>
               <input
                 type="number"
-                placeholder="Qté"
+                placeholder="Qt"
                 value={ligne.quantite_prescrit}
                 onChange={e => updateLigne(index, 'quantite_prescrit', parseInt(e.target.value) || 0)}
                 required
@@ -159,7 +159,7 @@ const OrdonnanceForm = () => {
             </div>
           ))}
           <button type="button" onClick={addLigne} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }}>
-            <FaPlus /> Ajouter médicament
+            <FaPlus /> Ajouter mdicament
           </button>
         </div>
 
@@ -170,7 +170,7 @@ const OrdonnanceForm = () => {
             onChange={e => setObservations(e.target.value)}
             rows="3"
             style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
-            placeholder="Notes particulières..."
+            placeholder="Notes particulires..."
           />
         </div>
 

@@ -39,13 +39,13 @@ const AdmissionForm = () => {
         setServices(servicesRes.data);
         setMedecins(medecinsRes.data);
       } catch (err) {
-        console.error('Erreur chargement données :', err);
+        console.error('Erreur chargement donnes :', err);
       }
     };
     fetchData();
   }, []);
 
-  // Charger les lits disponibles en fonction du service sélectionné
+  // Charger les lits disponibles en fonction du service slectionn
   useEffect(() => {
     if (formData.service_id) {
       api.get(`/lits/disponibles?service_id=${formData.service_id}`)
@@ -76,7 +76,7 @@ const AdmissionForm = () => {
       });
       navigate('/medical/admissions');
     } catch (err) {
-      console.error('Erreur création admission :', err);
+      console.error('Erreur cration admission :', err);
       setError(err.response?.data?.error || 'Erreur lors de l\'admission');
       setLoading(false);
     }
@@ -112,7 +112,7 @@ const AdmissionForm = () => {
                 backgroundColor: 'white'
               }}
             >
-              <option value="">Sélectionner un patient</option>
+              <option value="">Slectionner un patient</option>
               {patients.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.nom} {p.prenom} ({p.ipp || 'N/A'})
@@ -139,7 +139,7 @@ const AdmissionForm = () => {
                   backgroundColor: 'white'
                 }}
               >
-                <option value="">Sélectionner un service</option>
+                <option value="">Slectionner un service</option>
                 {services.map(s => (
                   <option key={s.id} value={s.id}>{s.nom}</option>
                 ))}
@@ -167,9 +167,9 @@ const AdmissionForm = () => {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            {/* Médecin référent */}
+            {/* Mdecin rfrent */}
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Médecin référent</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Mdecin rfrent</label>
               <select
                 name="medecin_referent_id"
                 value={formData.medecin_referent_id}
@@ -183,7 +183,7 @@ const AdmissionForm = () => {
                   backgroundColor: 'white'
                 }}
               >
-                <option value="">Non attribué</option>
+                <option value="">Non attribu</option>
                 {medecins.map(m => (
                   <option key={m.id} value={m.id}>{m.nom} {m.prenom}</option>
                 ))}
@@ -208,7 +208,7 @@ const AdmissionForm = () => {
                   backgroundColor: formData.service_id ? 'white' : '#f1f5f9'
                 }}
               >
-                <option value="">{formData.service_id ? 'Sélectionner un lit' : 'Choisissez un service d\'abord'}</option>
+                <option value="">{formData.service_id ? 'Slectionner un lit' : 'Choisissez un service d\'abord'}</option>
                 {lits.map(l => (
                   <option key={l.id} value={l.id}>
                     Lit {l.numero} - {l.chambre_nom || 'Sans chambre'}

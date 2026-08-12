@@ -22,14 +22,14 @@ const LaboratoireImagerieModule = () => {
   const { user, loading } = useAuth();
   const permissions = user?.permissions || [];
   
-  // ✅ Autorisation : admin, biologiste, laborantin ou permission view_laboratory
+  // ? Autorisation : admin, biologiste, laborantin ou permission view_laboratory
   const canView = 
     permissions.includes('view_laboratory') || 
     user?.role === 'admin' || 
     user?.role === 'biologiste' ||
     user?.role === 'laborantin';
     
-  // ✅ Le laborantin peut gérer (saisir/finaliser) même sans permission explicite
+  // ? Le laborantin peut grer (saisir/finaliser) mme sans permission explicite
   const canManage = permissions.includes('manage_laboratory') || user?.role === 'laborantin';
   const canValidate = permissions.includes('validate_laboratory') || user?.role === 'biologiste';
   const isAdmin = user?.role === 'admin';
@@ -88,7 +88,7 @@ const LaboratoireImagerieModule = () => {
   if (loading) {
     return (
       <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-        <div style={{ fontSize: '24px' }}>⏳ Chargement du profil utilisateur...</div>
+        <div style={{ fontSize: '24px' }}>? Chargement du profil utilisateur...</div>
       </div>
     );
   }
@@ -96,8 +96,8 @@ const LaboratoireImagerieModule = () => {
   if (!canView) {
     return (
       <div style={{ padding: '60px 20px', textAlign: 'center', color: '#ef4444' }}>
-        <h2>Accès non autorisé</h2>
-        <p>Vous n'avez pas les permissions nécessaires pour accéder à ce module.</p>
+        <h2>Accs non autoris</h2>
+        <p>Vous n'avez pas les permissions ncessaires pour accder  ce module.</p>
       </div>
     );
   }
@@ -201,7 +201,7 @@ const LaboratoireImagerieModule = () => {
               <MenuItem
                 to="/laboratoire/resultats"
                 icon={<FaMicroscope />}
-                label="Résultats à saisir"
+                label="Rsultats  saisir"
                 badge={counts.aSaisir}
                 badgeColor="#f59e0b"
               />
@@ -209,7 +209,7 @@ const LaboratoireImagerieModule = () => {
                 <MenuItem
                   to="/laboratoire/validation"
                   icon={<FaClipboardCheck />}
-                  label="�FC valider"
+                  label="?FC valider"
                   badge={counts.aValider}
                   badgeColor="#8b5cf6"
                 />
@@ -235,7 +235,7 @@ const LaboratoireImagerieModule = () => {
               <MenuItem
                 to="/laboratoire/parametres"
                 icon={<FaCog />}
-                label="Paramètres"
+                label="Paramtres"
               />
             </>
           )}
@@ -268,7 +268,7 @@ const LaboratoireImagerieModule = () => {
   );
 };
 
-// Composant réutilisable pour un élément de menu
+// Composant rutilisable pour un lment de menu
 const MenuItem = ({ to, icon, label, badge, badgeColor = '#f472b6', end }) => {
   return (
     <li style={{ marginBottom: '4px' }}>

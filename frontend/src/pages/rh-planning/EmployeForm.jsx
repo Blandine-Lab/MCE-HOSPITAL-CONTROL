@@ -16,7 +16,7 @@ const EmployeForm = () => {
     service_id: '',
     date_embauche: '',
     statut: 'actif',
-    photo: null, // fichier ou chaîne (chemin existant)
+    photo: null, // fichier ou chane (chemin existant)
   });
   const [photoPreview, setPhotoPreview] = useState(null);
   const [services, setServices] = useState([]);
@@ -40,7 +40,7 @@ const EmployeForm = () => {
           photo: data.photo || null,
         });
         if (data.photo) {
-          // ✅ Construction de l'URL dynamique avec VITE_API_URL
+          // ? Construction de l'URL dynamique avec VITE_API_URL
           const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
           setPhotoPreview(`${baseUrl}${data.photo}`);
         }
@@ -103,17 +103,17 @@ const EmployeForm = () => {
         <FaArrowLeft /> Retour
       </Link>
       <div style={{backgroundColor:'white', borderRadius:12, padding:32, marginTop:16, boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
-        <h2>{isEdit ? 'Modifier' : 'Nouvel'} employé</h2>
+        <h2>{isEdit ? 'Modifier' : 'Nouvel'} employ</h2>
         {error && <div style={{color:'red', marginBottom:16}}>{error}</div>}
         <form onSubmit={handleSubmit} style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
           <div><label>Nom *</label><input name="nom" value={formData.nom} onChange={handleChange} required style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
-          <div><label>Prénom *</label><input name="prenom" value={formData.prenom} onChange={handleChange} required style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
+          <div><label>Prnom *</label><input name="prenom" value={formData.prenom} onChange={handleChange} required style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
           <div><label>Email</label><input name="email" type="email" value={formData.email} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
-          <div><label>Téléphone</label><input name="telephone" value={formData.telephone} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
+          <div><label>Tlphone</label><input name="telephone" value={formData.telephone} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
           <div><label>Poste</label><input name="poste" value={formData.poste} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
           <div><label>Service</label>
             <select name="service_id" value={formData.service_id} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {services.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
             </select>
           </div>
@@ -129,7 +129,7 @@ const EmployeForm = () => {
             <input type="file" accept="image/*" onChange={handleFileChange} style={{display:'block', marginTop:6}} />
             {photoPreview && (
               <div style={{marginTop:8}}>
-                <img src={photoPreview} alt="Aperçu" style={{width:'100px', height:'100px', objectFit:'cover', borderRadius:8}} />
+                <img src={photoPreview} alt="Aperu" style={{width:'100px', height:'100px', objectFit:'cover', borderRadius:8}} />
               </div>
             )}
           </div>

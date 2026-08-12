@@ -12,7 +12,7 @@ const EmployesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const EmployesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -40,7 +40,7 @@ const EmployesList = () => {
       })
       .catch(err => {
         console.error(err);
-        showToast('Erreur chargement des employés', 'error');
+        showToast('Erreur chargement des employs', 'error');
         setLoading(false);
       });
   };
@@ -49,17 +49,17 @@ const EmployesList = () => {
     fetchEmployes();
   }, []);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id, nom, prenom) => {
-    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer l'employé ${prenom} ${nom} ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`?? Voulez-vous vraiment supprimer l'employ ${prenom} ${nom} ? Cette action est irrversible.`)) return;
     try {
       await api.delete(`/employes/${id}`);
       setEmployes(employes.filter(e => e.id !== id));
-      showToast('Employé supprimé avec succès');
+      showToast('Employ supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un employé.', 'error');
+        showToast('? Seul un administrateur peut supprimer un employ.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -74,7 +74,7 @@ const EmployesList = () => {
     e.poste?.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) return <div style={{textAlign:'center', padding:60}}>⏳ Chargement...</div>;
+  if (loading) return <div style={{textAlign:'center', padding:60}}>? Chargement...</div>;
 
   return (
     <div>
@@ -96,7 +96,7 @@ const EmployesList = () => {
       )}
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
         <h1 style={{fontSize:28, color:'#0f172a', display:'flex', gap:12}}>
-          <FaUserMd style={{color:'#60a5fa'}} /> Employés
+          <FaUserMd style={{color:'#60a5fa'}} /> Employs
         </h1>
         <Link to="/rh/employes/nouveau" style={{backgroundColor:'#60a5fa', color:'white', padding:'10px 20px', borderRadius:8, textDecoration:'none', display:'flex', alignItems:'center', gap:8}}>
           <FaPlus /> Ajouter
@@ -110,7 +110,7 @@ const EmployesList = () => {
           <thead style={{backgroundColor:'#f1f5f9'}}>
             <tr>
               <th style={{padding:'14px 20px', textAlign:'left'}}>Nom</th>
-              <th style={{padding:'14px 20px', textAlign:'left'}}>Prénom</th>
+              <th style={{padding:'14px 20px', textAlign:'left'}}>Prnom</th>
               <th style={{padding:'14px 20px', textAlign:'left'}}>Poste</th>
               <th style={{padding:'14px 20px', textAlign:'left'}}>Service</th>
               <th style={{padding:'14px 20px', textAlign:'left'}}>Statut</th>
@@ -126,7 +126,7 @@ const EmployesList = () => {
                 <td style={{padding:'14px 20px'}}>{e.service_nom || '-'}</td>
                 <td style={{padding:'14px 20px'}}>
                   <span style={{padding:'4px 12px', borderRadius:20, fontSize:12, fontWeight:500, backgroundColor: e.statut === 'actif' ? '#d1fae5' : '#fee2e2', color: e.statut === 'actif' ? '#065f46' : '#991b1b'}}>
-                    {e.statut === 'actif' ? '🟢 Actif' : '🔴 Inactif'}
+                    {e.statut === 'actif' ? '?? Actif' : '?? Inactif'}
                   </span>
                 </td>
                 <td style={{padding:'14px 20px', textAlign:'center'}}>
@@ -138,7 +138,7 @@ const EmployesList = () => {
                   {isAdmin ? (
                     <button onClick={() => handleDelete(e.id, e.nom, e.prenom)} style={{color:'#ef4444', background:'none', border:'none', cursor:'pointer'}}><FaTrash /></button>
                   ) : (
-                    <span style={{color:'#94a3b8', fontSize:'14px'}} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{color:'#94a3b8', fontSize:'14px'}} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

@@ -85,10 +85,10 @@ const PlanningBloc = () => {
 
   const getStatusLabel = (statut) => {
     const labels = {
-      planifiee: 'Planifiée',
+      planifiee: 'Planifie',
       en_cours: 'En cours',
-      terminee: 'Terminée',
-      annulee: 'Annulée'
+      terminee: 'Termine',
+      annulee: 'Annule'
     };
     return labels[statut] || statut;
   };
@@ -143,7 +143,7 @@ const PlanningBloc = () => {
 
       {salles.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-          <p>Aucune salle de bloc configurée.<br />Veuillez d'abord ajouter des salles dans la gestion des salles.</p>
+          <p>Aucune salle de bloc configure.<br />Veuillez d'abord ajouter des salles dans la gestion des salles.</p>
         </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
@@ -166,7 +166,7 @@ const PlanningBloc = () => {
                     {hour}h - {hour+1}h
                   </td>
                   {salles.map(salle => {
-                    // On vérifie chaque jour de la semaine pour cette heure
+                    // On vrifie chaque jour de la semaine pour cette heure
                     let foundInter = null;
                     for (const day of days) {
                       const inter = getInterventionForSlot(salle.id, day, hour);
@@ -184,7 +184,7 @@ const PlanningBloc = () => {
                             </span>
                           </div>
                         ) : (
-                          <span style={{ color: '#d1d5db', fontSize: '12px' }}>�FC�</span>
+                          <span style={{ color: '#d1d5db', fontSize: '12px' }}>?FC?</span>
                         )}
                       </td>
                     );

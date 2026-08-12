@@ -24,7 +24,7 @@ const AbsencesList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -32,7 +32,7 @@ const AbsencesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -90,18 +90,18 @@ const AbsencesList = () => {
     setFilters({ employe: '', dateDebut: '', dateFin: '', justifiee: '' });
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Voulez-vous vraiment supprimer cette absence ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Voulez-vous vraiment supprimer cette absence ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/absences/${id}`);
       setAbsences(absences.filter(a => a.id !== id));
-      setToast({ type: 'success', message: 'Absence supprimée avec succès' });
+      setToast({ type: 'success', message: 'Absence supprime avec succs' });
       setTimeout(() => setToast(null), 3000);
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        setToast({ type: 'error', message: '❌ Seul un administrateur peut supprimer une absence.' });
+        setToast({ type: 'error', message: '? Seul un administrateur peut supprimer une absence.' });
       } else {
         setToast({ type: 'error', message: 'Erreur lors de la suppression' });
       }
@@ -116,7 +116,7 @@ const AbsencesList = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentItems = filtered.slice(startIndex, startIndex + itemsPerPage);
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement des absences...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement des absences...</div>;
   if (error) return <div style={{ textAlign: 'center', padding: '60px', color: '#ef4444' }}>{error}</div>;
 
   return (
@@ -171,13 +171,13 @@ const AbsencesList = () => {
         alignItems: 'center'
       }}>
         <div style={{ flex: '1 1 180px' }}>
-          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: '#4b5563', marginBottom: 4 }}>Employé</label>
+          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: '#4b5563', marginBottom: 4 }}>Employ</label>
           <input
             type="text"
             name="employe"
             value={filters.employe}
             onChange={handleFilterChange}
-            placeholder="Nom ou prénom..."
+            placeholder="Nom ou prnom..."
             style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
           />
         </div>
@@ -202,7 +202,7 @@ const AbsencesList = () => {
           />
         </div>
         <div style={{ flex: '1 1 150px' }}>
-          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: '#4b5563', marginBottom: 4 }}>Justifiée</label>
+          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: '#4b5563', marginBottom: 4 }}>Justifie</label>
           <select
             name="justifiee"
             value={filters.justifiee}
@@ -210,8 +210,8 @@ const AbsencesList = () => {
             style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
           >
             <option value="">Toutes</option>
-            <option value="true">✅ Justifiée</option>
-            <option value="false">❌ Non justifiée</option>
+            <option value="true">? Justifie</option>
+            <option value="false">? Non justifie</option>
           </select>
         </div>
         <button
@@ -229,25 +229,25 @@ const AbsencesList = () => {
             marginTop: 18
           }}
         >
-          <FaTimes /> Réinitialiser
+          <FaTimes /> Rinitialiser
         </button>
         <div style={{ marginLeft: 'auto', fontSize: 14, color: '#6b7280' }}>
-          {filtered.length} résultat(s)
+          {filtered.length} rsultat(s)
         </div>
       </div>
 
       {/* Tableau */}
       <div style={{ backgroundColor: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         {currentItems.length === 0 ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>Aucune absence trouvée</div>
+          <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>Aucune absence trouve</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ backgroundColor: '#f1f5f9' }}>
               <tr>
-                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Employé</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left' }}>Employ</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left' }}>Date</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left' }}>Motif</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center' }}>Justifiée</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center' }}>Justifie</th>
                 <th style={{ padding: '12px 16px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
@@ -267,7 +267,7 @@ const AbsencesList = () => {
                       backgroundColor: a.justifiee ? '#d1fae5' : '#fee2e2',
                       color: a.justifiee ? '#065f46' : '#991b1b'
                     }}>
-                      {a.justifiee ? '✅ Justifiée' : '❌ Non justifiée'}
+                      {a.justifiee ? '? Justifie' : '? Non justifie'}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
@@ -277,7 +277,7 @@ const AbsencesList = () => {
                         <FaTrash />
                       </button>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                     )}
                   </td>
                 </tr>
@@ -301,7 +301,7 @@ const AbsencesList = () => {
               cursor: currentPage === 1 ? 'default' : 'pointer'
             }}
           >
-            Préc.
+            Prc.
           </button>
           {[...Array(totalPages)].map((_, i) => (
             <button

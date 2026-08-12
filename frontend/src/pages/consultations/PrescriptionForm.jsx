@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partage
 
 const PrescriptionForm = () => {
   const { patientId } = useParams();
@@ -30,15 +30,15 @@ const PrescriptionForm = () => {
       setLoading(false);
     }
 
-    // Charger la liste des médecins
+    // Charger la liste des mdecins
     api.get('/consultations/medecins/all')
       .then(res => {
-        console.log('✅ Médecins reçus :', res.data);
+        console.log('? Mdecins reus :', res.data);
         setMedecins(res.data);
       })
       .catch(err => {
-        console.error('❌ Erreur chargement médecins :', err);
-        alert('Erreur chargement des médecins : ' + (err.response?.data?.error || err.message));
+        console.error('? Erreur chargement mdecins :', err);
+        alert('Erreur chargement des mdecins : ' + (err.response?.data?.error || err.message));
       });
   }, [patientId]);
 
@@ -62,12 +62,12 @@ const PrescriptionForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedMedecinId) {
-      alert('Veuillez sélectionner un médecin prescripteur.');
+      alert('Veuillez slectionner un mdecin prescripteur.');
       return;
     }
     const hasValid = items.some(item => item.medicament.trim() !== '');
     if (!hasValid) {
-      alert('Veuillez saisir au moins un médicament.');
+      alert('Veuillez saisir au moins un mdicament.');
       return;
     }
     try {
@@ -77,66 +77,66 @@ const PrescriptionForm = () => {
         items: items,
         notes
       });
-      alert('✅ Prescription créée avec succès !');
+      alert('? Prescription cre avec succs !');
       navigate('/doctor/prescriptions');
     } catch (err) {
-      alert('❌ Erreur : ' + (err.response?.data?.error || err.message));
+      alert('? Erreur : ' + (err.response?.data?.error || err.message));
     }
   };
 
   // RENDU
   if (loading) return <div>Chargement du patient...</div>;
-  if (!patient && patientId) return <div>Patient non trouvé</div>;
+  if (!patient && patientId) return <div>Patient non trouv</div>;
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
-      <h1>📝 Nouvelle prescription</h1>
+      <h1>?? Nouvelle prescription</h1>
       {patient && (
         <div style={{ background: '#f0f4ff', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
           <strong>Patient :</strong> {patient.prenom} {patient.nom} (IPP: {patient.ipp || 'N/A'})
         </div>
       )}
       <form onSubmit={handleSubmit}>
-        {/* Médecin prescripteur */}
+        {/* Mdecin prescripteur */}
         <div style={{ marginBottom: '16px' }}>
-          <label>Médecin prescripteur *</label>
+          <label>Mdecin prescripteur *</label>
           <select
             value={selectedMedecinId}
             onChange={(e) => setSelectedMedecinId(e.target.value)}
             required
             style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
           >
-            <option value="">-- Choisir un médecin --</option>
+            <option value="">-- Choisir un mdecin --</option>
             {medecins.length === 0 ? (
-              <option value="" disabled>Aucun médecin disponible</option>
+              <option value="" disabled>Aucun mdecin disponible</option>
             ) : (
               medecins.map(m => (
                 <option key={m.id} value={m.id}>
-                  {m.prenom} {m.nom} ({m.specialite || 'Généraliste'})
+                  {m.prenom} {m.nom} ({m.specialite || 'Gnraliste'})
                 </option>
               ))
             )}
           </select>
           {medecins.length === 0 && (
             <p style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
-              ⚠️ Aucun médecin trouvé. Vérifiez que la table `medecins` contient des données.
+              ?? Aucun mdecin trouv. Vrifiez que la table `medecins` contient des donnes.
             </p>
           )}
         </div>
 
-        {/* Liste des médicaments */}
+        {/* Liste des mdicaments */}
         {items.map((item, index) => (
           <div key={index} style={{ border: '1px solid #ccc', padding: '16px', marginBottom: '16px', borderRadius: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h4>Médicament #{index + 1}</h4>
+              <h4>Mdicament #{index + 1}</h4>
               {items.length > 1 && (
                 <button type="button" onClick={() => removeItem(index)} style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}>
-                  ✖
+                  ?
                 </button>
               )}
             </div>
             <div style={{ marginBottom: '8px' }}>
-              <label>Médicament *</label>
+              <label>Mdicament *</label>
               <input
                 type="text"
                 value={item.medicament}
@@ -156,7 +156,7 @@ const PrescriptionForm = () => {
             </div>
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1 }}>
-                <label>Durée</label>
+                <label>Dure</label>
                 <input
                   type="text"
                   value={item.duree}
@@ -166,7 +166,7 @@ const PrescriptionForm = () => {
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label>Quantité</label>
+                <label>Quantit</label>
                 <input
                   type="number"
                   value={item.quantite}
@@ -183,7 +183,7 @@ const PrescriptionForm = () => {
           onClick={addItem}
           style={{ background: '#2563eb', color: 'white', padding: '6px 16px', border: 'none', borderRadius: '4px', marginBottom: '16px', cursor: 'pointer' }}
         >
-          + Ajouter un médicament
+          + Ajouter un mdicament
         </button>
 
         <div style={{ marginBottom: '16px' }}>
@@ -193,7 +193,7 @@ const PrescriptionForm = () => {
             onChange={(e) => setNotes(e.target.value)}
             rows="2"
             style={{ width: '100%', padding: '6px', border: '1px solid #ccc', borderRadius: '4px' }}
-            placeholder="Observations particulières..."
+            placeholder="Observations particulires..."
           />
         </div>
 
@@ -201,7 +201,7 @@ const PrescriptionForm = () => {
           type="submit"
           style={{ background: '#16a34a', color: 'white', padding: '10px 24px', border: 'none', borderRadius: '6px', fontSize: '16px', cursor: 'pointer' }}
         >
-          💾 Enregistrer la prescription
+          ?? Enregistrer la prescription
         </button>
       </form>
     </div>

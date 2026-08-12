@@ -35,7 +35,7 @@ const DelivranceForm = () => {
         const [patientsRes, medsRes, infirmiersRes] = await Promise.all([
           api.get('/patients'),
           api.get('/pharmacy/medicaments'),
-          api.get('/pharmacy/infirmiers'), // ✅ nouvelle route
+          api.get('/pharmacy/infirmiers'), // ? nouvelle route
         ]);
 
         setPatients(patientsRes.data);
@@ -67,7 +67,7 @@ const DelivranceForm = () => {
         setLoading(false);
       } catch (err) {
         console.error('Erreur chargement:', err);
-        setToast('Erreur chargement des données');
+        setToast('Erreur chargement des donnes');
         setToastType('error');
         setLoading(false);
         setTimeout(() => setToast(null), 3000);
@@ -115,7 +115,7 @@ const DelivranceForm = () => {
     }
 
     if (ordonnanceId && !form.retrieved_by) {
-      setToast('Veuillez sélectionner l\'infirmier qui retire les médicaments');
+      setToast('Veuillez slectionner l\'infirmier qui retire les mdicaments');
       setToastType('error');
       setTimeout(() => setToast(null), 3000);
       return;
@@ -128,7 +128,7 @@ const DelivranceForm = () => {
           password: password,
           retrieved_by: form.retrieved_by,
         });
-        setToast('✅ Délivrance enregistrée avec succès');
+        setToast('? Dlivrance enregistre avec succs');
         setToastType('success');
         setTimeout(() => setToast(null), 3000);
         navigate('/pharmacy/dashboard');
@@ -139,23 +139,23 @@ const DelivranceForm = () => {
           lot_id: parseInt(form.lot_id),
           quantite: parseInt(form.quantite),
           posologie: form.posologie,
-          prescripteur_nom: form.prescripteur_nom || 'Médecin référent',
+          prescripteur_nom: form.prescripteur_nom || 'Mdecin rfrent',
           ligne_ordonnance_id: form.ligne_ordonnance_id || null,
           password: password,
         };
         await api.post('/pharmacy/delivrance', payload);
-        setToast('✅ Délivrance enregistrée avec succès');
+        setToast('? Dlivrance enregistre avec succs');
         setToastType('success');
         setTimeout(() => setToast(null), 3000);
         navigate('/pharmacy/dashboard');
       }
     } catch (err) {
-      console.error('Erreur délivrance:', err);
+      console.error('Erreur dlivrance:', err);
       let msg = err.response?.data?.error || err.message;
       if (err.response?.status === 403) {
-        msg = 'Mot de passe incorrect. Veuillez réessayer.';
+        msg = 'Mot de passe incorrect. Veuillez ressayer.';
       }
-      setToast('❌ Erreur : ' + msg);
+      setToast('? Erreur : ' + msg);
       setToastType('error');
       setTimeout(() => setToast(null), 3000);
     } finally {
@@ -173,7 +173,7 @@ const DelivranceForm = () => {
   const labelStyle = { display: 'block', fontWeight: '500', marginBottom: '6px', color: '#374151' };
   const inputStyle = { width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px' };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
 
   return (
     <div style={containerStyle}>
@@ -194,7 +194,7 @@ const DelivranceForm = () => {
       )}
       <div style={cardStyle}>
         <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <FaSyringe /> Délivrance de médicaments
+          <FaSyringe /> Dlivrance de mdicaments
         </h1>
         {ordonnanceId && (
           <div style={{ backgroundColor: '#f0f4ff', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
@@ -216,9 +216,9 @@ const DelivranceForm = () => {
             </select>
           </div>
 
-          {/* Médicament */}
+          {/* Mdicament */}
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Médicament *</label>
+            <label style={labelStyle}>Mdicament *</label>
             <select
               value={form.medicament_id}
               onChange={(e) => handleMedicamentChange(e.target.value)}
@@ -233,7 +233,7 @@ const DelivranceForm = () => {
           {/* Lot */}
           {selectedMedicament && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Lot (péremption) *</label>
+              <label style={labelStyle}>Lot (premption) *</label>
               <select
                 value={form.lot_id}
                 onChange={(e) => setForm({...form, lot_id: e.target.value})}
@@ -243,16 +243,16 @@ const DelivranceForm = () => {
                 <option value="">-- Choisir un lot --</option>
                 {lots.map(l => (
                   <option key={l.id} value={l.id}>
-                    Lot {l.numero_lot} (pér. {new Date(l.date_peremption).toLocaleDateString()}, stock {l.stock_actuel})
+                    Lot {l.numero_lot} (pr. {new Date(l.date_peremption).toLocaleDateString()}, stock {l.stock_actuel})
                   </option>
                 ))}
               </select>
             </div>
           )}
 
-          {/* Quantité */}
+          {/* Quantit */}
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Quantité *</label>
+            <label style={labelStyle}>Quantit *</label>
             <input
               type="number"
               min="1"
@@ -271,26 +271,26 @@ const DelivranceForm = () => {
               onChange={(e) => setForm({...form, posologie: e.target.value})}
               rows="3"
               style={inputStyle}
-              placeholder="Ex: 1 comprimé matin et soir pendant 7 jours"
+              placeholder="Ex: 1 comprim matin et soir pendant 7 jours"
             />
           </div>
 
           {/* Prescripteur */}
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Prescripteur (nom du médecin)</label>
+            <label style={labelStyle}>Prescripteur (nom du mdecin)</label>
             <input
               type="text"
               value={form.prescripteur_nom}
               onChange={(e) => setForm({...form, prescripteur_nom: e.target.value})}
               style={inputStyle}
-              placeholder="Dr. Nom du médecin"
+              placeholder="Dr. Nom du mdecin"
             />
           </div>
 
-          {/* Infirmier récupérant (visible uniquement pour les ordonnances) */}
+          {/* Infirmier rcuprant (visible uniquement pour les ordonnances) */}
           {ordonnanceId && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Infirmier récupérant *</label>
+              <label style={labelStyle}>Infirmier rcuprant *</label>
               <select
                 value={form.retrieved_by}
                 onChange={(e) => setForm({...form, retrieved_by: e.target.value})}
@@ -303,7 +303,7 @@ const DelivranceForm = () => {
                 ))}
               </select>
               <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                <FaUserNurse /> L'infirmier qui retire les médicaments
+                <FaUserNurse /> L'infirmier qui retire les mdicaments
               </div>
             </div>
           )}
@@ -320,7 +320,7 @@ const DelivranceForm = () => {
               placeholder="Saisissez votre mot de passe pour valider"
             />
             <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-              <FaLock /> Votre mot de passe est requis pour signer cette délivrance
+              <FaLock /> Votre mot de passe est requis pour signer cette dlivrance
             </div>
           </div>
 
@@ -346,7 +346,7 @@ const DelivranceForm = () => {
                 opacity: saving ? 0.6 : 1,
               }}
             >
-              {saving ? 'Enregistrement...' : 'Délivrer'}
+              {saving ? 'Enregistrement...' : 'Dlivrer'}
             </button>
           </div>
         </form>

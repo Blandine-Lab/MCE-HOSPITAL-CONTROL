@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../../axios'; // ✅ Instance avec intercepteur
+import api from '../../axios'; // ? Instance avec intercepteur
 import { useNavigate } from 'react-router-dom';
 import { FaUndoAlt, FaTrashAlt, FaLock } from 'react-icons/fa';
 
@@ -25,8 +25,8 @@ const RetourForm = () => {
     api.get('/pharmacy/medicaments')
       .then(res => setMedicaments(res.data))
       .catch(err => {
-        console.error('Erreur chargement médicaments:', err);
-        setToast('Erreur chargement médicaments');
+        console.error('Erreur chargement mdicaments:', err);
+        setToast('Erreur chargement mdicaments');
         setToastType('error');
         setTimeout(() => setToast(null), 3000);
       })
@@ -78,7 +78,7 @@ const RetourForm = () => {
           lot_id: parseInt(form.lot_id),
           quantite: parseInt(form.quantite),
           motif: form.motif || 'Retour patient',
-          patient_id: form.patient_id || null, // peut être optionnel
+          patient_id: form.patient_id || null, // peut tre optionnel
           password: password
         };
       } else {
@@ -88,15 +88,15 @@ const RetourForm = () => {
           lot_id: parseInt(form.lot_id),
           quantite: parseInt(form.quantite),
           motif: form.motif || 'Destruction',
-          procede: 'Incincération' // valeur par défaut, peut être paramétré
+          procede: 'Incincration' // valeur par dfaut, peut tre paramtr
         };
-        // La destruction utilise aussi le mot de passe �FC� nous devons l'ajouter dans le payload
-        // mais la route actuelle ne l'accepte peut-être pas ; nous l'ajoutons quand même.
+        // La destruction utilise aussi le mot de passe ?FC? nous devons l'ajouter dans le payload
+        // mais la route actuelle ne l'accepte peut-tre pas ; nous l'ajoutons quand mme.
         payload.password = password;
       }
 
       await api.post(endpoint, payload);
-      setToast(form.type === 'retour' ? '✅ Retour enregistré' : '✅ Destruction enregistrée');
+      setToast(form.type === 'retour' ? '? Retour enregistr' : '? Destruction enregistre');
       setToastType('success');
       setTimeout(() => setToast(null), 2000);
       setTimeout(() => navigate('/pharmacy/dashboard'), 1500);
@@ -104,9 +104,9 @@ const RetourForm = () => {
       console.error('Erreur:', err);
       let msg = err.response?.data?.error || err.message;
       if (err.response?.status === 403) {
-        msg = 'Mot de passe incorrect. Veuillez réessayer.';
+        msg = 'Mot de passe incorrect. Veuillez ressayer.';
       }
-      setToast('❌ Erreur : ' + msg);
+      setToast('? Erreur : ' + msg);
       setToastType('error');
       setTimeout(() => setToast(null), 3000);
     }
@@ -121,7 +121,7 @@ const RetourForm = () => {
   const labelStyle = { display: 'block', fontWeight: '500', marginBottom: '6px', color: '#374151' };
   const inputStyle = { width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px' };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
 
   return (
     <div style={containerStyle}>
@@ -147,7 +147,7 @@ const RetourForm = () => {
         </h1>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Type d'opération</label>
+            <label style={labelStyle}>Type d'opration</label>
             <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} style={inputStyle}>
               <option value="retour">Retour (patient)</option>
               <option value="destruction">Destruction</option>
@@ -168,7 +168,7 @@ const RetourForm = () => {
           )}
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Médicament *</label>
+            <label style={labelStyle}>Mdicament *</label>
             <select value={form.medicament_id} onChange={e => handleMedicamentChange(e.target.value)} style={inputStyle} required>
               <option value="">-- Choisir --</option>
               {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom} ({m.code})</option>)}
@@ -180,13 +180,13 @@ const RetourForm = () => {
               <label style={labelStyle}>Lot *</label>
               <select value={form.lot_id} onChange={e => setForm({...form, lot_id: e.target.value})} style={inputStyle} required>
                 <option value="">-- Choisir un lot --</option>
-                {lots.map(l => <option key={l.id} value={l.id}>Lot {l.numero_lot} (pér. {new Date(l.date_peremption).toLocaleDateString()}, stock {l.stock_actuel})</option>)}
+                {lots.map(l => <option key={l.id} value={l.id}>Lot {l.numero_lot} (pr. {new Date(l.date_peremption).toLocaleDateString()}, stock {l.stock_actuel})</option>)}
               </select>
             </div>
           )}
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Quantité *</label>
+            <label style={labelStyle}>Quantit *</label>
             <input
               type="number"
               min="1"
@@ -220,7 +220,7 @@ const RetourForm = () => {
               placeholder="Saisissez votre mot de passe pour valider"
             />
             <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-              <FaLock /> Votre mot de passe est requis pour signer cette opération
+              <FaLock /> Votre mot de passe est requis pour signer cette opration
             </div>
           </div>
 

@@ -24,7 +24,7 @@ const ExamensList = ({ initialFilter = {} }) => {
   const canManage = permissions.includes('manage_laboratory') || user?.role === 'laborantin';
   const canValidate = permissions.includes('validate_laboratory') || user?.role === 'biologiste';
 
-  // ✅ Récupérer le rôle depuis le token JWT (pour la suppression définitive)
+  // ? Rcuprer le rle depuis le token JWT (pour la suppression dfinitive)
   const [userRole, setUserRole] = useState(null);
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -33,7 +33,7 @@ const ExamensList = ({ initialFilter = {} }) => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -105,9 +105,9 @@ const ExamensList = ({ initialFilter = {} }) => {
 
   const stats = useMemo(() => {
     const totalCount = total;
-    const demandes = examens.filter(e => e.statut === 'demandé').length;
+    const demandes = examens.filter(e => e.statut === 'demand').length;
     const encours = examens.filter(e => e.statut === 'en_cours').length;
-    const termines = examens.filter(e => e.statut === 'terminé' || e.statut === 'valide').length;
+    const termines = examens.filter(e => e.statut === 'termin' || e.statut === 'valide').length;
     const valides = examens.filter(e => e.statut === 'valide').length;
     return { totalCount, demandes, encours, termines, valides };
   }, [examens, total]);
@@ -126,33 +126,33 @@ const ExamensList = ({ initialFilter = {} }) => {
     setPage(1);
   };
 
-  // ✅ Annulation (soft delete) �FC� accessible à canManage
+  // ? Annulation (soft delete) ?FC? accessible  canManage
   const handleAnnuler = async (id) => {
     if (!window.confirm('Confirmer l\'annulation de cet examen ?')) return;
     try {
       await api.put(`/examens/${id}/annuler`);
       setPage(1);
-      showToast('Examen annulé');
+      showToast('Examen annul');
     } catch (err) {
       console.error('Erreur annulation', err);
       showToast('Erreur lors de l\'annulation', 'error');
     }
   };
 
-  // ✅ Suppression définitive (hard delete) �FC� réservée aux administrateurs
+  // ? Suppression dfinitive (hard delete) ?FC? rserve aux administrateurs
   const handleDeleteDefinitive = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement cet examen ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement cet examen ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/examens/${id}`);
       setExamens(examens.filter(e => e.id !== id));
       setTotal(total - 1);
-      showToast('Examen supprimé définitivement');
+      showToast('Examen supprim dfinitivement');
     } catch (err) {
-      console.error('Erreur suppression définitive:', err);
+      console.error('Erreur suppression dfinitive:', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer définitivement un examen.', 'error');
+        showToast('? Seul un administrateur peut supprimer dfinitivement un examen.', 'error');
       } else {
-        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
@@ -163,13 +163,13 @@ const ExamensList = ({ initialFilter = {} }) => {
 
   const getStatusBadge = (statut) => {
     const configs = {
-      'demandé': { bg: '#dbeafe', color: '#1e40af', icon: <FaClock />, label: 'Demandé' },
+      'demand': { bg: '#dbeafe', color: '#1e40af', icon: <FaClock />, label: 'Demand' },
       'en_cours': { bg: '#fef3c7', color: '#92400e', icon: <FaClock />, label: 'En cours' },
-      'terminé': { bg: '#d1fae5', color: '#065f46', icon: <FaCheckCircle />, label: 'Terminé' },
-      'valide': { bg: '#ede9fe', color: '#5b21b6', icon: <FaCheckCircle />, label: 'Validé' },
-      'annulé': { bg: '#fee2e2', color: '#991b1b', icon: <FaTimesCircle />, label: 'Annulé' },
+      'termin': { bg: '#d1fae5', color: '#065f46', icon: <FaCheckCircle />, label: 'Termin' },
+      'valide': { bg: '#ede9fe', color: '#5b21b6', icon: <FaCheckCircle />, label: 'Valid' },
+      'annul': { bg: '#fee2e2', color: '#991b1b', icon: <FaTimesCircle />, label: 'Annul' },
     };
-    const config = configs[statut] || configs['demandé'];
+    const config = configs[statut] || configs['demand'];
     return (
       <span style={{
         padding: '4px 12px',
@@ -192,7 +192,7 @@ const ExamensList = ({ initialFilter = {} }) => {
   if (loading && examens.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>⏳ Chargement des examens...</div>
+        <div style={{ fontSize: '24px' }}>? Chargement des examens...</div>
       </div>
     );
   }
@@ -215,7 +215,7 @@ const ExamensList = ({ initialFilter = {} }) => {
           {toast}
         </div>
       )}
-      {/* En-tête */}
+      {/* En-tte */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <h1 style={{ fontSize: '28px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <FaFlask style={{ color: '#f472b6' }} /> Examens
@@ -252,10 +252,10 @@ const ExamensList = ({ initialFilter = {} }) => {
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
       }}>
         <span><strong>Total :</strong> {stats.totalCount}</span>
-        <span style={{ color: '#2563eb' }}>📋 Demandés : {stats.demandes}</span>
-        <span style={{ color: '#d97706' }}>⏳ En cours : {stats.encours}</span>
-        <span style={{ color: '#059669' }}>✅ Terminés/Validés : {stats.termines}</span>
-        {canValidate && <span style={{ color: '#8b5cf6' }}>✓ Validés : {stats.valides}</span>}
+        <span style={{ color: '#2563eb' }}>?? Demands : {stats.demandes}</span>
+        <span style={{ color: '#d97706' }}>? En cours : {stats.encours}</span>
+        <span style={{ color: '#059669' }}>? Termins/Valids : {stats.termines}</span>
+        {canValidate && <span style={{ color: '#8b5cf6' }}>? Valids : {stats.valides}</span>}
       </div>
 
       {/* Filtres */}
@@ -284,18 +284,18 @@ const ExamensList = ({ initialFilter = {} }) => {
           style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
         >
           <option value="tous">Tous statuts</option>
-          <option value="demandé">Demandé</option>
+          <option value="demand">Demand</option>
           <option value="en_cours">En cours</option>
-          <option value="terminé">Terminé</option>
-          <option value="valide">Validé</option>
-          <option value="annulé">Annulé</option>
+          <option value="termin">Termin</option>
+          <option value="valide">Valid</option>
+          <option value="annul">Annul</option>
         </select>
         <select
           value={filters.categorie}
           onChange={(e) => handleFilterChange('categorie', e.target.value)}
           style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
         >
-          <option value="tous">Toutes catégories</option>
+          <option value="tous">Toutes catgories</option>
           <option value="laboratoire">Laboratoire</option>
           <option value="imagerie">Imagerie</option>
         </select>
@@ -304,7 +304,7 @@ const ExamensList = ({ initialFilter = {} }) => {
           onChange={(e) => handleFilterChange('priorite', e.target.value)}
           style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
         >
-          <option value="tous">Toutes priorités</option>
+          <option value="tous">Toutes priorits</option>
           <option value="normal">Normal</option>
           <option value="urgent">Urgent</option>
         </select>
@@ -324,7 +324,7 @@ const ExamensList = ({ initialFilter = {} }) => {
           onChange={(e) => handleFilterChange('date_debut', e.target.value)}
           style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
         />
-        <span style={{ color: '#94a3b8' }}>à</span>
+        <span style={{ color: '#94a3b8' }}></span>
         <input
           type="date"
           value={filters.date_fin}
@@ -335,7 +335,7 @@ const ExamensList = ({ initialFilter = {} }) => {
           onClick={() => setFilters({ statut: 'tous', service_id: '', categorie: 'tous', priorite: 'tous', search: '', date_debut: '', date_fin: '' })}
           style={{ padding: '8px 16px', backgroundColor: '#e2e8f0', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
         >
-          Réinitialiser
+          Rinitialiser
         </button>
       </div>
 
@@ -350,25 +350,25 @@ const ExamensList = ({ initialFilter = {} }) => {
           <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
               <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('patient_nom')}>
-                Patient {sortField === 'patient_nom' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                Patient {sortField === 'patient_nom' && (sortOrder === 'ASC' ? '?' : '?')}
               </th>
               <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('type_examen')}>
-                Examen {sortField === 'type_examen' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                Examen {sortField === 'type_examen' && (sortOrder === 'ASC' ? '?' : '?')}
               </th>
-              <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Catégorie</th>
+              <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Catgorie</th>
               <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('priorite')}>
-                Priorité {sortField === 'priorite' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                Priorit {sortField === 'priorite' && (sortOrder === 'ASC' ? '?' : '?')}
               </th>
               <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Service</th>
-              <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Médecin</th>
+              <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Mdecin</th>
               <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('date_demande')}>
-                Date demande {sortField === 'date_demande' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                Date demande {sortField === 'date_demande' && (sortOrder === 'ASC' ? '?' : '?')}
               </th>
               <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('date_prevue')}>
-                Date prévue {sortField === 'date_prevue' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                Date prvue {sortField === 'date_prevue' && (sortOrder === 'ASC' ? '?' : '?')}
               </th>
               <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('statut')}>
-                Statut {sortField === 'statut' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                Statut {sortField === 'statut' && (sortOrder === 'ASC' ? '?' : '?')}
               </th>
               <th style={{ padding: '14px 16px', textAlign: 'center', fontWeight: '600', color: '#475569' }}>Actions</th>
             </tr>
@@ -377,7 +377,7 @@ const ExamensList = ({ initialFilter = {} }) => {
             {examens.length === 0 ? (
               <tr>
                 <td colSpan="10" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                  Aucun examen trouvé
+                  Aucun examen trouv
                 </td>
               </tr>
             ) : (
@@ -401,9 +401,9 @@ const ExamensList = ({ initialFilter = {} }) => {
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     {e.priorite === 'urgent' ? (
-                      <span style={{ color: '#dc2626', fontWeight: 'bold' }}>🔴 Urgent</span>
+                      <span style={{ color: '#dc2626', fontWeight: 'bold' }}>?? Urgent</span>
                     ) : (
-                      <span style={{ color: '#64748b' }}>⚪ Normal</span>
+                      <span style={{ color: '#64748b' }}>? Normal</span>
                     )}
                   </td>
                   <td style={{ padding: '12px 16px', color: '#475569' }}>{e.service_nom || '-'}</td>
@@ -424,17 +424,17 @@ const ExamensList = ({ initialFilter = {} }) => {
                       >
                         <FaEye />
                       </Link>
-                      {canManage && (e.statut === 'demandé' || e.statut === 'en_cours' || e.statut === 'terminé') && (
+                      {canManage && (e.statut === 'demand' || e.statut === 'en_cours' || e.statut === 'termin') && (
                         <Link
                           to={`/laboratoire/resultats/${e.id}`}
                           style={{ color: '#8b5cf6', textDecoration: 'none' }}
-                          title="Saisir résultats"
+                          title="Saisir rsultats"
                         >
                           <FaEdit />
                         </Link>
                       )}
-                      {/* ✅ Bouton Annuler (soft delete) �FC� accessible à canManage */}
-                      {e.statut !== 'annulé' && e.statut !== 'valide' && canManage && (
+                      {/* ? Bouton Annuler (soft delete) ?FC? accessible  canManage */}
+                      {e.statut !== 'annul' && e.statut !== 'valide' && canManage && (
                         <button
                           onClick={() => handleAnnuler(e.id)}
                           style={{ background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer' }}
@@ -443,12 +443,12 @@ const ExamensList = ({ initialFilter = {} }) => {
                           <FaTimesCircle />
                         </button>
                       )}
-                      {/* ✅ Bouton Supprimer définitivement (hard delete) �FC� réservé aux administrateurs */}
+                      {/* ? Bouton Supprimer dfinitivement (hard delete) ?FC? rserv aux administrateurs */}
                       {isAdmin && e.statut !== 'valide' && (
                         <button
                           onClick={() => handleDeleteDefinitive(e.id)}
                           style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
-                          title="Supprimer définitivement (admin)"
+                          title="Supprimer dfinitivement (admin)"
                         >
                           <FaTrash />
                         </button>
@@ -496,7 +496,7 @@ const ExamensList = ({ initialFilter = {} }) => {
               opacity: page === 1 ? 0.5 : 1
             }}
           >
-            Précédent
+            Prcdent
           </button>
           <span style={{ padding: '6px 14px', backgroundColor: '#f472b6', color: 'white', borderRadius: '6px' }}>
             {page}

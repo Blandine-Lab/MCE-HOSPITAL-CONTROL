@@ -47,7 +47,7 @@ const BlocStats = () => {
         </div>
       )}
 
-      <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', margin: '0 0 24px 0' }}>📊 Statistiques du bloc opératoire</h2>
+      <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', margin: '0 0 24px 0' }}>?? Statistiques du bloc opratoire</h2>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         <div style={{ backgroundColor: '#dbeafe', padding: '20px', borderRadius: '12px', borderLeft: '4px solid #3b82f6' }}>
@@ -60,11 +60,11 @@ const BlocStats = () => {
         </div>
         <div style={{ backgroundColor: '#dcfce7', padding: '20px', borderRadius: '12px', borderLeft: '4px solid #10b981' }}>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#065f46' }}>{stats.total_prevues}</div>
-          <div style={{ fontSize: '14px', color: '#065f46' }}>Total planifiées</div>
+          <div style={{ fontSize: '14px', color: '#065f46' }}>Total planifies</div>
         </div>
         <div style={{ backgroundColor: '#fce4ec', padding: '20px', borderRadius: '12px', borderLeft: '4px solid #ef4444' }}>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#991b1b' }}>{stats.sept_derniers_jours}</div>
-          <div style={{ fontSize: '14px', color: '#991b1b' }}>Réalisées (7 derniers jours)</div>
+          <div style={{ fontSize: '14px', color: '#991b1b' }}>Ralises (7 derniers jours)</div>
         </div>
       </div>
 

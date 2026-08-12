@@ -19,7 +19,7 @@ const Badge = () => {
       })
       .catch(err => {
         console.error(err);
-        setError('Employé non trouvé');
+        setError('Employ non trouv');
         setLoading(false);
       });
   }, [id]);
@@ -32,7 +32,7 @@ const Badge = () => {
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>{error}</div>;
   if (!employe) return null;
 
-  // ✅ Construction de l'URL de la photo avec VITE_API_URL
+  // ? Construction de l'URL de la photo avec VITE_API_URL
   const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
   const photoUrl = employe.photo ? `${baseUrl}${employe.photo}` : null;
   const logoUrl = '/logo.jpeg';
@@ -59,11 +59,11 @@ const Badge = () => {
         margin: '0 auto',
         fontFamily: 'system-ui, -apple-system, sans-serif',
       }}>
-        {/* Entête */}
+        {/* Entte */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', borderBottom: '2px solid #2563eb', paddingBottom: '10px', marginBottom: '10px' }}>
           <img src={logoUrl} alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
           <div>
-            <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '1px' }}>HÔPITAL</h2>
+            <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '1px' }}>HPITAL</h2>
             <p style={{ fontSize: '9px', color: '#6b7280', margin: 0, letterSpacing: '0.5px' }}>BADGE D'IDENTIFICATION</p>
           </div>
         </div>
@@ -78,11 +78,11 @@ const Badge = () => {
             </div>
           )}
           <h3 style={{ fontSize: '16px', fontWeight: '600', margin: '2px 0', color: '#1f2937' }}>{employe.prenom} {employe.nom}</h3>
-          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Poste :</strong> {employe.poste || 'Non défini'}</p>
-          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Service :</strong> {employe.service_nom || employe.service || 'Non défini'}</p>
+          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Poste :</strong> {employe.poste || 'Non dfini'}</p>
+          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Service :</strong> {employe.service_nom || employe.service || 'Non dfini'}</p>
           <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Matricule :</strong> {employe.id}</p>
-          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Email :</strong> {employe.email || '�FC�'}</p>
-          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Tél :</strong> {employe.telephone || '�FC�'}</p>
+          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Email :</strong> {employe.email || '?FC?'}</p>
+          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Tl :</strong> {employe.telephone || '?FC?'}</p>
         </div>
 
         {/* Zone info */}
@@ -94,7 +94,7 @@ const Badge = () => {
           textAlign: 'center',
           border: '1px solid #b6d4fe',
         }}>
-          <p style={{ fontSize: '12px', color: '#1e3a8a', margin: '0', fontWeight: '600' }}>📍 MCE Localisation: Bukavu RDC</p>
+          <p style={{ fontSize: '12px', color: '#1e3a8a', margin: '0', fontWeight: '600' }}>?? MCE Localisation: Bukavu RDC</p>
           <p style={{ fontSize: '10px', color: '#1e40af', margin: '4px 0 0' }}>contact@medicalcenterelizabeth.org | www.medicalcenterelizabeth.org</p>
           <p style={{ fontSize: '9px', color: '#1e3a8a', margin: '6px 0 0', opacity: 0.8 }}>En cas de perte, contactez les RH</p>
         </div>

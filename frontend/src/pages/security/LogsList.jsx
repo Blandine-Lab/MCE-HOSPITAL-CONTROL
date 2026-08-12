@@ -18,7 +18,7 @@ const LogsList = () => {
       .catch(console.error);
   }, [filters]);
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -27,7 +27,7 @@ const LogsList = () => {
         <FaFilter style={{ color: '#64748b', alignSelf: 'center' }} />
         <input type="text" placeholder="Action..." value={filters.action} onChange={e => setFilters({ ...filters, action: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
         <input type="date" value={filters.date_debut} onChange={e => setFilters({ ...filters, date_debut: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
-        <span>→</span>
+        <span>?</span>
         <input type="date" value={filters.date_fin} onChange={e => setFilters({ ...filters, date_fin: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
       </div>
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>

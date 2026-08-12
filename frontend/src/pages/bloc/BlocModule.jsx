@@ -63,7 +63,7 @@ const BlocModule = () => {
   return (
     <div style={containerStyle}>
       <div style={innerStyle}>
-        <h1 style={titleStyle}>🏥 Bloc Opératoire</h1>
+        <h1 style={titleStyle}>?? Bloc Opratoire</h1>
 
         {/* Menu horizontal (comme les onglets) */}
         <div style={menuCardStyle}>

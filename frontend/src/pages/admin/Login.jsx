@@ -25,7 +25,7 @@ const Login = () => {
       if (response.data.refreshToken) {
         localStorage.setItem('refreshToken', response.data.refreshToken);
       }
-      // ✅ Redirection vers la page d'accueil (Home)
+      // ? Redirection vers la page d'accueil (Home)
       navigate('/');
     } catch (err) {
       const message = err.response?.data?.error || err.message || 'Erreur de connexion';
@@ -38,7 +38,7 @@ const Login = () => {
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
-      {/* Vidéo en arrière�FC�plan */}
+      {/* Vido en arrire?FC?plan */}
       <video
         autoPlay
         loop
@@ -58,10 +58,10 @@ const Login = () => {
         }}
       >
         <source src="/Loginvideo.mp4" type="video/mp4" />
-        Votre navigateur ne supporte pas la vidéo.
+        Votre navigateur ne supporte pas la vido.
       </video>
 
-      {/* Logo animé par-dessus la vidéo */}
+      {/* Logo anim par-dessus la vido */}
       <div
         style={{
           position: 'absolute',
@@ -83,7 +83,7 @@ const Login = () => {
         />
       </div>
 
-      {/* Contenu du formulaire (centré) */}
+      {/* Contenu du formulaire (centr) */}
       <div
         style={{
           position: 'relative',

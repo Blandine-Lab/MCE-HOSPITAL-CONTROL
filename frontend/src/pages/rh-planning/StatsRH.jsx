@@ -24,7 +24,7 @@ const StatsRH = () => {
     }).catch(console.error);
   }, []);
 
-  if (loading) return <div style={{textAlign:'center', padding:60}}>⏳ Chargement...</div>;
+  if (loading) return <div style={{textAlign:'center', padding:60}}>? Chargement...</div>;
 
   return (
     <div>
@@ -33,7 +33,7 @@ const StatsRH = () => {
         <div style={{backgroundColor:'white', padding:24, borderRadius:12, boxShadow:'0 1px 3px rgba(0,0,0,0.1)', textAlign:'center'}}>
           <FaUsers style={{fontSize:36, color:'#60a5fa'}} />
           <h2 style={{margin:'12px 0 4px'}}>{stats.total}</h2>
-          <p style={{color:'#64748b'}}>Employés</p>
+          <p style={{color:'#64748b'}}>Employs</p>
         </div>
         <div style={{backgroundColor:'white', padding:24, borderRadius:12, boxShadow:'0 1px 3px rgba(0,0,0,0.1)', textAlign:'center'}}>
           <FaUserMd style={{fontSize:36, color:'#34d399'}} />
@@ -48,7 +48,7 @@ const StatsRH = () => {
         <div style={{backgroundColor:'white', padding:24, borderRadius:12, boxShadow:'0 1px 3px rgba(0,0,0,0.1)', textAlign:'center'}}>
           <FaPlane style={{fontSize:36, color:'#8b5cf6'}} />
           <h2 style={{margin:'12px 0 4px'}}>{stats.conges_en_attente}</h2>
-          <p style={{color:'#64748b'}}>Congés en attente</p>
+          <p style={{color:'#64748b'}}>Congs en attente</p>
         </div>
       </div>
     </div>

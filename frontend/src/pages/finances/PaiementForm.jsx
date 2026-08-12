@@ -10,7 +10,7 @@ const PaiementForm = () => {
     facture_id: '',
     montant: '',
     date_paiement: new Date().toISOString().split('T')[0],
-    mode_paiement: 'espèces',
+    mode_paiement: 'espces',
     reference: '',
     notes: ''
   });
@@ -19,7 +19,7 @@ const PaiementForm = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/factures?statut_paiement=non_payée,partiellement_payée')
+    api.get('/factures?statut_paiement=non_paye,partiellement_paye')
       .then(res => setFactures(res.data))
       .catch(console.error);
   }, []);
@@ -42,7 +42,7 @@ const PaiementForm = () => {
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div><label>Facture *</label>
             <select name="facture_id" value={formData.facture_id} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {factures.map(f => <option key={f.id} value={f.id}>{f.numero_facture} - {f.patient_nom} ({Number(f.montant_total).toLocaleString('fr-FR')} FCFA)</option>)}
             </select>
           </div>
@@ -50,14 +50,14 @@ const PaiementForm = () => {
           <div><label>Date paiement *</label><input name="date_paiement" type="date" value={formData.date_paiement} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div><label>Mode paiement *</label>
             <select name="mode_paiement" value={formData.mode_paiement} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="espèces">Espèces</option>
+              <option value="espces">Espces</option>
               <option value="carte bancaire">Carte bancaire</option>
               <option value="virement">Virement bancaire</option>
-              <option value="chèque">Chèque</option>
+              <option value="chque">Chque</option>
               <option value="mobile money">Mobile Money</option>
             </select>
           </div>
-          <div><label>Référence</label><input name="reference" value={formData.reference} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+          <div><label>Rfrence</label><input name="reference" value={formData.reference} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div style={{ gridColumn: 'span 2' }}><label>Notes</label><textarea name="notes" value={formData.notes} onChange={handleChange} rows="2" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div style={{ gridColumn: 'span 2' }}>
             <button type="submit" disabled={loading} style={{ backgroundColor: '#f59e0b', color: 'white', padding: '12px 32px', border: 'none', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>

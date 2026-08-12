@@ -1,4 +1,4 @@
-﻿// src/pages/stock/ProduitForm.jsx
+// src/pages/stock/ProduitForm.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import api from '../../axios';
@@ -18,7 +18,7 @@ const ProduitForm = () => {
     prix_achat: '',
     prix_vente: '',
     seuil_alerte: '',
-    quantite_initiale: 0, // toujours présent (en création et en modification)
+    quantite_initiale: 0, // toujours prïsent (en crïation et en modification)
   });
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -26,10 +26,10 @@ const ProduitForm = () => {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    // Charger les catégories
+    // Charger les catïgories
     api.get('/produits/categories-produits')
       .then(res => setCategories(res.data))
-      .catch(err => console.error('Erreur chargement catégories :', err));
+      .catch(err => console.error('Erreur chargement catïgories :', err));
 
     if (isEdit) {
       setLoading(true);
@@ -45,7 +45,7 @@ const ProduitForm = () => {
             prix_achat: data.prix_achat || '',
             prix_vente: data.prix_vente || '',
             seuil_alerte: data.seuil_alerte || '',
-            quantite_initiale: 0, // en modification, on remet à 0 (ne pas pré-remplir)
+            quantite_initiale: 0, // en modification, on remet ï 0 (ne pas prï-remplir)
           });
           setLoading(false);
         })
@@ -80,10 +80,10 @@ const ProduitForm = () => {
 
       let response;
       if (isEdit) {
-        // Mise à jour du produit
+        // Mise ï jour du produit
         response = await api.put(`/produits/${id}`, payload);
 
-        // ✅ Si une quantité est saisie en modification, on crée un mouvement d'entrée
+        // ? Si une quantitï est saisie en modification, on crïe un mouvement d'entrïe
         const qty = parseInt(formData.quantite_initiale, 10);
         if (qty > 0) {
           await api.post('/mouvements', {
@@ -91,15 +91,15 @@ const ProduitForm = () => {
             type: 'entree',
             quantite: qty,
             reference: 'Ajustement stock',
-            motif: 'Réapprovisionnement / correction',
+            motif: 'Rïapprovisionnement / correction',
             date_mouvement: new Date().toISOString().split('T')[0]
           });
-          setToast({ type: 'success', message: `Produit modifié et ${qty} unité(s) ajoutée(s) au stock.` });
+          setToast({ type: 'success', message: `Produit modifiï et ${qty} unitï(s) ajoutïe(s) au stock.` });
         } else {
-          setToast({ type: 'success', message: 'Produit modifié avec succès.' });
+          setToast({ type: 'success', message: 'Produit modifiï avec succïs.' });
         }
       } else {
-        // Création du produit
+        // Crïation du produit
         response = await api.post('/produits', payload);
         const qty = parseInt(formData.quantite_initiale, 10);
         if (qty > 0) {
@@ -108,12 +108,12 @@ const ProduitForm = () => {
             type: 'entree',
             quantite: qty,
             reference: 'Stock initial',
-            motif: 'Création du produit',
+            motif: 'Crïation du produit',
             date_mouvement: new Date().toISOString().split('T')[0]
           });
-          setToast({ type: 'success', message: `Produit créé avec ${qty} unité(s) en stock.` });
+          setToast({ type: 'success', message: `Produit crïï avec ${qty} unitï(s) en stock.` });
         } else {
-          setToast({ type: 'success', message: 'Produit créé (stock initial à 0).' });
+          setToast({ type: 'success', message: 'Produit crïï (stock initial ï 0).' });
         }
       }
       setTimeout(() => navigate('/stock/produits'), 1500);
@@ -124,7 +124,7 @@ const ProduitForm = () => {
     }
   };
 
-  if (loading && isEdit) return <div style={{ padding: 60, textAlign: 'center' }}>⏳ Chargement...</div>;
+  if (loading && isEdit) return <div style={{ padding: 60, textAlign: 'center' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -148,14 +148,14 @@ const ProduitForm = () => {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Catégorie</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Catïgorie</label>
             <select
               name="categorie_id"
               value={formData.categorie_id}
               onChange={handleChange}
               style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}
             >
-              <option value="">-- Sélectionner --</option>
+              <option value="">-- Sïlectionner --</option>
               {categories.map(c => (
                 <option key={c.id} value={c.id}>{c.nom}</option>
               ))}
@@ -163,8 +163,8 @@ const ProduitForm = () => {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Unité</label>
-            <input type="text" name="unite" value={formData.unite} onChange={handleChange} placeholder="ex: unité, boîte, kg, ml..." style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Unitï</label>
+            <input type="text" name="unite" value={formData.unite} onChange={handleChange} placeholder="ex: unitï, boïte, kg, ml..." style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
 
           <div>
@@ -182,10 +182,10 @@ const ProduitForm = () => {
             <input type="number" name="seuil_alerte" value={formData.seuil_alerte} onChange={handleChange} style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
 
-          {/* 👇 Champ visible EN CRÉATION ET EN MODIFICATION */}
+          {/* ?? Champ visible EN CRïATION ET EN MODIFICATION */}
           <div>
             <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>
-              {isEdit ? 'Ajouter au stock (quantité)' : 'Quantité initiale'}
+              {isEdit ? 'Ajouter au stock (quantitï)' : 'Quantitï initiale'}
             </label>
             <input
               type="number"
@@ -199,8 +199,8 @@ const ProduitForm = () => {
             />
             <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
               {isEdit
-                ? 'Saisissez une quantité à AJOUTER au stock actuel (mouvement d\'entrée).'
-                : 'Saisissez le stock de départ pour ce produit.'}
+                ? 'Saisissez une quantitï ï AJOUTER au stock actuel (mouvement d\'entrïe).'
+                : 'Saisissez le stock de dïpart pour ce produit.'}
             </div>
           </div>
 

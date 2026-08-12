@@ -48,20 +48,20 @@ const IndicateurForm = () => {
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div><label>Code *</label><input name="code" value={formData.code} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div><label>Nom *</label><input name="nom" value={formData.nom} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-          <div><label>Catégorie</label>
+          <div><label>Catgorie</label>
             <select name="categorie" value={formData.categorie} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="">Sélectionner</option>
-              <option value="qualité">Qualité</option>
+              <option value="">Slectionner</option>
+              <option value="qualit">Qualit</option>
               <option value="performance">Performance</option>
               <option value="satisfaction">Satisfaction</option>
-              <option value="sécurité">Sécurité</option>
+              <option value="scurit">Scurit</option>
             </select>
           </div>
-          <div><label>Unité</label><input name="unite" value={formData.unite} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+          <div><label>Unit</label><input name="unite" value={formData.unite} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div><label>Cible</label><input name="cible" type="number" step="0.01" value={formData.cible} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div><label>Seuil d'alerte</label><input name="seuil_alerte" type="number" step="0.01" value={formData.seuil_alerte} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div><label>Formule</label><input name="formule" value={formData.formule} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-          <div><label>Période</label>
+          <div><label>Priode</label>
             <select name="periode" value={formData.periode} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
               <option value="journalier">Journalier</option>
               <option value="hebdomadaire">Hebdomadaire</option>

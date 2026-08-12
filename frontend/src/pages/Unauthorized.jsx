@@ -35,12 +35,12 @@ const Unauthorized = () => {
           <FaExclamationTriangle style={{ fontSize: '40px', color: '#dc2626' }} />
         </div>
         <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#0f172a', marginBottom: '12px' }}>
-          Acc√®s non autoris√©
+          Accs non autoris
         </h1>
         <p style={{ color: '#64748b', fontSize: '16px', lineHeight: '1.6', marginBottom: '24px' }}>
-          Vous n‚FCôavez pas les permissions n√©cessaires pour acc√©der √† cette page.
+          Vous n?FC?avez pas les permissions ncessaires pour accder  cette page.
           <br />
-          <span style={{ fontWeight: '500' }}>Veuillez contacter votre service IT de l‚FCôh√¥pital pour obtenir les droits d‚FCôacc√®s.</span>
+          <span style={{ fontWeight: '500' }}>Veuillez contacter votre service IT de l?FC?hpital pour obtenir les droits d?FC?accs.</span>
         </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
           <button
@@ -83,7 +83,7 @@ const Unauthorized = () => {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#cbd5e1'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
           >
-            üè† Accueil
+            ?? Accueil
           </button>
         </div>
       </div>

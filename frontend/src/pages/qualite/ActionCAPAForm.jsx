@@ -33,7 +33,7 @@ const ActionCAPAForm = () => {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    // Charger les données nécessaires (signalements, audits, utilisateurs)
+    // Charger les donnes ncessaires (signalements, audits, utilisateurs)
     const fetchData = async () => {
       try {
         const [sigRes, audRes, userRes] = await Promise.all([
@@ -45,8 +45,8 @@ const ActionCAPAForm = () => {
         setAudits(audRes.data || []);
         setUtilisateurs(userRes.data || []);
       } catch (err) {
-        console.error('Erreur chargement données :', err);
-        setError('Impossible de charger les données nécessaires.');
+        console.error('Erreur chargement donnes :', err);
+        setError('Impossible de charger les donnes ncessaires.');
       }
     };
     fetchData();
@@ -101,10 +101,10 @@ const ActionCAPAForm = () => {
     try {
       if (isEdit) {
         await api.put(`/actions-capa/${id}`, formData);
-        setToast({ type: 'success', message: 'Action CAPA modifiée avec succès' });
+        setToast({ type: 'success', message: 'Action CAPA modifie avec succs' });
       } else {
         await api.post('/actions-capa', formData);
-        setToast({ type: 'success', message: 'Action CAPA créée avec succès' });
+        setToast({ type: 'success', message: 'Action CAPA cre avec succs' });
       }
       setTimeout(() => navigate('/qualite/actions-capa'), 1500);
     } catch (err) {
@@ -115,7 +115,7 @@ const ActionCAPAForm = () => {
     }
   };
 
-  if (loading && isEdit) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading && isEdit) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -156,9 +156,9 @@ const ActionCAPAForm = () => {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-          {/* Numéro action */}
+          {/* Numro action */}
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Numéro action *</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Numro action *</label>
             <input
               name="numero_action"
               value={formData.numero_action}
@@ -191,21 +191,21 @@ const ActionCAPAForm = () => {
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
             >
               <option value="corrective">Corrective</option>
-              <option value="preventive">Préventive</option>
-              <option value="amelioration">Amélioration</option>
+              <option value="preventive">Prventive</option>
+              <option value="amelioration">Amlioration</option>
             </select>
           </div>
 
-          {/* Signalement associé */}
+          {/* Signalement associ */}
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Signalement associé</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Signalement associ</label>
             <select
               name="signalement_id"
               value={formData.signalement_id}
               onChange={handleChange}
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
             >
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {signalements.map(s => (
                 <option key={s.id} value={s.id}>
                   {s.numero_signalement || s.id} - {s.titre || s.description?.substring(0, 50) || 'Signalement'}
@@ -214,16 +214,16 @@ const ActionCAPAForm = () => {
             </select>
           </div>
 
-          {/* Audit associé */}
+          {/* Audit associ */}
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Audit associé</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Audit associ</label>
             <select
               name="audit_id"
               value={formData.audit_id}
               onChange={handleChange}
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
             >
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {audits.map(a => (
                 <option key={a.id} value={a.id}>
                   {a.numero_audit || a.id} - {a.titre || 'Audit'}
@@ -241,7 +241,7 @@ const ActionCAPAForm = () => {
               onChange={handleChange}
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
             >
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {utilisateurs.map(u => (
                 <option key={u.id} value={u.id}>
                   {u.prenom} {u.nom} ({u.email || u.login})
@@ -250,9 +250,9 @@ const ActionCAPAForm = () => {
             </select>
           </div>
 
-          {/* Date prévue */}
+          {/* Date prvue */}
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Date prévue *</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Date prvue *</label>
             <input
               name="date_prevue"
               type="date"
@@ -263,9 +263,9 @@ const ActionCAPAForm = () => {
             />
           </div>
 
-          {/* Date réalisation */}
+          {/* Date ralisation */}
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Date réalisation</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Date ralisation</label>
             <input
               name="date_realisation"
               type="date"
@@ -286,37 +286,37 @@ const ActionCAPAForm = () => {
             >
               <option value="ouverte">Ouverte</option>
               <option value="en_cours">En cours</option>
-              <option value="terminee">Terminée</option>
-              <option value="annulee">Annulée</option>
+              <option value="terminee">Termine</option>
+              <option value="annulee">Annule</option>
             </select>
           </div>
 
-          {/* Efficacité */}
+          {/* Efficacit */}
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Efficacité</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Efficacit</label>
             <select
               name="efficacite"
               value={formData.efficacite}
               onChange={handleChange}
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
             >
-              <option value="">Non évaluée</option>
+              <option value="">Non value</option>
               <option value="efficace">Efficace</option>
               <option value="partiellement_efficace">Partiellement efficace</option>
               <option value="inefficace">Inefficace</option>
             </select>
           </div>
 
-          {/* Vérification par */}
+          {/* Vrification par */}
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Vérification par</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Vrification par</label>
             <select
               name="verification_par"
               value={formData.verification_par}
               onChange={handleChange}
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
             >
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {utilisateurs.map(u => (
                 <option key={u.id} value={u.id}>
                   {u.prenom} {u.nom} ({u.email || u.login})
@@ -325,9 +325,9 @@ const ActionCAPAForm = () => {
             </select>
           </div>
 
-          {/* Date vérification */}
+          {/* Date vrification */}
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Date vérification</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Date vrification</label>
             <input
               name="date_verification"
               type="date"
@@ -362,9 +362,9 @@ const ActionCAPAForm = () => {
             />
           </div>
 
-          {/* Action planifiée */}
+          {/* Action planifie */}
           <div style={{ gridColumn: 'span 2' }}>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Action planifiée *</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Action planifie *</label>
             <textarea
               name="action_planifiee"
               value={formData.action_planifiee}

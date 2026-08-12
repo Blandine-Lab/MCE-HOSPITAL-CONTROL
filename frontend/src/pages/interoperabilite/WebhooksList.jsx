@@ -43,10 +43,10 @@ const WebhooksList = () => {
 
   const copyToken = (token) => {
     navigator.clipboard.writeText(token);
-    alert('Token copié !');
+    alert('Token copi !');
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -66,7 +66,7 @@ const WebhooksList = () => {
               <textarea name="description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows="2" style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <button type="submit" style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Créer</button>
+              <button type="submit" style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Crer</button>
               <button type="button" onClick={() => setShowForm(false)} style={{ marginLeft: '12px', padding: '8px 24px', border: '1px solid #e2e8f0', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>Annuler</button>
             </div>
           </form>
@@ -86,7 +86,7 @@ const WebhooksList = () => {
                   <button onClick={() => copyToken(w.token)} style={{ marginLeft: '8px', background: 'none', border: 'none', cursor: 'pointer' }}><FaCopy /></button>
                 </td>
                 <td>{w.url_callback || '-'}</td>
-                <td>{w.actif ? '🟢 Actif' : '🔴 Inactif'}</td>
+                <td>{w.actif ? '?? Actif' : '?? Inactif'}</td>
                 <td style={{ textAlign: 'center' }}>
                   <button onClick={() => handleToggle(w.id, w.actif)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: w.actif ? '#10b981' : '#ef4444', marginRight: '8px' }}>{w.actif ? <FaToggleOn /> : <FaToggleOff />}</button>
                   <button onClick={() => handleDelete(w.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>

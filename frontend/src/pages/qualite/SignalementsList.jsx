@@ -12,7 +12,7 @@ const SignalementsList = ({ active = true }) => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const SignalementsList = ({ active = true }) => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -51,17 +51,17 @@ const SignalementsList = ({ active = true }) => {
       });
   }, [filters, active]);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id, numero) => {
-    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer le signalement n°${numero} ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`?? Voulez-vous vraiment supprimer le signalement n${numero} ? Cette action est irrversible.`)) return;
     try {
       await api.delete(`/signalements/${id}`);
       setSignalements(signalements.filter(s => s.id !== id));
-      showToast('Signalement supprimé avec succès');
+      showToast('Signalement supprim avec succs');
     } catch (err) {
       console.error(err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un signalement.', 'error');
+        showToast('? Seul un administrateur peut supprimer un signalement.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -70,10 +70,10 @@ const SignalementsList = ({ active = true }) => {
 
   const getStatusBadge = (statut) => {
     const configs = {
-      ouvert: { bg: '#fef3c7', color: '#92400e', label: '📋 Ouvert' },
-      en_cours: { bg: '#dbeafe', color: '#1e40af', label: '⏳ En cours' },
-      résolu: { bg: '#d1fae5', color: '#065f46', label: '✅ Résolu' },
-      fermé: { bg: '#f1f5f9', color: '#475569', label: '🔒 Fermé' }
+      ouvert: { bg: '#fef3c7', color: '#92400e', label: '?? Ouvert' },
+      en_cours: { bg: '#dbeafe', color: '#1e40af', label: '? En cours' },
+      rsolu: { bg: '#d1fae5', color: '#065f46', label: '? Rsolu' },
+      ferm: { bg: '#f1f5f9', color: '#475569', label: '?? Ferm' }
     };
     const c = configs[statut] || configs.ouvert;
     return <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', backgroundColor: c.bg, color: c.color }}>{c.label}</span>;
@@ -81,7 +81,7 @@ const SignalementsList = ({ active = true }) => {
 
   const getPriorityBadge = (priorite) => {
     const colors = { basse: '#10b981', moyenne: '#f59e0b', haute: '#f97316', critique: '#ef4444' };
-    const labels = { basse: '🟢 Basse', moyenne: '🟡 Moyenne', haute: '🟠 Haute', critique: '🔴 Critique' };
+    const labels = { basse: '?? Basse', moyenne: '?? Moyenne', haute: '?? Haute', critique: '?? Critique' };
     return <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', backgroundColor: colors[priorite] + '20', color: colors[priorite] }}>{labels[priorite] || priorite}</span>;
   };
 
@@ -89,7 +89,7 @@ const SignalementsList = ({ active = true }) => {
 
   if (!active) return null;
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -121,11 +121,11 @@ const SignalementsList = ({ active = true }) => {
           <option value="">Tous statuts</option>
           <option value="ouvert">Ouvert</option>
           <option value="en_cours">En cours</option>
-          <option value="résolu">Résolu</option>
-          <option value="fermé">Fermé</option>
+          <option value="rsolu">Rsolu</option>
+          <option value="ferm">Ferm</option>
         </select>
         <select value={filters.priorite} onChange={e => setFilters({ ...filters, priorite: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-          <option value="">Toutes priorités</option>
+          <option value="">Toutes priorits</option>
           <option value="basse">Basse</option>
           <option value="moyenne">Moyenne</option>
           <option value="haute">Haute</option>
@@ -135,7 +135,7 @@ const SignalementsList = ({ active = true }) => {
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
-            <tr><th>N°</th><th>Date</th><th>Catégorie</th><th>Description</th><th>Priorité</th><th>Statut</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
+            <tr><th>N</th><th>Date</th><th>Catgorie</th><th>Description</th><th>Priorit</th><th>Statut</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
           </thead>
           <tbody>
             {signalements.map((s, i) => (
@@ -158,7 +158,7 @@ const SignalementsList = ({ active = true }) => {
                       <FaTrash />
                     </button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

@@ -35,13 +35,13 @@ const PharmacyDashboard = () => {
     fetchData();
   }, []);
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f0fdf4', padding: '32px' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#166534', marginBottom: '24px' }}>
-          💊 Tableau de bord �FC� Pharmacie
+          ?? Tableau de bord ?FC? Pharmacie
         </h1>
 
         {/* Widgets */}
@@ -69,7 +69,7 @@ const PharmacyDashboard = () => {
           />
           <Widget 
             icon={<FaBoxes />} 
-            label="Médicaments en stock" 
+            label="Mdicaments en stock" 
             value="-" 
             color="#10b981" 
             onClick={() => window.location.href = '/medicaments'}
@@ -79,7 +79,7 @@ const PharmacyDashboard = () => {
         {/* Ordonnances en attente */}
         <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>
-            📋 Ordonnances en attente
+            ?? Ordonnances en attente
           </h2>
           {ordonnances.length === 0 ? (
             <p style={{ color: '#6b7280' }}>Aucune ordonnance en attente.</p>
@@ -89,7 +89,7 @@ const PharmacyDashboard = () => {
                 <tr style={{ backgroundColor: '#f3f4f6' }}>
                   <th style={{ padding: '10px', textAlign: 'left' }}>Patient</th>
                   <th style={{ padding: '10px', textAlign: 'left' }}>Date</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Médecin</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Mdecin</th>
                   <th style={{ padding: '10px', textAlign: 'left' }}>Actions</th>
                 </tr>
               </thead>
@@ -102,12 +102,12 @@ const PharmacyDashboard = () => {
                     </td>
                     <td style={{ padding: '10px' }}>Dr. {ord.medecin_prenom} {ord.medecin_nom}</td>
                     <td style={{ padding: '10px' }}>
-                      {/* ✅ CORRECTION : navigate vers /delivrance/ sans le préfixe /pharmacy */}
+                      {/* ? CORRECTION : navigate vers /delivrance/ sans le prfixe /pharmacy */}
                       <button
                         onClick={() => navigate(`/delivrance/${ord.id}`)}
                         style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }}
                       >
-                        <FaSyringe /> Délivrer
+                        <FaSyringe /> Dlivrer
                       </button>
                     </td>
                   </tr>
@@ -121,7 +121,7 @@ const PharmacyDashboard = () => {
   );
 };
 
-// Composant Widget réutilisable
+// Composant Widget rutilisable
 const Widget = ({ icon, label, value, color, onClick }) => {
   return (
     <div 

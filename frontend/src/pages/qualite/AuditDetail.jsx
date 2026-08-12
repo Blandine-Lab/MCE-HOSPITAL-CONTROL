@@ -29,7 +29,7 @@ const AuditDetail = () => {
       setAudit(res.data);
     } catch (err) {
       console.error('Erreur chargement audit :', err);
-      setError('Impossible de charger l\'audit. Vérifiez votre connexion.');
+      setError('Impossible de charger l\'audit. Vrifiez votre connexion.');
     } finally {
       setLoading(false);
     }
@@ -40,7 +40,7 @@ const AuditDetail = () => {
     setDeleting(true);
     try {
       await api.delete(`/audits/${id}`);
-      setToast({ type: 'success', message: 'Audit supprimé avec succès' });
+      setToast({ type: 'success', message: 'Audit supprim avec succs' });
       setTimeout(() => navigate('/qualite/audits'), 1500);
     } catch (err) {
       console.error('Erreur suppression :', err);
@@ -52,10 +52,10 @@ const AuditDetail = () => {
 
   const getStatusBadge = (statut) => {
     const colors = {
-      'planifie': { bg: '#fef3c7', text: '#92400e', label: '📋 Planifié' },
-      'en_cours': { bg: '#dbeafe', text: '#1e40af', label: '⏳ En cours' },
-      'termine': { bg: '#d1fae5', text: '#065f46', label: '✅ Terminé' },
-      'annule': { bg: '#fee2e2', text: '#991b1b', label: '❌ Annulé' }
+      'planifie': { bg: '#fef3c7', text: '#92400e', label: '?? Planifi' },
+      'en_cours': { bg: '#dbeafe', text: '#1e40af', label: '? En cours' },
+      'termine': { bg: '#d1fae5', text: '#065f46', label: '? Termin' },
+      'annule': { bg: '#fee2e2', text: '#991b1b', label: '? Annul' }
     };
     const s = colors[statut] || colors['planifie'];
     return {
@@ -88,7 +88,7 @@ const AuditDetail = () => {
   };
 
   const formatDate = (date) => {
-    if (!date) return '�FC�';
+    if (!date) return '?FC?';
     return new Date(date).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
@@ -125,14 +125,14 @@ const AuditDetail = () => {
             marginTop: '16px'
           }}
         >
-          Réessayer
+          Ressayer
         </button>
       </div>
     );
   }
 
   if (!audit) {
-    return <div style={{ textAlign: 'center', padding: '60px' }}>Audit non trouvé</div>;
+    return <div style={{ textAlign: 'center', padding: '60px' }}>Audit non trouv</div>;
   }
 
   return (
@@ -155,11 +155,11 @@ const AuditDetail = () => {
       )}
 
       <Link to="/qualite/audits" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#3b82f6', textDecoration: 'none' }}>
-        <FaArrowLeft /> Retour à la liste
+        <FaArrowLeft /> Retour  la liste
       </Link>
 
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', marginTop: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        {/* En-tête */}
+        {/* En-tte */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
           <div>
             <h1 style={{ margin: 0, color: '#0f172a' }}>{audit.titre}</h1>
@@ -167,7 +167,7 @@ const AuditDetail = () => {
               <span style={getStatusBadge(audit.statut)}>{audit.statut}</span>
               <span style={getTypeBadge(audit.type)}>{audit.type}</span>
               {audit.numero_audit && (
-                <span style={{ color: '#64748b', fontSize: '14px' }}>N° {audit.numero_audit}</span>
+                <span style={{ color: '#64748b', fontSize: '14px' }}>N {audit.numero_audit}</span>
               )}
             </div>
           </div>
@@ -214,18 +214,18 @@ const AuditDetail = () => {
             <div style={{ fontSize: '12px', color: '#94a3b8' }}>Service</div>
             <div style={{ fontWeight: '500', color: '#0f172a' }}>
               <FaBuilding style={{ marginRight: '8px', color: '#3b82f6' }} />
-              {audit.service_nom || 'Non spécifié'}
+              {audit.service_nom || 'Non spcifi'}
             </div>
           </div>
           <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
             <div style={{ fontSize: '12px', color: '#94a3b8' }}>Auditeur principal</div>
             <div style={{ fontWeight: '500', color: '#0f172a' }}>
               <FaUser style={{ marginRight: '8px', color: '#8b5cf6' }} />
-              {audit.auditeur_principal || 'Non attribué'}
+              {audit.auditeur_principal || 'Non attribu'}
             </div>
           </div>
           <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Date début</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Date dbut</div>
             <div style={{ fontWeight: '500', color: '#0f172a' }}>
               <FaCalendar style={{ marginRight: '8px', color: '#f59e0b' }} />
               {formatDate(audit.date_debut)}
@@ -239,14 +239,14 @@ const AuditDetail = () => {
             </div>
           </div>
           <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Créé par</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Cr par</div>
             <div style={{ fontWeight: '500', color: '#0f172a' }}>
               <FaUser style={{ marginRight: '8px', color: '#3b82f6' }} />
-              {audit.created_by_nom || '�FC�'}
+              {audit.created_by_nom || '?FC?'}
             </div>
           </div>
           <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Date création</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Date cration</div>
             <div style={{ fontWeight: '500', color: '#0f172a' }}>
               <FaClock style={{ marginRight: '8px', color: '#8b5cf6' }} />
               {formatDate(audit.created_at || audit.date_creation)}
@@ -254,7 +254,7 @@ const AuditDetail = () => {
           </div>
         </div>
 
-        {/* Sections détaillées */}
+        {/* Sections dtailles */}
         {audit.objectif && (
           <div style={{ marginBottom: '16px' }}>
             <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
@@ -269,7 +269,7 @@ const AuditDetail = () => {
 
         {audit.scope && (
           <div style={{ marginBottom: '16px' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Scope (périmètre)</h4>
+            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Scope (primtre)</h4>
             <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
               {audit.scope}
             </div>
@@ -278,7 +278,7 @@ const AuditDetail = () => {
 
         {audit.criteres && (
           <div style={{ marginBottom: '16px' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Critères</h4>
+            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Critres</h4>
             <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
               {audit.criteres}
             </div>

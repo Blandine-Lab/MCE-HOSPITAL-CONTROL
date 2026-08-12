@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partage
 
 const AdmissionForm = () => {
   const navigate = useNavigate();
@@ -21,12 +21,12 @@ const AdmissionForm = () => {
 
   useEffect(() => {
     Promise.all([
-      api.get('/patients'), // ✅ Suppression de l'URL absolue
+      api.get('/patients'), // ? Suppression de l'URL absolue
       api.get('/consultations/lits/disponibles'),
       api.get('/consultations/services'),
       api.get('/consultations/medecins')
     ]).then(([patRes, litRes, servRes, medRes]) => {
-      console.log('Services reçus :', servRes.data);
+      console.log('Services reus :', servRes.data);
       setPatients(patRes.data.filter(p => p.statut !== 'sorti'));
       setLits(litRes.data);
       setServices(servRes.data);
@@ -44,16 +44,16 @@ const AdmissionForm = () => {
     e.preventDefault();
     try {
       await api.post('/consultations/admissions', form);
-      setToast('Patient admis avec succès �FC� séjour créé');
+      setToast('Patient admis avec succs ?FC? sjour cr');
       setTimeout(() => setToast(null), 3000);
       setTimeout(() => navigate('/patients'), 1500);
     } catch (err) {
-      setToast('Erreur lors de l�FC�admission');
+      setToast('Erreur lors de l?FC?admission');
       setTimeout(() => setToast(null), 3000);
     }
   };
 
-  // Styles (inchangés)
+  // Styles (inchangs)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#f0fdf4',
@@ -139,7 +139,7 @@ const AdmissionForm = () => {
         </div>
       )}
       <div style={innerStyle}>
-        <h1 style={titleStyle}>🏥 Admission / Hospitalisation</h1>
+        <h1 style={titleStyle}>?? Admission / Hospitalisation</h1>
         <div style={cardStyle}>
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '20px' }}>
@@ -165,9 +165,9 @@ const AdmissionForm = () => {
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>Médecin référent</label>
+                <label style={labelStyle}>Mdecin rfrent</label>
                 <select name="medecin_referent_id" value={form.medecin_referent_id} onChange={handleChange} style={inputStyle}>
-                  <option value="">Choisir un médecin</option>
+                  <option value="">Choisir un mdecin</option>
                   {medecins.map(m => <option key={m.id} value={m.id}>{m.nom} {m.prenom}</option>)}
                 </select>
               </div>

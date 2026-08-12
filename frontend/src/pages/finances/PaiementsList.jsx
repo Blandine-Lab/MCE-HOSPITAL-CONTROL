@@ -11,7 +11,7 @@ const PaiementsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,7 +19,7 @@ const PaiementsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -48,26 +48,26 @@ const PaiementsList = () => {
     fetchPaiements();
   }, []);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce paiement ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement ce paiement ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/paiements/${id}`);
       setPaiements(paiements.filter(p => p.id !== id));
-      showToast('Paiement supprimé avec succès');
+      showToast('Paiement supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression paiement:', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un paiement.', 'error');
+        showToast('? Seul un administrateur peut supprimer un paiement.', 'error');
       } else {
-        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -96,7 +96,7 @@ const PaiementsList = () => {
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
-            <tr><th>Facture</th><th>Montant</th><th>Date</th><th>Mode</th><th>Référence</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
+            <tr><th>Facture</th><th>Montant</th><th>Date</th><th>Mode</th><th>Rfrence</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
           </thead>
           <tbody>
             {paiements.map((p, i) => (
@@ -113,7 +113,7 @@ const PaiementsList = () => {
                       <FaTrash />
                     </button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

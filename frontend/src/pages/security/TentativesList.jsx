@@ -13,7 +13,7 @@ const TentativesList = () => {
       .catch(console.error);
   }, []);
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -21,14 +21,14 @@ const TentativesList = () => {
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
-            <tr><th>Email</th><th>IP</th><th>Succès</th><th>Date</th></tr>
+            <tr><th>Email</th><th>IP</th><th>Succs</th><th>Date</th></tr>
           </thead>
           <tbody>
             {tentatives.map((t, i) => (
               <tr key={t.id} style={{ borderBottom: i === tentatives.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
                 <td>{t.email || '-'}</td>
                 <td>{t.ip || '-'}</td>
-                <td>{t.succes ? '✅ Oui' : '❌ Non'}</td>
+                <td>{t.succes ? '? Oui' : '? Non'}</td>
                 <td>{new Date(t.date_tentative).toLocaleString()}</td>
               </tr>
             ))}

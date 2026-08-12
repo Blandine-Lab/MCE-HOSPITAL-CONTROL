@@ -11,7 +11,7 @@ const CongeForm = () => {
 
   const [formData, setFormData] = useState({
     employe_id: '',
-    type: 'congé annuel',
+    type: 'cong annuel',
     date_debut: '',
     date_fin: '',
     statut: 'en_attente',
@@ -23,12 +23,12 @@ const CongeForm = () => {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    // Charger la liste des employés
+    // Charger la liste des employs
     api.get('/employes')
       .then(res => setEmployes(res.data))
-      .catch(err => console.error('Erreur chargement employés :', err));
+      .catch(err => console.error('Erreur chargement employs :', err));
 
-    // Si édition, charger les données du congé
+    // Si dition, charger les donnes du cong
     if (isEdit) {
       setLoading(true);
       api.get(`/conges/${id}`)
@@ -36,7 +36,7 @@ const CongeForm = () => {
           const data = res.data;
           setFormData({
             employe_id: data.employe_id || '',
-            type: data.type || 'congé annuel',
+            type: data.type || 'cong annuel',
             date_debut: data.date_debut ? data.date_debut.split('T')[0] : '',
             date_fin: data.date_fin ? data.date_fin.split('T')[0] : '',
             statut: data.statut || 'en_attente',
@@ -45,8 +45,8 @@ const CongeForm = () => {
           setLoading(false);
         })
         .catch(err => {
-          console.error('Erreur chargement congé :', err);
-          setError('Impossible de charger le congé');
+          console.error('Erreur chargement cong :', err);
+          setError('Impossible de charger le cong');
           setLoading(false);
         });
     }
@@ -60,9 +60,9 @@ const CongeForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // ✅ Validation
+    // ? Validation
     if (!formData.employe_id) {
-      setError('Veuillez sélectionner un employé');
+      setError('Veuillez slectionner un employ');
       return;
     }
     if (!formData.date_debut || !formData.date_fin) {
@@ -70,7 +70,7 @@ const CongeForm = () => {
       return;
     }
     if (new Date(formData.date_fin) < new Date(formData.date_debut)) {
-      setError('La date de fin doit être postérieure à la date de début');
+      setError('La date de fin doit tre postrieure  la date de dbut');
       return;
     }
 
@@ -79,7 +79,7 @@ const CongeForm = () => {
 
     try {
       const payload = {
-        employe_id: parseInt(formData.employe_id, 10), // ✅ s'assurer que c'est un nombre
+        employe_id: parseInt(formData.employe_id, 10), // ? s'assurer que c'est un nombre
         type: formData.type,
         date_debut: formData.date_debut,
         date_fin: formData.date_fin,
@@ -89,10 +89,10 @@ const CongeForm = () => {
 
       if (isEdit) {
         await api.put(`/conges/${id}`, payload);
-        setToast({ type: 'success', message: 'Congé modifié avec succès' });
+        setToast({ type: 'success', message: 'Cong modifi avec succs' });
       } else {
         await api.post('/conges', payload);
-        setToast({ type: 'success', message: 'Congé créé avec succès' });
+        setToast({ type: 'success', message: 'Cong cr avec succs' });
       }
       setTimeout(() => navigate('/rh/conges'), 1000);
     } catch (err) {
@@ -102,7 +102,7 @@ const CongeForm = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -127,12 +127,12 @@ const CongeForm = () => {
       </Link>
 
       <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, marginTop: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h2>{isEdit ? 'Modifier' : 'Nouvelle'} demande de congé</h2>
+        <h2>{isEdit ? 'Modifier' : 'Nouvelle'} demande de cong</h2>
         {error && <div style={{ color: '#ef4444', padding: 12, backgroundColor: '#fee2e2', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employé *</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employ *</label>
             <select
               name="employe_id"
               value={formData.employe_id}
@@ -140,7 +140,7 @@ const CongeForm = () => {
               required
               style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}
             >
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {employes.map(e => (
                 <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>
               ))}
@@ -148,7 +148,7 @@ const CongeForm = () => {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Type de congé *</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Type de cong *</label>
             <select
               name="type"
               value={formData.type}
@@ -156,16 +156,16 @@ const CongeForm = () => {
               required
               style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}
             >
-              <option value="congé annuel">Congé annuel</option>
-              <option value="congé maladie">Congé maladie</option>
-              <option value="congé maternité">Congé maternité</option>
-              <option value="congé sans solde">Congé sans solde</option>
+              <option value="cong annuel">Cong annuel</option>
+              <option value="cong maladie">Cong maladie</option>
+              <option value="cong maternit">Cong maternit</option>
+              <option value="cong sans solde">Cong sans solde</option>
               <option value="autre">Autre</option>
             </select>
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Date début *</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Date dbut *</label>
             <input
               type="date"
               name="date_debut"
@@ -188,7 +188,7 @@ const CongeForm = () => {
             />
           </div>
 
-          {/* ✅ Ajout du champ Statut pour l'édition */}
+          {/* ? Ajout du champ Statut pour l'dition */}
           <div>
             <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Statut</label>
             <select
@@ -198,8 +198,8 @@ const CongeForm = () => {
               style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}
             >
               <option value="en_attente">En attente</option>
-              <option value="approuvé">Approuvé</option>
-              <option value="refusé">Refusé</option>
+              <option value="approuv">Approuv</option>
+              <option value="refus">Refus</option>
             </select>
           </div>
 

@@ -5,11 +5,11 @@ import api from '../../axios';
 import { FaSave, FaTimes, FaSpinner } from 'react-icons/fa';
 
 const InterventionForm = () => {
-  const { id } = useParams(); // Récupère l'ID depuis l'URL si présent (édition)
+  const { id } = useParams(); // Rcupre l'ID depuis l'URL si prsent (dition)
   const navigate = useNavigate();
-  const isEdit = !!id; // true si on est en mode édition
+  const isEdit = !!id; // true si on est en mode dition
 
-  // États pour les données du formulaire
+  // tats pour les donnes du formulaire
   const [formData, setFormData] = useState({
     patient_id: '',
     salle_id: '',
@@ -24,28 +24,28 @@ const InterventionForm = () => {
     anesthesiste_id: '',
     notes_preoperatoires: '',
     motifs: '',
-    statut: 'planifiee', // par défaut
+    statut: 'planifiee', // par dfaut
   });
 
-  // États pour les listes déroulantes
+  // tats pour les listes droulantes
   const [patients, setPatients] = useState([]);
   const [salles, setSalles] = useState([]);
   const [medecins, setMedecins] = useState([]); // chirurgiens
   const [infirmieres, setInfirmieres] = useState([]);
   const [anesthesistes, setAnesthesistes] = useState([]);
 
-  // États de chargement et d'erreur
+  // tats de chargement et d'erreur
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
   const [error, setError] = useState(null);
 
-  // Charger les données initiales (patients, salles, personnels)
+  // Charger les donnes initiales (patients, salles, personnels)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Récupération en parallèle pour optimiser
+        // Rcupration en parallle pour optimiser
         const [patientsRes, sallesRes, medecinsRes, infirmieresRes, anesthesistesRes] = await Promise.all([
           api.get('/patients'),
           api.get('/bloc/salles'),
@@ -60,8 +60,8 @@ const InterventionForm = () => {
         setInfirmieres(infirmieresRes.data || []);
         setAnesthesistes(anesthesistesRes.data || []);
       } catch (err) {
-        console.error('Erreur chargement données initiales :', err);
-        setToast('Erreur lors du chargement des données');
+        console.error('Erreur chargement donnes initiales :', err);
+        setToast('Erreur lors du chargement des donnes');
         setTimeout(() => setToast(null), 5000);
       } finally {
         setLoading(false);
@@ -71,14 +71,14 @@ const InterventionForm = () => {
     fetchData();
   }, []);
 
-  // Si on est en édition, charger les données de l'intervention
+  // Si on est en dition, charger les donnes de l'intervention
   useEffect(() => {
     if (isEdit) {
       const fetchIntervention = async () => {
         try {
           const res = await api.get(`/bloc/interventions/${id}`);
           const data = res.data;
-          // Pré-remplir le formulaire avec les données existantes
+          // Pr-remplir le formulaire avec les donnes existantes
           setFormData({
             patient_id: data.patient_id || '',
             salle_id: data.salle_id || '',
@@ -115,7 +115,7 @@ const InterventionForm = () => {
     }
   };
 
-  // Gestionnaire pour les co-chirurgiens (multi-sélect)
+  // Gestionnaire pour les co-chirurgiens (multi-slect)
   const handleCoChirurgiensChange = (e) => {
     const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
     setFormData(prev => ({ ...prev, co_chirurgiens: selectedOptions }));
@@ -136,7 +136,7 @@ const InterventionForm = () => {
     }
 
     try {
-      // Nettoyer les champs vides pour éviter d'envoyer des chaînes vides
+      // Nettoyer les champs vides pour viter d'envoyer des chanes vides
       const cleanData = Object.fromEntries(
         Object.entries(formData).map(([key, value]) => {
           if (typeof value === 'string' && value.trim() === '') {
@@ -146,7 +146,7 @@ const InterventionForm = () => {
         })
       );
 
-      // Supprimer les propriétés null ou undefined
+      // Supprimer les proprits null ou undefined
       Object.keys(cleanData).forEach(key => {
         if (cleanData[key] === null || cleanData[key] === undefined) {
           delete cleanData[key];
@@ -161,7 +161,7 @@ const InterventionForm = () => {
       }
 
       if (response.status === 201 || response.status === 200) {
-        setToast(isEdit ? 'Intervention modifiée avec succès' : 'Intervention créée avec succès');
+        setToast(isEdit ? 'Intervention modifie avec succs' : 'Intervention cre avec succs');
         setTimeout(() => {
           setToast(null);
           navigate('/bloc/interventions');
@@ -178,10 +178,10 @@ const InterventionForm = () => {
     }
   };
 
-  // Annuler et revenir à la liste
+  // Annuler et revenir  la liste
   const handleCancel = () => navigate('/bloc/interventions');
 
-  // Style de base (identique à la liste)
+  // Style de base (identique  la liste)
   const cardStyle = {
     backgroundColor: 'white',
     borderRadius: '16px',
@@ -245,7 +245,7 @@ const InterventionForm = () => {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
-          {isEdit ? '✏️ Modifier l\'intervention' : '📝 Nouvelle intervention'}
+          {isEdit ? '?? Modifier l\'intervention' : '?? Nouvelle intervention'}
         </h2>
         <button
           onClick={handleCancel}
@@ -277,7 +277,7 @@ const InterventionForm = () => {
               style={inputStyle}
               required
             >
-              <option value="">Sélectionner un patient</option>
+              <option value="">Slectionner un patient</option>
               {patients.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.nom} {p.prenom} ({p.numero_dossier})
@@ -293,17 +293,17 @@ const InterventionForm = () => {
               onChange={handleChange}
               style={inputStyle}
             >
-              <option value="">Sélectionner une salle</option>
+              <option value="">Slectionner une salle</option>
               {salles.map(s => (
                 <option key={s.id} value={s.id}>
-                  {s.nom} {s.numero ? `(n°${s.numero})` : ''}
+                  {s.nom} {s.numero ? `(n${s.numero})` : ''}
                 </option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Type, Date, Durée */}
+        {/* Type, Date, Dure */}
         <div style={rowStyle}>
           <div>
             <label style={labelStyle}>Type d'intervention</label>
@@ -329,10 +329,10 @@ const InterventionForm = () => {
           </div>
         </div>
 
-        {/* Durée et Priorité */}
+        {/* Dure et Priorit */}
         <div style={rowStyle}>
           <div>
-            <label style={labelStyle}>Durée estimée (minutes)</label>
+            <label style={labelStyle}>Dure estime (minutes)</label>
             <input
               type="number"
               name="duree_estimee"
@@ -344,14 +344,14 @@ const InterventionForm = () => {
             />
           </div>
           <div>
-            <label style={labelStyle}>Priorité</label>
+            <label style={labelStyle}>Priorit</label>
             <select
               name="priorite"
               value={formData.priorite}
               onChange={handleChange}
               style={inputStyle}
             >
-              <option value="elective">Élective</option>
+              <option value="elective">lective</option>
               <option value="normale">Normale</option>
               <option value="urgente">Urgente</option>
             </select>
@@ -368,7 +368,7 @@ const InterventionForm = () => {
               onChange={handleChange}
               style={inputStyle}
             >
-              <option value="">Sélectionner un chirurgien</option>
+              <option value="">Slectionner un chirurgien</option>
               {medecins.map(m => (
                 <option key={m.id} value={m.id}>
                   {m.nom} {m.prenom}
@@ -391,21 +391,21 @@ const InterventionForm = () => {
                 </option>
               ))}
             </select>
-            <small style={{ color: '#6b7280', fontSize: '12px' }}>Maintenez Ctrl (ou Cmd) pour sélection multiple</small>
+            <small style={{ color: '#6b7280', fontSize: '12px' }}>Maintenez Ctrl (ou Cmd) pour slection multiple</small>
           </div>
         </div>
 
-        {/* Infirmières et Anesthésiste */}
+        {/* Infirmires et Anesthsiste */}
         <div style={rowStyle}>
           <div>
-            <label style={labelStyle}>Infirmière scolper</label>
+            <label style={labelStyle}>Infirmire scolper</label>
             <select
               name="infirmiere_scolper"
               value={formData.infirmiere_scolper}
               onChange={handleChange}
               style={inputStyle}
             >
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {infirmieres.map(i => (
                 <option key={i.id} value={i.id}>
                   {i.nom} {i.prenom}
@@ -414,14 +414,14 @@ const InterventionForm = () => {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Infirmière circulante</label>
+            <label style={labelStyle}>Infirmire circulante</label>
             <select
               name="infirmiere_circulante"
               value={formData.infirmiere_circulante}
               onChange={handleChange}
               style={inputStyle}
             >
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {infirmieres.map(i => (
                 <option key={i.id} value={i.id}>
                   {i.nom} {i.prenom}
@@ -432,14 +432,14 @@ const InterventionForm = () => {
         </div>
 
         <div style={fullRowStyle}>
-          <label style={labelStyle}>Anesthésiste</label>
+          <label style={labelStyle}>Anesthsiste</label>
           <select
             name="anesthesiste_id"
             value={formData.anesthesiste_id}
             onChange={handleChange}
             style={inputStyle}
           >
-            <option value="">Sélectionner</option>
+            <option value="">Slectionner</option>
             {anesthesistes.map(a => (
               <option key={a.id} value={a.id}>
                 {a.nom} {a.prenom}
@@ -450,13 +450,13 @@ const InterventionForm = () => {
 
         {/* Notes et motifs */}
         <div style={fullRowStyle}>
-          <label style={labelStyle}>Notes pré-opératoires</label>
+          <label style={labelStyle}>Notes pr-opratoires</label>
           <textarea
             name="notes_preoperatoires"
             value={formData.notes_preoperatoires}
             onChange={handleChange}
             style={{ ...inputStyle, minHeight: '80px' }}
-            placeholder="Informations complémentaires"
+            placeholder="Informations complmentaires"
           />
         </div>
 
@@ -471,7 +471,7 @@ const InterventionForm = () => {
           />
         </div>
 
-        {/* Si édition, afficher le statut actuel (non modifiable dans ce formulaire) */}
+        {/* Si dition, afficher le statut actuel (non modifiable dans ce formulaire) */}
         {isEdit && (
           <div style={fullRowStyle}>
             <label style={labelStyle}>Statut (modifiable depuis la liste)</label>
@@ -519,7 +519,7 @@ const InterventionForm = () => {
             }}
           >
             {submitting ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> : <FaSave />}
-            {isEdit ? 'Mettre à jour' : 'Créer l\'intervention'}
+            {isEdit ? 'Mettre  jour' : 'Crer l\'intervention'}
           </button>
         </div>
       </form>

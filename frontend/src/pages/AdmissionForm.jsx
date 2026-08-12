@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api'; // Import de l'instance Axios configurée
+import api from '../services/api'; // Import de l'instance Axios configure
 
 const AdmissionForm = () => {
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ const AdmissionForm = () => {
   });
 
   useEffect(() => {
-    // Patients hospitalisés (non sortis)
+    // Patients hospitaliss (non sortis)
     api.get('/patients')
       .then(res => setPatients(res.data.filter(p => p.statut !== 'sorti')))
       .catch(err => console.error('Erreur chargement patients :', err));
@@ -29,10 +29,10 @@ const AdmissionForm = () => {
     api.get('/consultations/services')
       .then(res => setServices(res.data))
       .catch(err => console.error('Erreur chargement services :', err));
-    // Médecins
+    // Mdecins
     api.get('/consultations/medecins')
       .then(res => setMedecins(res.data))
-      .catch(err => console.error('Erreur chargement médecins :', err));
+      .catch(err => console.error('Erreur chargement mdecins :', err));
   }, []);
 
   const handleChange = (e) => {
@@ -43,11 +43,11 @@ const AdmissionForm = () => {
     e.preventDefault();
     try {
       await api.post('/consultations/admissions', form);
-      alert('Patient admis avec succès �FC� séjour créé');
+      alert('Patient admis avec succs ?FC? sjour cr');
       navigate('/patients');
     } catch (err) {
-      console.error('Erreur lors de l�FC�admission :', err);
-      alert('Erreur lors de l�FC�admission');
+      console.error('Erreur lors de l?FC?admission :', err);
+      alert('Erreur lors de l?FC?admission');
     }
   };
 
@@ -83,9 +83,9 @@ const AdmissionForm = () => {
           </select>
         </div>
         <div>
-          <label className="block font-medium">Médecin référent</label>
+          <label className="block font-medium">Mdecin rfrent</label>
           <select name="medecin_referent_id" value={form.medecin_referent_id} onChange={handleChange} className="w-full border p-2 rounded">
-            <option value="">Choisir un médecin</option>
+            <option value="">Choisir un mdecin</option>
             {medecins.map(m => (
               <option key={m.id} value={m.id}>{m.nom} {m.prenom}</option>
             ))}

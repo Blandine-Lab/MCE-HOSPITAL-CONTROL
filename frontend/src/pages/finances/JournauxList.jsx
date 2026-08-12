@@ -11,7 +11,7 @@ const JournauxList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,7 +19,7 @@ const JournauxList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -48,26 +48,26 @@ const JournauxList = () => {
     fetchJournaux();
   }, []);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce journal ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement ce journal ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/journaux/${id}`);
       setJournaux(journaux.filter(j => j.id !== id));
-      showToast('Journal supprimé avec succès');
+      showToast('Journal supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression journal:', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un journal.', 'error');
+        showToast('? Seul un administrateur peut supprimer un journal.', 'error');
       } else {
-        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -111,7 +111,7 @@ const JournauxList = () => {
                       <FaTrash />
                     </button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

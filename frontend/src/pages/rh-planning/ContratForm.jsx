@@ -1,4 +1,4 @@
-﻿// src/pages/rh-planning/ContratForm.jsx
+// src/pages/rh-planning/ContratForm.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import api from '../../axios';
@@ -85,7 +85,7 @@ const ContratForm = () => {
     }
   };
 
-  if (loading && isEdit) return <div style={{ padding: 40, textAlign: 'center' }}>⏳ Chargement...</div>;
+  if (loading && isEdit) return <div style={{ padding: 40, textAlign: 'center' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -97,9 +97,9 @@ const ContratForm = () => {
         {error && <div style={{ color: '#ef4444', padding: 12, backgroundColor: '#fee2e2', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employé *</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employï *</label>
             <select name="employe_id" value={formData.employe_id} onChange={handleChange} required style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}>
-              <option value="">Sélectionner</option>
+              <option value="">Sïlectionner</option>
               {employes.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}
             </select>
           </div>
@@ -108,14 +108,14 @@ const ContratForm = () => {
             <select name="type" value={formData.type} onChange={handleChange} required style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}>
               <option value="CDI">CDI</option>
               <option value="CDD">CDD</option>
-              <option value="Intérim">Intérim</option>
+              <option value="Intïrim">Intïrim</option>
               <option value="Stage">Stage</option>
               <option value="Apprentissage">Apprentissage</option>
               <option value="Autre">Autre</option>
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Date début *</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Date dïbut *</label>
             <input type="date" name="date_debut" value={formData.date_debut} onChange={handleChange} required style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
           <div>
@@ -130,8 +130,8 @@ const ContratForm = () => {
             <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Statut</label>
             <select name="statut" value={formData.statut} onChange={handleChange} style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}>
               <option value="actif">Actif</option>
-              <option value="expiré">Expiré</option>
-              <option value="résilié">Résilié</option>
+              <option value="expirï">Expirï</option>
+              <option value="rïsiliï">Rïsiliï</option>
             </select>
           </div>
           <div style={{ gridColumn: 'span 2' }}>

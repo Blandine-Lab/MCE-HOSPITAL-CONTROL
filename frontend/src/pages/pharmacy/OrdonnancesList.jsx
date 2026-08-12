@@ -17,7 +17,7 @@ const OrdonnancesList = () => {
   const [password, setPassword] = useState('');
   const [delivering, setDelivering] = useState(false);
 
-  // Récupérer les ordonnances en attente
+  // Rcuprer les ordonnances en attente
   const fetchOrdonnances = async () => {
     try {
       const res = await api.get('/pharmacy/ordonnances/en-attente');
@@ -36,29 +36,29 @@ const OrdonnancesList = () => {
     fetchOrdonnances();
   }, []);
 
-  // Voir les détails d'une ordonnance (lignes)
+  // Voir les dtails d'une ordonnance (lignes)
   const viewOrdonnance = async (id) => {
     try {
       const res = await api.get(`/pharmacy/ordonnances/${id}/lignes`);
       const lignesData = res.data;
       setSelectedOrdonnance({ id, ...res.data });
       setLignes(lignesData);
-      // Initialiser les états pour chaque ligne
+      // Initialiser les tats pour chaque ligne
       const initialLots = {};
       const initialQuantites = {};
       for (let i = 0; i < lignesData.length; i++) {
         const ligne = lignesData[i];
-        initialQuantites[i] = ligne.quantite_prescrit - (ligne.quantite_delivree || 0); // reste à délivrer
-        // Récupérer les lots disponibles pour ce médicament
+        initialQuantites[i] = ligne.quantite_prescrit - (ligne.quantite_delivree || 0); // reste  dlivrer
+        // Rcuprer les lots disponibles pour ce mdicament
         try {
           const lotsRes = await api.get(`/pharmacy/lots/disponibles/${ligne.medicament_id}`);
           if (lotsRes.data.length > 0) {
-            initialLots[i] = lotsRes.data[0].id; // pré-sélectionner le premier lot
+            initialLots[i] = lotsRes.data[0].id; // pr-slectionner le premier lot
           }
-          // Stocker la liste des lots pour ce médicament
+          // Stocker la liste des lots pour ce mdicament
           setLotsDisponibles(prev => ({ ...prev, [ligne.medicament_id]: lotsRes.data }));
         } catch (err) {
-          console.error('Erreur chargement lots pour médicament', ligne.medicament_id);
+          console.error('Erreur chargement lots pour mdicament', ligne.medicament_id);
         }
       }
       setSelectedLots(initialLots);
@@ -72,19 +72,19 @@ const OrdonnancesList = () => {
     }
   };
 
-  // Délivrer une ligne
+  // Dlivrer une ligne
   const deliverLine = async (ligneIndex) => {
     const ligne = lignes[ligneIndex];
     const lotId = selectedLots[ligneIndex];
     const quantite = quantites[ligneIndex];
     if (!lotId) {
-      setToast('Veuillez sélectionner un lot');
+      setToast('Veuillez slectionner un lot');
       setToastType('error');
       setTimeout(() => setToast(null), 3000);
       return;
     }
     if (!quantite || quantite <= 0) {
-      setToast('Quantité invalide');
+      setToast('Quantit invalide');
       setToastType('error');
       setTimeout(() => setToast(null), 3000);
       return;
@@ -109,19 +109,19 @@ const OrdonnancesList = () => {
         password: password
       };
       await api.post('/pharmacy/delivrance', payload);
-      setToast('✅ Délivrance enregistrée');
+      setToast('? Dlivrance enregistre');
       setToastType('success');
       setTimeout(() => setToast(null), 3000);
       // Recharger la liste des ordonnances et fermer la modal
       fetchOrdonnances();
       setShowModal(false);
     } catch (err) {
-      console.error('Erreur délivrance:', err);
+      console.error('Erreur dlivrance:', err);
       let msg = err.response?.data?.error || err.message;
       if (err.response?.status === 403) {
-        msg = 'Mot de passe incorrect. Veuillez réessayer.';
+        msg = 'Mot de passe incorrect. Veuillez ressayer.';
       }
-      setToast('❌ Erreur : ' + msg);
+      setToast('? Erreur : ' + msg);
       setToastType('error');
       setTimeout(() => setToast(null), 3000);
     } finally {
@@ -129,7 +129,7 @@ const OrdonnancesList = () => {
     }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
 
   return (
     <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
@@ -149,7 +149,7 @@ const OrdonnancesList = () => {
         </div>
       )}
 
-      <h2 style={{ marginBottom: '20px' }}>📋 Ordonnances en attente de délivrance</h2>
+      <h2 style={{ marginBottom: '20px' }}>?? Ordonnances en attente de dlivrance</h2>
 
       {ordonnances.length === 0 ? (
         <p>Aucune ordonnance en attente.</p>
@@ -157,9 +157,9 @@ const OrdonnancesList = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>N°</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>N</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Patient</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Médecin</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Mdecin</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Date</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Statut</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Actions</th>
@@ -180,8 +180,8 @@ const OrdonnancesList = () => {
                     borderRadius: '20px',
                     fontSize: '12px'
                   }}>
-                    {ord.statut === 'en_attente' ? '⏳ En attente' : 
-                     ord.statut === 'partiellement_delivree' ? '⚠️ Partielle' : '✅ Délivrée'}
+                    {ord.statut === 'en_attente' ? '? En attente' : 
+                     ord.statut === 'partiellement_delivree' ? '?? Partielle' : '? Dlivre'}
                   </span>
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>
@@ -189,7 +189,7 @@ const OrdonnancesList = () => {
                     onClick={() => viewOrdonnance(ord.id)}
                     style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
                   >
-                    <FaEye /> Détails
+                    <FaEye /> Dtails
                   </button>
                 </td>
               </tr>
@@ -222,20 +222,20 @@ const OrdonnancesList = () => {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2>Ordonnance ORD-{String(selectedOrdonnance.id).padStart(4, '0')}</h2>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>×</button>
+              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}></button>
             </div>
             <p><strong>Patient :</strong> {selectedOrdonnance.patient_prenom} {selectedOrdonnance.patient_nom}</p>
-            <p><strong>Médecin :</strong> Dr. {selectedOrdonnance.medecin_prenom} {selectedOrdonnance.medecin_nom}</p>
+            <p><strong>Mdecin :</strong> Dr. {selectedOrdonnance.medecin_prenom} {selectedOrdonnance.medecin_nom}</p>
             <p><strong>Date :</strong> {new Date(selectedOrdonnance.date_prescription).toLocaleString()}</p>
             {selectedOrdonnance.observations && <p><strong>Observations :</strong> {selectedOrdonnance.observations}</p>}
 
-            <h3 style={{ marginTop: '20px', marginBottom: '10px' }}>💊 Médicaments prescrits</h3>
+            <h3 style={{ marginTop: '20px', marginBottom: '10px' }}>?? Mdicaments prescrits</h3>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Médicament</th>
+                  <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Mdicament</th>
                   <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Prescrit</th>
-                  <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Délivré</th>
+                  <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Dlivr</th>
                   <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Reste</th>
                   <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Lot</th>
                   <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Action</th>
@@ -260,7 +260,7 @@ const OrdonnancesList = () => {
                           <option value="">-- Choisir un lot --</option>
                           {(lotsDisponibles[ligne.medicament_id] || []).map(lot => (
                             <option key={lot.id} value={lot.id}>
-                              {lot.numero_lot} (pér. {new Date(lot.date_peremption).toLocaleDateString()}, stock {lot.stock_actuel})
+                              {lot.numero_lot} (pr. {new Date(lot.date_peremption).toLocaleDateString()}, stock {lot.stock_actuel})
                             </option>
                           ))}
                         </select>
@@ -281,7 +281,7 @@ const OrdonnancesList = () => {
                               disabled={delivering}
                               style={{ background: '#16a34a', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
                             >
-                              <FaCheck /> Délivrer
+                              <FaCheck /> Dlivrer
                             </button>
                           </div>
                         )}

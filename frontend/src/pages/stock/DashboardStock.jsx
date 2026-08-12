@@ -27,7 +27,7 @@ const DashboardStock = () => {
     }).catch(console.error);
   }, []);
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>

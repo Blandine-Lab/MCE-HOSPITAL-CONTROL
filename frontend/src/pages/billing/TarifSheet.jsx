@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from 'react';
-import api from '../../axios'; // ✅ Instance avec intercepteur
+import { useEffect, useState } from 'react';
+import api from '../../axios'; // ? Instance avec intercepteur
 import { FaPrint, FaSearch, FaFileInvoice } from 'react-icons/fa';
 
 const TarifSheet = () => {
@@ -20,7 +20,7 @@ const TarifSheet = () => {
         setLoaded(true);
       })
       .catch(err => {
-        console.error('❌ Erreur chargement tarifs:', err);
+        console.error('? Erreur chargement tarifs:', err);
         setToast('Erreur chargement des prestations');
         setTimeout(() => setToast(null), 3000);
         setLoading(false);
@@ -116,7 +116,7 @@ const TarifSheet = () => {
     zIndex: 1000
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
 
   return (
     <div style={containerStyle}>
@@ -134,19 +134,19 @@ const TarifSheet = () => {
           {toast}
         </div>
       )}
-      <h1 style={titleStyle}>📄 Fiche tarifaire des prestations</h1>
+      <h1 style={titleStyle}>?? Fiche tarifaire des prestations</h1>
       <p style={subtitleStyle}>Tarifs CCAM, NGAP et actes hospitaliers</p>
       <div style={searchBarStyle}>
         <input
           type="text"
-          placeholder="Rechercher par code ou libellé..."
+          placeholder="Rechercher par code ou libellï..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={searchInputStyle}
         />
       </div>
       {categories.length === 0 && (
-        <p style={{ textAlign: 'center', color: '#6b7280' }}>Aucune catégorie trouvée.</p>
+        <p style={{ textAlign: 'center', color: '#6b7280' }}>Aucune catïgorie trouvïe.</p>
       )}
       {categories.map(cat => {
         const filtered = filteredByCat(cat);
@@ -158,7 +158,7 @@ const TarifSheet = () => {
               <thead>
                 <tr>
                   <th style={thStyle}>Code</th>
-                  <th style={thStyle}>Libellé</th>
+                  <th style={thStyle}>Libellï</th>
                   <th style={thStyle}>Prix unitaire (FC)</th>
                 </tr>
               </thead>

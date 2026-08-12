@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partage
 
 const PatientForm = () => {
   const { id } = useParams();
@@ -28,7 +28,7 @@ const PatientForm = () => {
 
   useEffect(() => {
     if (id) {
-      api.get(`/patients/${id}`) // ✅ Suppression de l'URL absolue
+      api.get(`/patients/${id}`) // ? Suppression de l'URL absolue
         .then(res => {
           const patient = res.data;
           if (patient.date_naissance) patient.date_naissance = patient.date_naissance.split('T')[0];
@@ -55,7 +55,7 @@ const PatientForm = () => {
       navigate('/patients');
     } catch (err) {
       console.error(err);
-      alert('Erreur lors de l�FC�enregistrement');
+      alert('Erreur lors de l?FC?enregistrement');
     }
   };
 
@@ -80,41 +80,41 @@ const PatientForm = () => {
         <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom: '24px' }}>{id ? 'Modifier' : 'Nouveau'} patient</h1>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-            <div><label style={labelStyle}>N° IPP *</label><input name="ipp" value={form.ipp ?? ''} onChange={handleChange} style={inputStyle} required /></div>
+            <div><label style={labelStyle}>N IPP *</label><input name="ipp" value={form.ipp ?? ''} onChange={handleChange} style={inputStyle} required /></div>
             <div><label style={labelStyle}>Nom *</label><input name="nom" value={form.nom ?? ''} onChange={handleChange} style={inputStyle} required /></div>
-            <div><label style={labelStyle}>Prénom *</label><input name="prenom" value={form.prenom ?? ''} onChange={handleChange} style={inputStyle} required /></div>
+            <div><label style={labelStyle}>Prnom *</label><input name="prenom" value={form.prenom ?? ''} onChange={handleChange} style={inputStyle} required /></div>
             <div><label style={labelStyle}>Date naissance</label><input type="date" name="date_naissance" value={form.date_naissance ?? ''} onChange={handleChange} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Téléphone</label><input name="telephone" value={form.telephone ?? ''} onChange={handleChange} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Tlphone</label><input name="telephone" value={form.telephone ?? ''} onChange={handleChange} style={inputStyle} /></div>
             <div><label style={labelStyle}>Email</label><input type="email" name="email" value={form.email ?? ''} onChange={handleChange} style={inputStyle} /></div>
             <div style={{ gridColumn: 'span 2' }}><label style={labelStyle}>Adresse</label><input name="adresse" value={form.adresse ?? ''} onChange={handleChange} style={inputStyle} /></div>
             <div><label style={labelStyle}>Date d'admission</label><input type="date" name="date_admission" value={form.date_admission ?? ''} onChange={handleChange} style={inputStyle} /></div>
           </div>
 
           <div style={{ borderTop: '1px solid #ccc', paddingTop: '16px', marginTop: '8px' }}>
-            <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '12px' }}>👤 Personne à prévenir 1</h3>
+            <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '12px' }}>?? Personne  prvenir 1</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
               <div><label style={labelStyle}>Nom complet</label><input name="personne_a_prevenir_nom1" value={form.personne_a_prevenir_nom1 ?? ''} onChange={handleChange} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Téléphone</label><input name="personne_a_prevenir_tel1" value={form.personne_a_prevenir_tel1 ?? ''} onChange={handleChange} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Tlphone</label><input name="personne_a_prevenir_tel1" value={form.personne_a_prevenir_tel1 ?? ''} onChange={handleChange} style={inputStyle} /></div>
               <div><label style={labelStyle}>Adresse</label><input name="personne_a_prevenir_adresse1" value={form.personne_a_prevenir_adresse1 ?? ''} onChange={handleChange} style={inputStyle} /></div>
             </div>
           </div>
 
           <div style={{ borderTop: '1px solid #ccc', paddingTop: '16px', marginTop: '16px' }}>
-            <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '12px' }}>👤 Personne à prévenir 2</h3>
+            <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '12px' }}>?? Personne  prvenir 2</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
               <div><label style={labelStyle}>Nom complet</label><input name="personne_a_prevenir_nom2" value={form.personne_a_prevenir_nom2 ?? ''} onChange={handleChange} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Téléphone</label><input name="personne_a_prevenir_tel2" value={form.personne_a_prevenir_tel2 ?? ''} onChange={handleChange} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Tlphone</label><input name="personne_a_prevenir_tel2" value={form.personne_a_prevenir_tel2 ?? ''} onChange={handleChange} style={inputStyle} /></div>
               <div><label style={labelStyle}>Adresse</label><input name="personne_a_prevenir_adresse2" value={form.personne_a_prevenir_adresse2 ?? ''} onChange={handleChange} style={inputStyle} /></div>
             </div>
           </div>
 
           <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div><label style={labelStyle}>Antécédents médicaux</label><textarea name="antecedents" rows="3" value={form.antecedents ?? ''} onChange={handleChange} style={{ ...inputStyle, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Antcdents mdicaux</label><textarea name="antecedents" rows="3" value={form.antecedents ?? ''} onChange={handleChange} style={{ ...inputStyle, resize: 'vertical' }} /></div>
             <div><label style={labelStyle}>Allergies</label><textarea name="allergies" rows="2" value={form.allergies ?? ''} onChange={handleChange} style={{ ...inputStyle, resize: 'vertical' }} /></div>
             <div><label style={labelStyle}>Traitements en cours</label><textarea name="traitements" rows="2" value={form.traitements ?? ''} onChange={handleChange} style={{ ...inputStyle, resize: 'vertical' }} /></div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
               <input type="checkbox" name="consentements" checked={form.consentements || false} onChange={handleChange} style={{ width: '18px', height: '18px', border: '2px solid black' }} />
-              <span>Consentement signé</span>
+              <span>Consentement sign</span>
             </label>
           </div>
 

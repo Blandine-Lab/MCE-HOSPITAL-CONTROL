@@ -20,8 +20,8 @@ const InventaireDetail = () => {
       .catch(err => { console.error(err); setLoading(false); });
   }, [id]);
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center' }}>⏳ Chargement...</div>;
-  if (!inventaire) return <div style={{ padding: 60, textAlign: 'center' }}>Inventaire non trouvé</div>;
+  if (loading) return <div style={{ padding: 60, textAlign: 'center' }}>? Chargement...</div>;
+  if (!inventaire) return <div style={{ padding: 60, textAlign: 'center' }}>Inventaire non trouv</div>;
 
   const totalEcart = lignes.reduce((sum, l) => sum + (l.ecart || 0), 0);
 
@@ -35,8 +35,8 @@ const InventaireDetail = () => {
         <p><strong>Date :</strong> {new Date(inventaire.date).toLocaleDateString()}</p>
         <p><strong>Type :</strong> {inventaire.type}</p>
         <p><strong>Statut :</strong> {inventaire.statut}</p>
-        <p><strong>Notes :</strong> {inventaire.notes || '�FC�'}</p>
-        <p><strong>Écart total :</strong>
+        <p><strong>Notes :</strong> {inventaire.notes || '?FC?'}</p>
+        <p><strong>cart total :</strong>
           <span style={{
             fontWeight: 'bold',
             marginLeft: 8,
@@ -46,7 +46,7 @@ const InventaireDetail = () => {
           </span>
         </p>
 
-        <h3 style={{ marginTop: 24 }}>Détail des lignes</h3>
+        <h3 style={{ marginTop: 24 }}>Dtail des lignes</h3>
         {lignes.length === 0 ? (
           <p>Aucune ligne d'inventaire.</p>
         ) : (
@@ -55,9 +55,9 @@ const InventaireDetail = () => {
               <thead style={{ backgroundColor: '#f1f5f9' }}>
                 <tr>
                   <th style={{ padding: '10px', textAlign: 'left' }}>Produit</th>
-                  <th style={{ padding: '10px', textAlign: 'center' }}>Quantité théorique</th>
-                  <th style={{ padding: '10px', textAlign: 'center' }}>Quantité réelle</th>
-                  <th style={{ padding: '10px', textAlign: 'center' }}>Écart</th>
+                  <th style={{ padding: '10px', textAlign: 'center' }}>Quantit thorique</th>
+                  <th style={{ padding: '10px', textAlign: 'center' }}>Quantit relle</th>
+                  <th style={{ padding: '10px', textAlign: 'center' }}>cart</th>
                 </tr>
               </thead>
               <tbody>

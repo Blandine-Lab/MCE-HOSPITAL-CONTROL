@@ -10,9 +10,9 @@ const InterventionsList = () => {
   const [toast, setToast] = useState(null);
   const [filters, setFilters] = useState({ statut: '', date_debut: '', date_fin: '' });
   const [updatingId, setUpdatingId] = useState(null);
-  const [userRole, setUserRole] = useState(null); // ✅ Rôle de l'utilisateur
+  const [userRole, setUserRole] = useState(null); // ? Rle de l'utilisateur
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,13 +20,13 @@ const InterventionsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return '�FC�';
+    if (!dateStr) return '?FC?';
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return 'Date invalide';
     return d.toLocaleString('fr-FR', {
@@ -60,19 +60,19 @@ const InterventionsList = () => {
     loadInterventions();
   }, [filters]);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (window.confirm('⚠️ Confirmer l�FC�annulation de cette intervention ? Cette action est irréversible.')) {
+    if (window.confirm('?? Confirmer l?FC?annulation de cette intervention ? Cette action est irrversible.')) {
       try {
         await api.delete(`/bloc/interventions/${id}`);
-        setToast('Intervention annulée');
+        setToast('Intervention annule');
         setTimeout(() => setToast(null), 3000);
         loadInterventions();
       } catch (err) {
         if (err.response?.status === 403) {
-          setToast('❌ Seul un administrateur peut annuler/supprimer une intervention.');
+          setToast('? Seul un administrateur peut annuler/supprimer une intervention.');
         } else {
-          setToast('Erreur lors de l�FC�annulation');
+          setToast('Erreur lors de l?FC?annulation');
         }
         setTimeout(() => setToast(null), 3000);
       }
@@ -83,11 +83,11 @@ const InterventionsList = () => {
     setUpdatingId(id);
     try {
       await api.put(`/bloc/interventions/${id}`, { statut: newStatut });
-      setToast(`Statut mis à jour : ${getStatusLabel(newStatut)}`);
+      setToast(`Statut mis  jour : ${getStatusLabel(newStatut)}`);
       setTimeout(() => setToast(null), 3000);
       loadInterventions();
     } catch (err) {
-      setToast('Erreur lors de la mise à jour du statut');
+      setToast('Erreur lors de la mise  jour du statut');
       setTimeout(() => setToast(null), 3000);
     } finally {
       setUpdatingId(null);
@@ -106,10 +106,10 @@ const InterventionsList = () => {
 
   const getStatusLabel = (statut) => {
     const labels = {
-      planifiee: 'Planifiée',
+      planifiee: 'Planifie',
       en_cours: 'En cours',
-      terminee: 'Terminée',
-      annulee: 'Annulée'
+      terminee: 'Termine',
+      annulee: 'Annule'
     };
     return labels[statut] || statut;
   };
@@ -146,7 +146,7 @@ const InterventionsList = () => {
       {toast && (
         <div style={{
           position: 'fixed', top: '20px', right: '20px',
-          backgroundColor: toast.includes('Erreur') || toast.includes('❌') ? '#ef4444' : '#10b981',
+          backgroundColor: toast.includes('Erreur') || toast.includes('?') ? '#ef4444' : '#10b981',
           color: 'white',
           padding: '12px 24px',
           borderRadius: '8px',
@@ -159,7 +159,7 @@ const InterventionsList = () => {
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', margin: 0 }}>📋 Interventions chirurgicales</h2>
+        <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', margin: 0 }}>?? Interventions chirurgicales</h2>
         <Link to="/bloc/interventions/nouveau" style={{ backgroundColor: '#2563eb', color: 'white', padding: '8px 20px', borderRadius: '8px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', border: 'none', cursor: 'pointer' }}>
           <FaPlus /> Nouvelle intervention
         </Link>
@@ -169,10 +169,10 @@ const InterventionsList = () => {
         <FaFilter style={{ color: '#6b7280' }} />
         <select value={filters.statut} onChange={(e) => setFilters({...filters, statut: e.target.value})} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', backgroundColor: 'white' }}>
           <option value="">Tous statuts</option>
-          <option value="planifiee">Planifiée</option>
+          <option value="planifiee">Planifie</option>
           <option value="en_cours">En cours</option>
-          <option value="terminee">Terminée</option>
-          <option value="annulee">Annulée</option>
+          <option value="terminee">Termine</option>
+          <option value="annulee">Annule</option>
         </select>
         <input
           type="date"
@@ -187,13 +187,13 @@ const InterventionsList = () => {
           style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db' }}
         />
         <button onClick={() => setFilters({ statut: '', date_debut: '', date_fin: '' })} style={{ padding: '6px 16px', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>
-          Réinitialiser
+          Rinitialiser
         </button>
       </div>
 
       {interventions.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-          <p>Aucune intervention trouvée pour ces critères.</p>
+          <p>Aucune intervention trouve pour ces critres.</p>
         </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
@@ -205,7 +205,7 @@ const InterventionsList = () => {
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Salle</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Date / Heure</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Chirurgien</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Priorité</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Priorit</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Statut</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Actions</th>
               </tr>
@@ -243,19 +243,19 @@ const InterventionsList = () => {
                         marginRight: '8px'
                       }}
                     >
-                      <option value="planifiee">Planifiée</option>
+                      <option value="planifiee">Planifie</option>
                       <option value="en_cours">En cours</option>
-                      <option value="terminee">Terminée</option>
-                      <option value="annulee">Annulée</option>
+                      <option value="terminee">Termine</option>
+                      <option value="annulee">Annule</option>
                     </select>
                     <Link to={`/bloc/interventions/${inter.id}/edit`}>
                       <FaEdit style={{ color: '#2563eb', marginRight: '12px', cursor: 'pointer' }} />
                     </Link>
-                    {/* ✅ Bouton supprimer visible uniquement pour admin */}
+                    {/* ? Bouton supprimer visible uniquement pour admin */}
                     {isAdmin ? (
                       <FaTrash style={{ color: '#ef4444', cursor: 'pointer' }} onClick={() => handleDelete(inter.id)} />
                     ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                     )}
                   </td>
                 </tr>

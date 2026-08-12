@@ -1,4 +1,4 @@
-﻿// src/pages/rh-planning/ContratDetail.jsx
+// src/pages/rh-planning/ContratDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../axios';
@@ -24,8 +24,8 @@ const ContratDetail = () => {
     } catch (err) { alert('Erreur suppression'); }
   };
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center' }}>⏳ Chargement...</div>;
-  if (!contrat) return <div style={{ padding: 60, textAlign: 'center' }}>Contrat non trouvé</div>;
+  if (loading) return <div style={{ padding: 60, textAlign: 'center' }}>? Chargement...</div>;
+  if (!contrat) return <div style={{ padding: 60, textAlign: 'center' }}>Contrat non trouvï</div>;
 
   return (
     <div>
@@ -43,7 +43,7 @@ const ContratDetail = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20 }}>
           <p><strong>Type :</strong> {contrat.type}</p>
           <p><strong>Statut :</strong> <span style={{ backgroundColor: contrat.statut === 'actif' ? '#d1fae5' : '#fee2e2', padding: '2px 10px', borderRadius: 20 }}>{contrat.statut}</span></p>
-          <p><strong>Date début :</strong> {new Date(contrat.date_debut).toLocaleDateString('fr-FR')}</p>
+          <p><strong>Date dïbut :</strong> {new Date(contrat.date_debut).toLocaleDateString('fr-FR')}</p>
           <p><strong>Date fin :</strong> {contrat.date_fin ? new Date(contrat.date_fin).toLocaleDateString('fr-FR') : 'FC'}</p>
           <p><strong>Salaire :</strong> {contrat.salaire ? `${parseFloat(contrat.salaire).toFixed(2)} FC` : 'FC'}</p>
           <p><strong>Commentaire :</strong> {contrat.commentaire || 'FC'}</p>

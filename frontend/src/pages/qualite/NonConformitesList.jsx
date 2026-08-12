@@ -12,7 +12,7 @@ const NonConformitesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const NonConformitesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -41,7 +41,7 @@ const NonConformitesList = () => {
       })
       .catch(err => {
         console.error(err);
-        showToast('Erreur chargement non-conformités', 'error');
+        showToast('Erreur chargement non-conformits', 'error');
         setLoading(false);
       });
   };
@@ -50,17 +50,17 @@ const NonConformitesList = () => {
     fetchItems();
   }, [filter]);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id, numero) => {
-    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer la non-conformité n°${numero} ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`?? Voulez-vous vraiment supprimer la non-conformit n${numero} ? Cette action est irrversible.`)) return;
     try {
       await api.delete(`/non-conformites/${id}`);
       setItems(items.filter(item => item.id !== id));
-      showToast('Non-conformité supprimée avec succès');
+      showToast('Non-conformit supprime avec succs');
     } catch (err) {
       console.error(err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer une non-conformité.', 'error');
+        showToast('? Seul un administrateur peut supprimer une non-conformit.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -74,7 +74,7 @@ const NonConformitesList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -95,7 +95,7 @@ const NonConformitesList = () => {
         </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-        <h1 style={{ fontSize: '28px', color: '#0f172a' }}><FaTimes style={{ color: '#ef4444', marginRight: '12px' }} /> Non-conformités</h1>
+        <h1 style={{ fontSize: '28px', color: '#0f172a' }}><FaTimes style={{ color: '#ef4444', marginRight: '12px' }} /> Non-conformits</h1>
         <Link to="/qualite/non-conformites/nouveau" style={{ backgroundColor: '#ef4444', color: 'white', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <FaPlus /> Ajouter
         </Link>
@@ -106,14 +106,14 @@ const NonConformitesList = () => {
           <option value="">Tous statuts</option>
           <option value="ouverte">Ouverte</option>
           <option value="en_cours">En cours</option>
-          <option value="resolue">Résolue</option>
-          <option value="fermee">Fermée</option>
+          <option value="resolue">Rsolue</option>
+          <option value="fermee">Ferme</option>
         </select>
       </div>
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
-            <tr><th>N° NC</th><th>Source</th><th>Description</th><th>Gravité</th><th>Service</th><th>Statut</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
+            <tr><th>N NC</th><th>Source</th><th>Description</th><th>Gravit</th><th>Service</th><th>Statut</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
           </thead>
           <tbody>
             {items.map((nc, i) => (
@@ -135,7 +135,7 @@ const NonConformitesList = () => {
                       <FaTrash />
                     </button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

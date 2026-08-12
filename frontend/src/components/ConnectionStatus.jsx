@@ -9,7 +9,7 @@ const ConnectionStatus = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
-  // Mettre à jour le nombre d'opérations en attente
+  // Mettre  jour le nombre d'oprations en attente
   const updatePendingCount = async () => {
     const count = await countPendingOperations();
     setPendingCount(count);
@@ -18,17 +18,17 @@ const ConnectionStatus = () => {
   // Synchroniser manuellement
   const handleSync = async () => {
     if (!online) {
-      alert('Impossible de synchroniser : vous êtes hors ligne');
+      alert('Impossible de synchroniser : vous tes hors ligne');
       return;
     }
     setSyncing(true);
     try {
       const result = await api.sync();
       await updatePendingCount();
-      alert(`✅ Synchronisation terminée : ${result.success} opérations synchronisées`);
+      alert(`? Synchronisation termine : ${result.success} oprations synchronises`);
     } catch (error) {
-      console.error('❌ Erreur synchronisation:', error);
-      alert('❌ Erreur lors de la synchronisation');
+      console.error('? Erreur synchronisation:', error);
+      alert('? Erreur lors de la synchronisation');
     } finally {
       setSyncing(false);
     }
@@ -38,7 +38,7 @@ const ConnectionStatus = () => {
     // Initialisation
     updatePendingCount();
 
-    // Écouter les changements de connexion
+    // couter les changements de connexion
     const cleanup = onConnectionChange((status) => {
       setOnline(status);
       if (status) {
@@ -49,7 +49,7 @@ const ConnectionStatus = () => {
       }
     });
 
-    // Rafraîchir le compteur toutes les 30 secondes
+    // Rafrachir le compteur toutes les 30 secondes
     const interval = setInterval(updatePendingCount, 30000);
 
     // Re-synchroniser toutes les 5 minutes en ligne

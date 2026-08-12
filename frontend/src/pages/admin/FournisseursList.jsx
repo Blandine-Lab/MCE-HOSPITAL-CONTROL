@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes } from 'react-icons/fa';
-import api from '../../axios'; // ✅ Instance partagée (authentification + refresh)
+import api from '../../axios'; // ? Instance partage (authentification + refresh)
 
 const FournisseursList = () => {
   const [fournisseurs, setFournisseurs] = useState([]);
@@ -10,9 +10,9 @@ const FournisseursList = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ nom: '', contact_email: '', telephone: '', adresse: '', actif: true });
   const [editId, setEditId] = useState(null);
-  const [userRole, setUserRole] = useState(null); // ✅ Rôle de l'utilisateur
+  const [userRole, setUserRole] = useState(null); // ? Rle de l'utilisateur
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const FournisseursList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -51,10 +51,10 @@ const FournisseursList = () => {
     try {
       if (editId) {
         await api.put(`/pharmacy/fournisseurs/${editId}`, form);
-        showToast('Fournisseur modifié');
+        showToast('Fournisseur modifi');
       } else {
         await api.post('/pharmacy/fournisseurs', form);
-        showToast('Fournisseur ajouté');
+        showToast('Fournisseur ajout');
       }
       setShowForm(false);
       setEditId(null);
@@ -66,16 +66,16 @@ const FournisseursList = () => {
     }
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce fournisseur ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement ce fournisseur ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/pharmacy/fournisseurs/${id}`);
       fetchFournisseurs();
-      showToast('Fournisseur supprimé');
+      showToast('Fournisseur supprim');
     } catch (err) {
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un fournisseur.', 'error');
+        showToast('? Seul un administrateur peut supprimer un fournisseur.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -116,7 +116,7 @@ const FournisseursList = () => {
       )}
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#166534', marginBottom: '24px' }}>
-          🏢 Gestion des Fournisseurs
+          ?? Gestion des Fournisseurs
         </h1>
 
         <div style={cardStyle}>
@@ -137,7 +137,7 @@ const FournisseursList = () => {
                   <th style={thStyle}>ID</th>
                   <th style={thStyle}>Nom</th>
                   <th style={thStyle}>Email</th>
-                  <th style={thStyle}>Téléphone</th>
+                  <th style={thStyle}>Tlphone</th>
                   <th style={thStyle}>Adresse</th>
                   <th style={thStyle}>Actif</th>
                   <th style={thStyle}>Actions</th>
@@ -151,7 +151,7 @@ const FournisseursList = () => {
                     <td style={tdStyle}>{f.contact_email || '-'}</td>
                     <td style={tdStyle}>{f.telephone || '-'}</td>
                     <td style={tdStyle}>{f.adresse || '-'}</td>
-                    <td style={tdStyle}>{f.actif ? '✅' : '❌'}</td>
+                    <td style={tdStyle}>{f.actif ? '?' : '?'}</td>
                     <td style={tdStyle}>
                       <button
                         onClick={() => { setEditId(f.id); setForm(f); setShowForm(true); }}
@@ -159,7 +159,7 @@ const FournisseursList = () => {
                       >
                         <FaEdit />
                       </button>
-                      {/* ✅ Bouton supprimer visible uniquement pour admin */}
+                      {/* ? Bouton supprimer visible uniquement pour admin */}
                       {isAdmin ? (
                         <button
                           onClick={() => handleDelete(f.id)}
@@ -168,7 +168,7 @@ const FournisseursList = () => {
                           <FaTrash />
                         </button>
                       ) : (
-                        <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                        <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                       )}
                     </td>
                   </tr>
@@ -179,7 +179,7 @@ const FournisseursList = () => {
         </div>
       </div>
 
-      {/* Modal Formulaire (inchangé) */}
+      {/* Modal Formulaire (inchang) */}
       {showForm && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '500px', maxWidth: '90%' }}>
@@ -187,7 +187,7 @@ const FournisseursList = () => {
             <form onSubmit={handleSubmit}>
               <input type="text" placeholder="Nom *" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <input type="email" placeholder="Email contact" value={form.contact_email} onChange={e => setForm({...form, contact_email: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
-              <input type="text" placeholder="Téléphone" value={form.telephone} onChange={e => setForm({...form, telephone: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
+              <input type="text" placeholder="Tlphone" value={form.telephone} onChange={e => setForm({...form, telephone: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <textarea placeholder="Adresse" value={form.adresse} onChange={e => setForm({...form, adresse: e.target.value})} rows="2" style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                 <input type="checkbox" checked={form.actif} onChange={e => setForm({...form, actif: e.target.checked})} />

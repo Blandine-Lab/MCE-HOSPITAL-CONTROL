@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from 'react';
-import api from '../../axios'; // ✅ Instance avec intercepteur
+import { useEffect, useState } from 'react';
+import api from '../../axios'; // ? Instance avec intercepteur
 import { Link } from 'react-router-dom';
 import { FaEye, FaFileInvoice, FaEuroSign, FaCalendarAlt, FaPlusCircle, FaHospital, FaUserMd } from 'react-icons/fa';
 
@@ -21,7 +21,7 @@ const FacturesList = () => {
       setLoading(false);
       setLoaded(true);
     } catch (err) {
-      console.error('❌ Erreur chargement factures:', err);
+      console.error('? Erreur chargement factures:', err);
       setLoading(false);
       setToast('Erreur chargement factures');
       setTimeout(() => setToast(null), 3000);
@@ -30,9 +30,9 @@ const FacturesList = () => {
 
   const getStatutBadge = (statut) => {
     const styles = {
-      impayee: { backgroundColor: '#ef4444', text: 'Impayée' },
+      impayee: { backgroundColor: '#ef4444', text: 'Impayïe' },
       partielle: { backgroundColor: '#f59e0b', text: 'Partielle' },
-      payee: { backgroundColor: '#10b981', text: 'Payée' }
+      payee: { backgroundColor: '#10b981', text: 'Payïe' }
     };
     const s = styles[statut] || styles.impayee;
     return <span style={{ backgroundColor: s.backgroundColor, color: 'white', padding: '4px 8px', borderRadius: '20px', fontSize: '12px' }}>{s.text}</span>;
@@ -74,17 +74,17 @@ const FacturesList = () => {
   const thStyle = { backgroundColor: '#1e3a8a', color: 'white', padding: '12px', textAlign: 'left', border: '1px solid #1e40af' };
   const tdStyle = { padding: '10px', border: '1px solid #e2e8f0' };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
 
   return (
     <div style={containerStyle}>
       {toast && <div style={{ position: 'fixed', top: '20px', right: '20px', backgroundColor: '#ef4444', color: 'white', padding: '12px 24px', borderRadius: '8px', zIndex: 1000 }}>{toast}</div>}
       <div style={innerStyle}>
-        <h1 style={titleStyle}>💳 Facturation & Tiers Payant</h1>
+        <h1 style={titleStyle}>?? Facturation & Tiers Payant</h1>
         <div style={headerStyle}>
           <input
             type="text"
-            placeholder="Rechercher par patient, n° facture, tiers payant..."
+            placeholder="Rechercher par patient, nï facture, tiers payant..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={searchInputStyle}
@@ -95,11 +95,11 @@ const FacturesList = () => {
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>N° Facture</th>
+                <th style={thStyle}>Nï Facture</th>
                 <th style={thStyle}>Patient</th>
-                <th style={thStyle}>Date émission</th>
+                <th style={thStyle}>Date ïmission</th>
                 <th style={thStyle}>Montant total</th>
-                <th style={thStyle}>Montant payé</th>
+                <th style={thStyle}>Montant payï</th>
                 <th style={thStyle}>Statut</th>
                 <th style={thStyle}>Assurance</th>
                 <th style={thStyle}>Type</th>

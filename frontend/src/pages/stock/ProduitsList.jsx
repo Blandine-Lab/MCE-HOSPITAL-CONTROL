@@ -12,7 +12,7 @@ const ProduitsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const ProduitsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -49,17 +49,17 @@ const ProduitsList = () => {
     fetchProduits();
   }, []);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id, nom) => {
-    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer le produit "${nom}" ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`?? Voulez-vous vraiment supprimer le produit "${nom}" ? Cette action est irrversible.`)) return;
     try {
       await api.delete(`/produits/${id}`);
       setProduits(produits.filter(p => p.id !== id));
-      showToast('Produit supprimé avec succès');
+      showToast('Produit supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un produit.', 'error');
+        showToast('? Seul un administrateur peut supprimer un produit.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -73,7 +73,7 @@ const ProduitsList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -94,7 +94,7 @@ const ProduitsList = () => {
         </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-        <h1 style={{ fontSize: '28px', color: '#0f172a' }}>📦 Produits</h1>
+        <h1 style={{ fontSize: '28px', color: '#0f172a' }}>?? Produits</h1>
         <Link to="/stock/produits/nouveau" style={{ backgroundColor: '#10b981', color: 'white', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <FaPlus /> Ajouter
         </Link>
@@ -111,7 +111,7 @@ const ProduitsList = () => {
             <tr>
               <th style={{ padding: '14px 20px', textAlign: 'left' }}>Code</th>
               <th>Nom</th>
-              <th>Catégorie</th>
+              <th>Catgorie</th>
               <th style={{ textAlign: 'right' }}>Stock</th>
               <th style={{ textAlign: 'center' }}>Actions</th>
             </tr>
@@ -128,7 +128,7 @@ const ProduitsList = () => {
                   {isAdmin ? (
                     <button onClick={() => handleDelete(p.id, p.nom)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

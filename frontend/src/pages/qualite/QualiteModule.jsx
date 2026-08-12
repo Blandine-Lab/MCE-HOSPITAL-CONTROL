@@ -36,7 +36,7 @@ const QualiteModule = () => (
         borderBottom: '1px solid #334155',
         paddingBottom: '16px'
       }}>
-        <FaShieldAlt /> Qualité & Risques
+        <FaShieldAlt /> Qualit & Risques
       </h2>
       <ul style={{ listStyle: 'none', padding: 0 }}>
         <li><NavLink to="/qualite" end style={linkStyle}><FaChartLine /> Tableau de bord</NavLink></li>
@@ -44,8 +44,8 @@ const QualiteModule = () => (
         <li><NavLink to="/qualite/audits" style={linkStyle}><FaClipboardCheck /> Audits</NavLink></li>
         <li><NavLink to="/qualite/actions-capa" style={linkStyle}><FaTasks /> Actions CAPA</NavLink></li>
         <li><NavLink to="/qualite/indicateurs" style={linkStyle}><FaChartLine /> Indicateurs</NavLink></li>
-        <li><NavLink to="/qualite/non-conformites" style={linkStyle}><FaTimes /> Non-conformités</NavLink></li>
-        <li><NavLink to="/qualite/evaluations-risques" style={linkStyle}><FaExclamationTriangle /> Évaluations risques</NavLink></li>
+        <li><NavLink to="/qualite/non-conformites" style={linkStyle}><FaTimes /> Non-conformits</NavLink></li>
+        <li><NavLink to="/qualite/evaluations-risques" style={linkStyle}><FaExclamationTriangle /> valuations risques</NavLink></li>
       </ul>
     </nav>
     <div style={{

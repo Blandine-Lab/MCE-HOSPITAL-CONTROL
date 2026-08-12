@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../../axios'; // ✅ Instance avec intercepteur
+import api from '../../axios'; // ? Instance avec intercepteur
 
 const UrgencesList = () => {
   const [urgences, setUrgences] = useState([]);
@@ -9,9 +9,9 @@ const UrgencesList = () => {
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
-  const [userRole, setUserRole] = useState(null); // ✅ Rôle (prêt pour l'avenir)
+  const [userRole, setUserRole] = useState(null); // ? Rle (prt pour l'avenir)
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,7 +19,7 @@ const UrgencesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -51,7 +51,7 @@ const UrgencesList = () => {
       setLoaded(true);
     }).catch(err => {
       console.error(err);
-      showToast('Erreur chargement données', 'error');
+      showToast('Erreur chargement donnes', 'error');
       setLoading(false);
     });
   }, []);
@@ -62,7 +62,7 @@ const UrgencesList = () => {
       await api.post('/consultations/urgences', newUrgence);
       setNewUrgence({ patient_id: '', niveau: 'Jaune', priorite: 3, motif: '' });
       fetchUrgences();
-      showToast('Urgence ajoutée');
+      showToast('Urgence ajoute');
     } catch (err) {
       console.error(err);
       showToast('Erreur lors de l\'ajout', 'error');
@@ -198,7 +198,7 @@ const UrgencesList = () => {
         </div>
       )}
       <div style={innerStyle}>
-        <h1 style={titleStyle}>🚨 Service des urgences</h1>
+        <h1 style={titleStyle}>?? Service des urgences</h1>
         <form onSubmit={handleAdd} style={formStyle}>
           <select value={newUrgence.patient_id} onChange={e => setNewUrgence({...newUrgence, patient_id: e.target.value})} style={selectStyle}>
             <option value="">Patient inconnu</option>
@@ -212,14 +212,14 @@ const UrgencesList = () => {
             <option>Rouge</option><option>Orange</option><option>Jaune</option><option>Vert</option>
           </select>
           <input type="text" placeholder="Motif" value={newUrgence.motif} onChange={e => setNewUrgence({...newUrgence, motif: e.target.value})} style={inputStyle} />
-          <button type="submit" style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = '#b91c1c'} onMouseLeave={e => e.target.style.backgroundColor = '#dc2626'}>➕ Ajouter urgence</button>
+          <button type="submit" style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = '#b91c1c'} onMouseLeave={e => e.target.style.backgroundColor = '#dc2626'}>? Ajouter urgence</button>
         </form>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Priorité</th><th style={thStyle}>Patient</th><th style={thStyle}>Niveau</th><th style={thStyle}>Heure arrivée</th><th style={thStyle}>Motif</th><th style={thStyle}>Statut</th><th style={thStyle}>Action</th>
+                <th style={thStyle}>Priorit</th><th style={thStyle}>Patient</th><th style={thStyle}>Niveau</th><th style={thStyle}>Heure arrive</th><th style={thStyle}>Motif</th><th style={thStyle}>Statut</th><th style={thStyle}>Action</th>
               </tr>
             </thead>
             <tbody>

@@ -1,4 +1,4 @@
-﻿// src/pages/billing/FactureForm.jsx
+// src/pages/billing/FactureForm.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../axios';
@@ -36,7 +36,7 @@ const FactureForm = () => {
   const [consultationsDisponibles, setConsultationsDisponibles] = useState([]);
   const [selectedConsultationsIds, setSelectedConsultationsIds] = useState([]);
 
-  // ✅ Médicaments
+  // ? Mïdicaments
   const [medicamentsDisponibles, setMedicamentsDisponibles] = useState([]);
   const [selectedMedicamentsIds, setSelectedMedicamentsIds] = useState([]);
 
@@ -46,9 +46,9 @@ const FactureForm = () => {
       try {
         const res = await api.get('/patients');
         setPatients(res.data);
-        console.log('👥 Patients chargés :', res.data.length);
+        console.log('?? Patients chargïs :', res.data.length);
       } catch (err) {
-        console.error('❌ Erreur chargement patients:', err);
+        console.error('? Erreur chargement patients:', err);
         setToast('Erreur chargement patients');
         setTimeout(() => setToast(null), 3000);
       }
@@ -63,7 +63,7 @@ const FactureForm = () => {
       .catch(err => console.error('Erreur chargement assurances:', err));
   }, []);
 
-  // Charger les séjours du patient
+  // Charger les sïjours du patient
   useEffect(() => {
     if (patient && mode === 'hospitalisation') {
       api.get(`/consultations/admissions/patient/${patient.id}`)
@@ -136,17 +136,17 @@ const FactureForm = () => {
 
   // Charger les examens du patient
   useEffect(() => {
-    console.log('🔄 useEffect examens - patient =', patient);
+    console.log('?? useEffect examens - patient =', patient);
     if (patient && patient.id) {
-      console.log('🔄 Appel API /examens/patient/' + patient.id);
+      console.log('?? Appel API /examens/patient/' + patient.id);
       api.get(`/examens/patient/${patient.id}`)
         .then(res => {
-          console.log('📦 Examens chargés :', res.data);
+          console.log('?? Examens chargïs :', res.data);
           setExamensDisponibles(res.data);
         })
         .catch(err => console.error('Erreur chargement examens:', err));
     } else {
-      console.log('🔄 Pas de patient, reset examens');
+      console.log('?? Pas de patient, reset examens');
       setExamensDisponibles([]);
       setSelectedExamensIds([]);
     }
@@ -154,37 +154,37 @@ const FactureForm = () => {
 
   // Charger les consultations du patient (pour facturation)
   useEffect(() => {
-    console.log('🔄 useEffect consultations - patient =', patient);
+    console.log('?? useEffect consultations - patient =', patient);
     if (patient && patient.id) {
-      console.log('🔄 Appel API /consultations/rendezvous/patient/' + patient.id);
+      console.log('?? Appel API /consultations/rendezvous/patient/' + patient.id);
       api.get(`/consultations/rendezvous/patient/${patient.id}`)
         .then(res => {
-          console.log('📋 Consultations chargées :', res.data);
+          console.log('?? Consultations chargïes :', res.data);
           setConsultationsDisponibles(res.data);
         })
         .catch(err => console.error('Erreur chargement consultations:', err));
     } else {
-      console.log('🔄 Pas de patient, reset consultations');
+      console.log('?? Pas de patient, reset consultations');
       setConsultationsDisponibles([]);
       setSelectedConsultationsIds([]);
     }
   }, [patient]);
 
-  // ✅ Charger les médicaments du patient (non facturés)FCauto-sélection
+  // ? Charger les mïdicaments du patient (non facturïs)FCauto-sïlection
   useEffect(() => {
-    console.log('🔄 useEffect medicaments - patient =', patient);
+    console.log('?? useEffect medicaments - patient =', patient);
     if (patient && patient.id) {
-      console.log('🔄 Appel API /billing/medicaments/patient/' + patient.id);
+      console.log('?? Appel API /billing/medicaments/patient/' + patient.id);
       api.get(`/billing/medicaments/patient/${patient.id}`)
         .then(res => {
-          console.log('💊 Médicaments chargés :', res.data);
+          console.log('?? Mïdicaments chargïs :', res.data);
           setMedicamentsDisponibles(res.data);
-          // ✅ Sélection automatique de tous les médicaments
+          // ? Sïlection automatique de tous les mïdicaments
           setSelectedMedicamentsIds(res.data.map(med => med.mouvement_id));
         })
-        .catch(err => console.error('Erreur chargement médicaments:', err));
+        .catch(err => console.error('Erreur chargement mïdicaments:', err));
     } else {
-      console.log('🔄 Pas de patient, reset medicaments');
+      console.log('?? Pas de patient, reset medicaments');
       setMedicamentsDisponibles([]);
       setSelectedMedicamentsIds([]);
     }
@@ -218,7 +218,7 @@ const FactureForm = () => {
     );
   };
 
-  // ✅ Gestion des médicaments
+  // ? Gestion des mïdicaments
   const toggleMedicamentSelection = (medicamentId) => {
     setSelectedMedicamentsIds(prev =>
       prev.includes(medicamentId)
@@ -227,7 +227,7 @@ const FactureForm = () => {
     );
   };
 
-  // Calcul du total général
+  // Calcul du total gïnïral
   const totalGeneral = prestations.reduce((sum, item) => sum + item.total, 0);
   const remiseAmount = (totalGeneral * remise) / 100;
   const totalApresRemise = totalGeneral - remiseAmount;
@@ -261,7 +261,7 @@ const FactureForm = () => {
 
   const deleteLine = (index) => {
     if (prestations[index].isManual === false) {
-      if (!window.confirm('Cette ligne provient du séjour. La supprimer ne supprimera pas la prestation originale. Continuer ?')) return;
+      if (!window.confirm('Cette ligne provient du sïjour. La supprimer ne supprimera pas la prestation originale. Continuer ?')) return;
     }
     const newLines = prestations.filter((_, i) => i !== index);
     setPrestations(newLines);
@@ -271,7 +271,7 @@ const FactureForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!patient) {
-      setToast('Veuillez sélectionner un patient');
+      setToast('Veuillez sïlectionner un patient');
       setTimeout(() => setToast(null), 3000);
       return;
     }
@@ -302,15 +302,15 @@ const FactureForm = () => {
         })),
         examens_ids: selectedExamensIds,
         consultations_ids: selectedConsultationsIds,
-        medicament_ids: selectedMedicamentsIds, // ✅ Envoi des IDs de médicaments
+        medicament_ids: selectedMedicamentsIds, // ? Envoi des IDs de mïdicaments
       };
       await api.post('/billing/factures', payload);
-      setToast('✅ Facture créée avec succès');
+      setToast('? Facture crïïe avec succïs');
       setTimeout(() => setToast(null), 3000);
       navigate('/factures');
     } catch (err) {
       console.error(err);
-      setToast('❌ Erreur : ' + (err.response?.data?.error || err.message));
+      setToast('? Erreur : ' + (err.response?.data?.error || err.message));
       setTimeout(() => setToast(null), 3000);
     } finally {
       setSaving(false);
@@ -352,7 +352,7 @@ const FactureForm = () => {
           position: 'fixed',
           top: '20px',
           right: '20px',
-          backgroundColor: toast.includes('✅') ? '#10b981' : '#ef4444',
+          backgroundColor: toast.includes('?') ? '#10b981' : '#ef4444',
           color: 'white',
           padding: '12px 24px',
           borderRadius: '8px',
@@ -377,7 +377,7 @@ const FactureForm = () => {
               style={inputStyle}
               required
             >
-              <option value="">Sélectionner un patient</option>
+              <option value="">Sïlectionner un patient</option>
               {patients.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.nom} {p.prenom} {p.ipp ? `(IPP: ${p.ipp})` : ''}
@@ -386,7 +386,7 @@ const FactureForm = () => {
             </select>
             {patient && (
               <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: '#d1fae5', borderRadius: '6px', color: '#065f46' }}>
-                ✅ Patient sélectionné : <strong>{patient.prenom} {patient.nom}</strong> {patient.ipp && `(IPP: ${patient.ipp})`}
+                ? Patient sïlectionnï : <strong>{patient.prenom} {patient.nom}</strong> {patient.ipp && `(IPP: ${patient.ipp})`}
               </div>
             )}
           </div>
@@ -397,7 +397,7 @@ const FactureForm = () => {
             <div style={{ display: 'flex', gap: '16px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input type="radio" value="hospitalisation" checked={mode === 'hospitalisation'} onChange={() => setMode('hospitalisation')} />
-                <FaHospital /> Hospitalisation (séjour)
+                <FaHospital /> Hospitalisation (sïjour)
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input type="radio" value="ambulatoire" checked={mode === 'ambulatoire'} onChange={() => setMode('ambulatoire')} />
@@ -406,26 +406,26 @@ const FactureForm = () => {
             </div>
           </div>
 
-          {/* Séjour / Consultation */}
+          {/* Sïjour / Consultation */}
           {patient && (
             <>
               {mode === 'hospitalisation' && (
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={labelStyle}>Séjour</label>
+                  <label style={labelStyle}>Sïjour</label>
                   <select
                     value={selectedSejourId}
                     onChange={e => setSelectedSejourId(e.target.value)}
                     style={inputStyle}
                     disabled={sejours.length === 0}
                   >
-                    <option value="">-- Choisir un séjour --</option>
+                    <option value="">-- Choisir un sïjour --</option>
                     {sejours.map(s => (
                       <option key={s.id} value={s.id}>
                         {s.date_admission ? new Date(s.date_admission).toLocaleDateString() : 'Date inconnue'} - {s.service_nom || 'Service'}
                       </option>
                     ))}
                   </select>
-                  {sejours.length === 0 && <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>Aucun séjour trouvé pour ce patient.</p>}
+                  {sejours.length === 0 && <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>Aucun sïjour trouvï pour ce patient.</p>}
                 </div>
               )}
               {mode === 'ambulatoire' && (
@@ -444,7 +444,7 @@ const FactureForm = () => {
                       </option>
                     ))}
                   </select>
-                  {consultations.length === 0 && <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>Aucune consultation trouvée pour ce patient.</p>}
+                  {consultations.length === 0 && <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>Aucune consultation trouvïe pour ce patient.</p>}
                 </div>
               )}
             </>
@@ -468,21 +468,21 @@ const FactureForm = () => {
           {/* Prestations */}
           <div style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ fontWeight: 'bold' }}>📋 Prestations facturées</h3>
+              <h3 style={{ fontWeight: 'bold' }}>?? Prestations facturïes</h3>
               <button type="button" onClick={addManualLine} style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <FaPlus /> Ajouter manuellement
               </button>
             </div>
             {prestations.length === 0 ? (
-              <p style={{ color: '#6b7280' }}>Aucune prestation. Sélectionnez un patient et un séjour/consultation pour charger automatiquement.</p>
+              <p style={{ color: '#6b7280' }}>Aucune prestation. Sïlectionnez un patient et un sïjour/consultation pour charger automatiquement.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f1f5f9' }}>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>Libellé</th>
+                      <th style={{ padding: '8px', textAlign: 'left' }}>Libellï</th>
                       <th style={{ padding: '8px', textAlign: 'left' }}>Date</th>
-                      <th style={{ padding: '8px', textAlign: 'center' }}>Quantité</th>
+                      <th style={{ padding: '8px', textAlign: 'center' }}>Quantitï</th>
                       <th style={{ padding: '8px', textAlign: 'center' }}>Prix unit.</th>
                       <th style={{ padding: '8px', textAlign: 'center' }}>Total</th>
                       <th style={{ padding: '8px', textAlign: 'center' }}>Action</th>
@@ -497,7 +497,7 @@ const FactureForm = () => {
                             value={item.libelle}
                             onChange={e => updateLine(index, 'libelle', e.target.value)}
                             style={{ ...inputStyle, minWidth: '150px' }}
-                            placeholder="Libellé"
+                            placeholder="Libellï"
                           />
                         </td>
                         <td style={{ padding: '8px' }}>
@@ -547,9 +547,9 @@ const FactureForm = () => {
           {/* SECTION EXAMENS */}
           {patient && (
             <div style={{ marginBottom: '20px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', backgroundColor: '#f9fafb' }}>
-              <h4 style={{ fontWeight: 'bold', marginBottom: '12px' }}>🧪 Examens de laboratoire disponibles</h4>
+              <h4 style={{ fontWeight: 'bold', marginBottom: '12px' }}>?? Examens de laboratoire disponibles</h4>
               {examensDisponibles.length === 0 ? (
-                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>Aucun examen trouvé pour ce patient (ou tous sont annulés).</p>
+                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>Aucun examen trouvï pour ce patient (ou tous sont annulïs).</p>
               ) : (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
@@ -566,7 +566,7 @@ const FactureForm = () => {
                     ))}
                   </div>
                   <div style={{ marginTop: '8px', fontSize: '14px', color: '#4b5563' }}>
-                    {selectedExamensIds.length} examen(s) sélectionné(s)
+                    {selectedExamensIds.length} examen(s) sïlectionnï(s)
                   </div>
                 </>
               )}
@@ -576,9 +576,9 @@ const FactureForm = () => {
           {/* SECTION CONSULTATIONS */}
           {patient && (
             <div style={{ marginBottom: '20px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', backgroundColor: '#f9fafb' }}>
-              <h4 style={{ fontWeight: 'bold', marginBottom: '12px' }}>🩺 Consultations disponibles</h4>
+              <h4 style={{ fontWeight: 'bold', marginBottom: '12px' }}>?? Consultations disponibles</h4>
               {consultationsDisponibles.length === 0 ? (
-                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>Aucune consultation trouvée pour ce patient.</p>
+                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>Aucune consultation trouvïe pour ce patient.</p>
               ) : (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
@@ -592,7 +592,7 @@ const FactureForm = () => {
                         <span>
                           {new Date(c.date_rdv).toLocaleDateString()} - {c.motif || 'Consultation'}
                           <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '4px' }}>
-                            ({c.type_consultation || 'générale'})
+                            ({c.type_consultation || 'gïnïrale'})
                           </span>
                         </span>
                         <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 'bold' }}>
@@ -602,19 +602,19 @@ const FactureForm = () => {
                     ))}
                   </div>
                   <div style={{ marginTop: '8px', fontSize: '14px', color: '#4b5563' }}>
-                    {selectedConsultationsIds.length} consultation(s) sélectionnée(s)
+                    {selectedConsultationsIds.length} consultation(s) sïlectionnïe(s)
                   </div>
                 </>
               )}
             </div>
           )}
 
-          {/* ✅ SECTION MÉDICAMENTS */}
+          {/* ? SECTION MïDICAMENTS */}
           {patient && (
             <div style={{ marginBottom: '20px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', backgroundColor: '#f9fafb' }}>
-              <h4 style={{ fontWeight: 'bold', marginBottom: '12px' }}>💊 Médicaments délivrés (non facturés)</h4>
+              <h4 style={{ fontWeight: 'bold', marginBottom: '12px' }}>?? Mïdicaments dïlivrïs (non facturïs)</h4>
               {medicamentsDisponibles.length === 0 ? (
-                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>Aucun médicament non facturé trouvé pour ce patient.</p>
+                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>Aucun mïdicament non facturï trouvï pour ce patient.</p>
               ) : (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
@@ -638,7 +638,7 @@ const FactureForm = () => {
                     ))}
                   </div>
                   <div style={{ marginTop: '8px', fontSize: '14px', color: '#4b5563' }}>
-                    {selectedMedicamentsIds.length} médicament(s) sélectionné(s)
+                    {selectedMedicamentsIds.length} mïdicament(s) sïlectionnï(s)
                   </div>
                 </>
               )}
@@ -679,11 +679,11 @@ const FactureForm = () => {
               onChange={e => setNotes(e.target.value)}
               rows="3"
               style={{ ...inputStyle, resize: 'vertical' }}
-              placeholder="Informations complémentaires..."
+              placeholder="Informations complïmentaires..."
             />
           </div>
 
-          {/* Récapitulatif */}
+          {/* Rïcapitulatif */}
           <div style={{ borderTop: '2px solid #e5e7eb', paddingTop: '20px', marginBottom: '20px', textAlign: 'right' }}>
             <div style={{ fontSize: '18px' }}>
               <span style={{ fontWeight: 'bold' }}>Total HT :</span> {totalGeneral.toFixed(2)} FC
@@ -702,7 +702,7 @@ const FactureForm = () => {
               <FaTimes /> Annuler
             </button>
             <button type="submit" disabled={saving} style={{ backgroundColor: '#16a34a', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
-              <FaSave /> {saving ? 'Enregistrement...' : 'Créer la facture'}
+              <FaSave /> {saving ? 'Enregistrement...' : 'Crïer la facture'}
             </button>
           </div>
         </form>

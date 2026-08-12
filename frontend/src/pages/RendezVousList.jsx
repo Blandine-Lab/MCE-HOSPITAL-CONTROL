@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partage
 
 const RendezVousList = () => {
   const [rdvs, setRdvs] = useState([]);
@@ -40,7 +40,7 @@ const RendezVousList = () => {
       await api.put(`/consultations/rendezvous/${id}`, { statut });
       fetchRdvs();
     } catch (err) {
-      console.error('Erreur mise à jour statut:', err);
+      console.error('Erreur mise  jour statut:', err);
     }
   };
 
@@ -53,7 +53,7 @@ const RendezVousList = () => {
           {patients.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
         </select>
         <select value={form.medecin_id} onChange={e => setForm({...form, medecin_id: e.target.value})} className="border p-2 rounded">
-          <option value="">Médecin</option>
+          <option value="">Mdecin</option>
           {medecins.map(m => <option key={m.id} value={m.id}>{m.nom} {m.prenom}</option>)}
         </select>
         <select value={form.service_id} onChange={e => setForm({...form, service_id: e.target.value})} className="border p-2 rounded">
@@ -67,7 +67,7 @@ const RendezVousList = () => {
 
       <table className="min-w-full border">
         <thead className="bg-gray-200">
-          <tr><th className="border p-2">Date</th><th className="border p-2">Patient</th><th className="border p-2">Médecin</th><th className="border p-2">Service</th><th className="border p-2">Motif</th><th className="border p-2">Statut</th><th className="border p-2">Rappel</th><th className="border p-2">Actions</th></tr>
+          <tr><th className="border p-2">Date</th><th className="border p-2">Patient</th><th className="border p-2">Mdecin</th><th className="border p-2">Service</th><th className="border p-2">Motif</th><th className="border p-2">Statut</th><th className="border p-2">Rappel</th><th className="border p-2">Actions</th></tr>
         </thead>
         <tbody>
           {rdvs.map(r => (
@@ -78,7 +78,7 @@ const RendezVousList = () => {
               <td className="border p-2">{r.service_nom}</td>
               <td className="border p-2">{r.motif}</td>
               <td className="border p-2">{r.statut}</td>
-              <td className="border p-2">{r.rappel_envoye ? '✅' : '❌'}</td>
+              <td className="border p-2">{r.rappel_envoye ? '?' : '?'}</td>
               <td className="border p-2">
                 {r.statut === 'planifie' && (
                   <>

@@ -61,11 +61,11 @@ const PrescriptionForm = () => {
       await axios.post('/api/prescriptions', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert('✅ Ordonnance créée avec succès !');
+      alert('? Ordonnance cre avec succs !');
       navigate('/prescriptions'); // Redirige vers la liste
     } catch (err) {
-      console.error('Erreur création:', err);
-      alert('❌ Erreur : ' + (err.response?.data?.error || err.message));
+      console.error('Erreur cration:', err);
+      alert('? Erreur : ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ const PrescriptionForm = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">📝 Nouvelle ordonnance</h1>
+      <h1 className="text-2xl font-bold mb-6">?? Nouvelle ordonnance</h1>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Patient */}
@@ -86,7 +86,7 @@ const PrescriptionForm = () => {
             className="w-full border rounded px-3 py-2"
             required
           >
-            <option value="">Sélectionner un patient</option>
+            <option value="">Slectionner un patient</option>
             {patients.map(p => (
               <option key={p.id} value={p.id}>
                 {p.prenom} {p.nom} (ID: {p.id})
@@ -108,14 +108,14 @@ const PrescriptionForm = () => {
           />
         </div>
 
-        {/* Médicaments */}
+        {/* Mdicaments */}
         <div>
-          <label className="block font-medium mb-2">Médicaments *</label>
+          <label className="block font-medium mb-2">Mdicaments *</label>
           {formData.items.map((item, index) => (
             <div key={index} className="border rounded p-4 mb-3 bg-gray-50">
               <div className="grid grid-cols-2 gap-3">
                 <input
-                  placeholder="Médicament *"
+                  placeholder="Mdicament *"
                   value={item.medicament}
                   onChange={(e) => handleItemChange(index, 'medicament', e.target.value)}
                   className="border rounded px-3 py-2"
@@ -129,14 +129,14 @@ const PrescriptionForm = () => {
                   required
                 />
                 <input
-                  placeholder="Durée (ex: 7 jours)"
+                  placeholder="Dure (ex: 7 jours)"
                   value={item.duree}
                   onChange={(e) => handleItemChange(index, 'duree', e.target.value)}
                   className="border rounded px-3 py-2"
                 />
                 <input
                   type="number"
-                  placeholder="Quantité"
+                  placeholder="Quantit"
                   value={item.quantite}
                   onChange={(e) => handleItemChange(index, 'quantite', parseInt(e.target.value) || 1)}
                   className="border rounded px-3 py-2"
@@ -149,7 +149,7 @@ const PrescriptionForm = () => {
                   onClick={() => removeItem(index)}
                   className="mt-2 text-red-600 text-sm"
                 >
-                  ✕ Supprimer ce médicament
+                  ? Supprimer ce mdicament
                 </button>
               )}
             </div>
@@ -159,7 +159,7 @@ const PrescriptionForm = () => {
             onClick={addItem}
             className="text-blue-600 hover:underline"
           >
-            + Ajouter un médicament
+            + Ajouter un mdicament
           </button>
         </div>
 
@@ -170,7 +170,7 @@ const PrescriptionForm = () => {
             disabled={loading}
             className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? 'Création...' : 'Créer l\'ordonnance'}
+            {loading ? 'Cration...' : 'Crer l\'ordonnance'}
           </button>
           <button
             type="button"

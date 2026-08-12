@@ -40,7 +40,7 @@ const ServiceForm = () => {
           <div><label>Nom *</label><input name="nom" value={formData.nom} onChange={handleChange} required style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
           <div><label>Responsable</label>
             <select name="responsable_id" value={formData.responsable_id} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {responsables.map(r => <option key={r.id} value={r.id}>{r.nom} {r.prenom}</option>)}
             </select>
           </div>

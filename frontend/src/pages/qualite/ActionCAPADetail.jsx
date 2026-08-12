@@ -29,7 +29,7 @@ const ActionCAPADetail = () => {
       setAction(res.data);
     } catch (err) {
       console.error('Erreur chargement action CAPA :', err);
-      setError('Impossible de charger l\'action CAPA. Vérifiez votre connexion.');
+      setError('Impossible de charger l\'action CAPA. Vrifiez votre connexion.');
     } finally {
       setLoading(false);
     }
@@ -40,7 +40,7 @@ const ActionCAPADetail = () => {
     setDeleting(true);
     try {
       await api.delete(`/actions-capa/${id}`);
-      setToast({ type: 'success', message: 'Action CAPA supprimée avec succès' });
+      setToast({ type: 'success', message: 'Action CAPA supprime avec succs' });
       setTimeout(() => navigate('/qualite/actions-capa'), 1500);
     } catch (err) {
       console.error('Erreur suppression :', err);
@@ -54,8 +54,8 @@ const ActionCAPADetail = () => {
     const colors = {
       'ouverte': { bg: '#fef3c7', text: '#92400e', label: 'Ouverte' },
       'en_cours': { bg: '#dbeafe', text: '#1e40af', label: 'En cours' },
-      'terminee': { bg: '#d1fae5', text: '#065f46', label: 'Terminée' },
-      'annulee': { bg: '#fee2e2', text: '#991b1b', label: 'Annulée' }
+      'terminee': { bg: '#d1fae5', text: '#065f46', label: 'Termine' },
+      'annulee': { bg: '#fee2e2', text: '#991b1b', label: 'Annule' }
     };
     const s = colors[statut] || colors['ouverte'];
     return {
@@ -72,8 +72,8 @@ const ActionCAPADetail = () => {
   const getTypeBadge = (type) => {
     const colors = {
       'corrective': { bg: '#fee2e2', text: '#991b1b', label: 'Corrective' },
-      'preventive': { bg: '#dbeafe', text: '#1e40af', label: 'Préventive' },
-      'amelioration': { bg: '#d1fae5', text: '#065f46', label: 'Amélioration' }
+      'preventive': { bg: '#dbeafe', text: '#1e40af', label: 'Prventive' },
+      'amelioration': { bg: '#d1fae5', text: '#065f46', label: 'Amlioration' }
     };
     const s = colors[type] || colors['corrective'];
     return {
@@ -88,7 +88,7 @@ const ActionCAPADetail = () => {
   };
 
   const formatDate = (date) => {
-    if (!date) return '�FC�';
+    if (!date) return '?FC?';
     return new Date(date).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
@@ -125,14 +125,14 @@ const ActionCAPADetail = () => {
             marginTop: '16px'
           }}
         >
-          Réessayer
+          Ressayer
         </button>
       </div>
     );
   }
 
   if (!action) {
-    return <div style={{ textAlign: 'center', padding: '60px' }}>Action CAPA non trouvée</div>;
+    return <div style={{ textAlign: 'center', padding: '60px' }}>Action CAPA non trouve</div>;
   }
 
   return (
@@ -155,11 +155,11 @@ const ActionCAPADetail = () => {
       )}
 
       <Link to="/qualite/actions-capa" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#3b82f6', textDecoration: 'none' }}>
-        <FaArrowLeft /> Retour à la liste
+        <FaArrowLeft /> Retour  la liste
       </Link>
 
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', marginTop: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        {/* En-tête */}
+        {/* En-tte */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
           <div>
             <h1 style={{ margin: 0, color: '#0f172a' }}>{action.titre}</h1>
@@ -167,7 +167,7 @@ const ActionCAPADetail = () => {
               <span style={getStatutBadge(action.statut)}>{action.statut}</span>
               <span style={getTypeBadge(action.type)}>{action.type}</span>
               {action.numero_action && (
-                <span style={{ color: '#64748b', fontSize: '14px' }}>N° {action.numero_action}</span>
+                <span style={{ color: '#64748b', fontSize: '14px' }}>N {action.numero_action}</span>
               )}
             </div>
           </div>
@@ -214,25 +214,25 @@ const ActionCAPADetail = () => {
             <div style={{ fontSize: '12px', color: '#94a3b8' }}>Responsable</div>
             <div style={{ fontWeight: '500', color: '#0f172a' }}>
               <FaUser style={{ marginRight: '8px', color: '#3b82f6' }} />
-              {action.responsable_nom || 'Non attribué'}
+              {action.responsable_nom || 'Non attribu'}
             </div>
           </div>
           <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Date prévue</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Date prvue</div>
             <div style={{ fontWeight: '500', color: '#0f172a' }}>
               <FaCalendar style={{ marginRight: '8px', color: '#f59e0b' }} />
               {formatDate(action.date_prevue)}
             </div>
           </div>
           <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Date création</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Date cration</div>
             <div style={{ fontWeight: '500', color: '#0f172a' }}>
               <FaClock style={{ marginRight: '8px', color: '#8b5cf6' }} />
               {formatDate(action.created_at || action.date_creation)}
             </div>
           </div>
           <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Efficacité</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Efficacit</div>
             <div style={{ fontWeight: '500', color: '#0f172a' }}>
               {action.efficacite ? (
                 <>
@@ -240,18 +240,18 @@ const ActionCAPADetail = () => {
                   {action.efficacite}
                 </>
               ) : (
-                'Non évaluée'
+                'Non value'
               )}
             </div>
           </div>
         </div>
 
-        {/* Éléments liés */}
+        {/* lments lis */}
         {(action.signalement_id || action.audit_id || action.non_conformite_id) && (
           <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f1f5f9', borderRadius: '8px' }}>
             <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#0f172a' }}>
               <FaLink style={{ marginRight: '8px', color: '#3b82f6' }} />
-              Éléments liés
+              lments lis
             </h4>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               {action.signalement_id && (
@@ -266,7 +266,7 @@ const ActionCAPADetail = () => {
               )}
               {action.non_conformite_id && (
                 <Link to={`/qualite/non-conformites/${action.non_conformite_id}`} style={{ color: '#3b82f6', textDecoration: 'none' }}>
-                  <FaFileAlt style={{ marginRight: '4px' }} /> Non-conformité #{action.non_conformite_id}
+                  <FaFileAlt style={{ marginRight: '4px' }} /> Non-conformit #{action.non_conformite_id}
                 </Link>
               )}
             </div>
@@ -277,7 +277,7 @@ const ActionCAPADetail = () => {
         <div style={{ marginBottom: '16px' }}>
           <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Description</h4>
           <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-            {action.description || '�FC�'}
+            {action.description || '?FC?'}
           </div>
         </div>
 
@@ -291,15 +291,15 @@ const ActionCAPADetail = () => {
         )}
 
         <div style={{ marginBottom: '16px' }}>
-          <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Action planifiée</h4>
+          <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Action planifie</h4>
           <div style={{ padding: '12px', backgroundColor: '#dbeafe', borderRadius: '8px', color: '#1e40af' }}>
-            {action.action_planifiee || '�FC�'}
+            {action.action_planifiee || '?FC?'}
           </div>
         </div>
 
         {action.date_realisation && (
           <div style={{ padding: '12px', backgroundColor: '#d1fae5', borderRadius: '8px' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a', margin: '0 0 4px 0' }}>Date de réalisation</h4>
+            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a', margin: '0 0 4px 0' }}>Date de ralisation</h4>
             <div style={{ color: '#065f46' }}>{formatDate(action.date_realisation)}</div>
           </div>
         )}

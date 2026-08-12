@@ -11,7 +11,7 @@ const ServicesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,7 +19,7 @@ const ServicesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -48,17 +48,17 @@ const ServicesList = () => {
     fetchServices();
   }, []);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id, nom) => {
-    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer le service "${nom}" ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`?? Voulez-vous vraiment supprimer le service "${nom}" ? Cette action est irrversible.`)) return;
     try {
       await api.delete(`/services/${id}`);
       setServices(services.filter(s => s.id !== id));
-      showToast('Service supprimé avec succès');
+      showToast('Service supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un service.', 'error');
+        showToast('? Seul un administrateur peut supprimer un service.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -67,7 +67,7 @@ const ServicesList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{textAlign:'center', padding:60}}>⏳ Chargement...</div>;
+  if (loading) return <div style={{textAlign:'center', padding:60}}>? Chargement...</div>;
 
   return (
     <div>
@@ -109,7 +109,7 @@ const ServicesList = () => {
                   {isAdmin ? (
                     <button onClick={() => handleDelete(s.id, s.nom)} style={{color:'#ef4444', background:'none', border:'none', cursor:'pointer'}}><FaTrash /></button>
                   ) : (
-                    <span style={{color:'#94a3b8', fontSize:'14px'}} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{color:'#94a3b8', fontSize:'14px'}} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

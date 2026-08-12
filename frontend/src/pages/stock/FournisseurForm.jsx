@@ -37,7 +37,7 @@ const FournisseurForm = () => {
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div><label>Nom *</label><input name="nom" value={formData.nom} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div><label>Contact</label><input name="contact" value={formData.contact} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-          <div><label>Téléphone</label><input name="telephone" value={formData.telephone} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+          <div><label>Tlphone</label><input name="telephone" value={formData.telephone} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div><label>Email</label><input name="email" type="email" value={formData.email} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div style={{ gridColumn: 'span 2' }}><label>Adresse</label><textarea name="adresse" value={formData.adresse} onChange={handleChange} rows="3" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div style={{ gridColumn: 'span 2' }}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partage
 
 const Telechargements = () => {
   const [logs, setLogs] = useState([]);
@@ -13,7 +13,7 @@ const Telechargements = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow p-6">
-        <h1 className="text-2xl font-bold mb-4">Historique des téléchargements</h1>
+        <h1 className="text-2xl font-bold mb-4">Historique des tlchargements</h1>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

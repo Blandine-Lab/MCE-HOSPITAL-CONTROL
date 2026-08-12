@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../axios';
 import { FaArrowLeft, FaSave, FaPrint, FaFileAlt } from 'react-icons/fa';
@@ -31,7 +31,7 @@ const GenerationContrat = () => {
   const handleGenerer = async (e) => {
     e.preventDefault();
     if (!selectedEmploye || !selectedModele) {
-      setError('Veuillez sélectionner un employé et un modèle');
+      setError('Veuillez sïlectionner un employï et un modïle');
       return;
     }
     setLoading(true);
@@ -45,12 +45,12 @@ const GenerationContrat = () => {
         salaire: salaire
       });
       setContratGenere(res.data.contrat);
-      // Récupérer les articles du contrat généré
+      // Rïcupïrer les articles du contrat gïnïrï
       const detailRes = await api.get(`/contrats/${res.data.contrat.id}`);
       setArticles(detailRes.data.articles);
       setLoading(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Erreur lors de la génération');
+      setError(err.response?.data?.error || 'Erreur lors de la gïnïration');
       setLoading(false);
     }
   };
@@ -84,26 +84,26 @@ const GenerationContrat = () => {
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ marginTop: 0 }}>Générer un contrat</h2>
+        <h2 style={{ marginTop: 0 }}>Gïnïrer un contrat</h2>
         {error && <div style={{ color: '#ef4444', padding: 12, backgroundColor: '#fee2e2', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
         
         <form onSubmit={handleGenerer} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employé *</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employï *</label>
             <select value={selectedEmploye} onChange={e => setSelectedEmploye(e.target.value)} required style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}>
-              <option value="">Sélectionner</option>
+              <option value="">Sïlectionner</option>
               {employes.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Modèle de contrat *</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Modïle de contrat *</label>
             <select value={selectedModele} onChange={e => setSelectedModele(e.target.value)} required style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}>
-              <option value="">Sélectionner</option>
+              <option value="">Sïlectionner</option>
               {modeles.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Date de début</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Date de dïbut</label>
             <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
           <div>
@@ -116,7 +116,7 @@ const GenerationContrat = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <button type="submit" disabled={loading} style={{ backgroundColor: '#3b82f6', color: 'white', padding: '10px 24px', border: 'none', borderRadius: 6, fontWeight: 500, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
-              <FaFileAlt /> {loading ? 'Génération...' : 'Générer le contrat'}
+              <FaFileAlt /> {loading ? 'Gïnïration...' : 'Gïnïrer le contrat'}
             </button>
           </div>
         </form>
@@ -125,7 +125,7 @@ const GenerationContrat = () => {
       {contratGenere && (
         <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, marginTop: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h3 style={{ margin: 0 }}>Contrat généréFC{contratGenere.reference}</h3>
+            <h3 style={{ margin: 0 }}>Contrat gïnïrïFC{contratGenere.reference}</h3>
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={handleSave} style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 16px', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
                 <FaSave /> Sauvegarder
