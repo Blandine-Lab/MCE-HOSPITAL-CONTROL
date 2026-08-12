@@ -44,11 +44,11 @@ const AdmissionForm = () => {
     e.preventDefault();
     try {
       await api.post('/consultations/admissions', form);
-      setToast('Patient admis avec succès – séjour créé');
+      setToast('Patient admis avec succès �FC� séjour créé');
       setTimeout(() => setToast(null), 3000);
       setTimeout(() => navigate('/patients'), 1500);
     } catch (err) {
-      setToast('Erreur lors de l’admission');
+      setToast('Erreur lors de l�FC�admission');
       setTimeout(() => setToast(null), 3000);
     }
   };

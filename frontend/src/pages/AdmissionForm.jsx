@@ -43,11 +43,11 @@ const AdmissionForm = () => {
     e.preventDefault();
     try {
       await api.post('/consultations/admissions', form);
-      alert('Patient admis avec succ√®s ‚Äì s√©jour cr√©√©');
+      alert('Patient admis avec succ√®s ‚FCì s√©jour cr√©√©');
       navigate('/patients');
     } catch (err) {
-      console.error('Erreur lors de l‚Äôadmission :', err);
-      alert('Erreur lors de l‚Äôadmission');
+      console.error('Erreur lors de l‚FCôadmission :', err);
+      alert('Erreur lors de l‚FCôadmission');
     }
   };
 

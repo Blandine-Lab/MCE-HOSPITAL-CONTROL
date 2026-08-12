@@ -64,7 +64,7 @@ const PatientProfile = () => {
         </div>
       </div>
 
-      {/* Informations patient – inchangé */}
+      {/* Informations patient �FC� inchangé */}
       <div className="bg-gray-50 p-4 rounded border mb-6">
         <p><strong>IPP :</strong> {patient.ipp || 'Non renseigné'}</p>
         <p><strong>Date de naissance :</strong> {patient.date_naissance ? new Date(patient.date_naissance).toLocaleDateString() : 'N/C'}</p>

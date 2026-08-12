@@ -88,7 +88,7 @@ const AuditDetail = () => {
   };
 
   const formatDate = (date) => {
-    if (!date) return 'â€”';
+    if (!date) return 'âFC”';
     return new Date(date).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
@@ -242,7 +242,7 @@ const AuditDetail = () => {
             <div style={{ fontSize: '12px', color: '#94a3b8' }}>CrÃ©Ã© par</div>
             <div style={{ fontWeight: '500', color: '#0f172a' }}>
               <FaUser style={{ marginRight: '8px', color: '#3b82f6' }} />
-              {audit.created_by_nom || 'â€”'}
+              {audit.created_by_nom || 'âFC”'}
             </div>
           </div>
           <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>

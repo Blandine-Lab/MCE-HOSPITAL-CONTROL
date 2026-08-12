@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import api from '../../axios'; // ✅ Instance avec intercepteur
 import { Link } from 'react-router-dom';
 import { FaEye, FaFileInvoice, FaEuroSign, FaCalendarAlt, FaPlusCircle, FaHospital, FaUserMd } from 'react-icons/fa';
@@ -113,8 +113,8 @@ const FacturesList = () => {
                   <td style={tdStyle}>{f.numero_facture || f.id}</td>
                   <td style={tdStyle}>{f.patient_nom} {f.patient_prenom}</td>
                   <td style={tdStyle}>{new Date(f.date_emission).toLocaleDateString()}</td>
-                  <td style={tdStyle}>{parseFloat(f.montant_total).toFixed(2)} €</td>
-                  <td style={tdStyle}>{parseFloat(f.montant_paye).toFixed(2)} €</td>
+                  <td style={tdStyle}>{parseFloat(f.montant_total).toFixed(2)} FC</td>
+                  <td style={tdStyle}>{parseFloat(f.montant_paye).toFixed(2)} FC</td>
                   <td style={tdStyle}>{getStatutBadge(f.statut)}</td>
                   <td style={tdStyle}>{f.assurance_nom || '-'}</td>
                   <td style={tdStyle}>

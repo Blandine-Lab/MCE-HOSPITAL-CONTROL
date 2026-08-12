@@ -38,9 +38,9 @@ const Unauthorized = () => {
           Accès non autorisé
         </h1>
         <p style={{ color: '#64748b', fontSize: '16px', lineHeight: '1.6', marginBottom: '24px' }}>
-          Vous n’avez pas les permissions nécessaires pour accéder à cette page.
+          Vous n�FC�avez pas les permissions nécessaires pour accéder à cette page.
           <br />
-          <span style={{ fontWeight: '500' }}>Veuillez contacter votre service IT de l’hôpital pour obtenir les droits d’accès.</span>
+          <span style={{ fontWeight: '500' }}>Veuillez contacter votre service IT de l�FC�hôpital pour obtenir les droits d�FC�accès.</span>
         </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
           <button

@@ -209,7 +209,7 @@ const LaboratoireImagerieModule = () => {
                 <MenuItem
                   to="/laboratoire/validation"
                   icon={<FaClipboardCheck />}
-                  label="Ã€ valider"
+                  label="ÃFC valider"
                   badge={counts.aValider}
                   badgeColor="#8b5cf6"
                 />

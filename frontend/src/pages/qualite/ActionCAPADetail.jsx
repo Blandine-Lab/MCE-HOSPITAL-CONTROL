@@ -88,7 +88,7 @@ const ActionCAPADetail = () => {
   };
 
   const formatDate = (date) => {
-    if (!date) return '‚Äî';
+    if (!date) return '‚FCî';
     return new Date(date).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
@@ -277,7 +277,7 @@ const ActionCAPADetail = () => {
         <div style={{ marginBottom: '16px' }}>
           <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Description</h4>
           <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-            {action.description || '‚Äî'}
+            {action.description || '‚FCî'}
           </div>
         </div>
 
@@ -293,7 +293,7 @@ const ActionCAPADetail = () => {
         <div style={{ marginBottom: '16px' }}>
           <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Action planifi√©e</h4>
           <div style={{ padding: '12px', backgroundColor: '#dbeafe', borderRadius: '8px', color: '#1e40af' }}>
-            {action.action_planifiee || '‚Äî'}
+            {action.action_planifiee || '‚FCî'}
           </div>
         </div>
 

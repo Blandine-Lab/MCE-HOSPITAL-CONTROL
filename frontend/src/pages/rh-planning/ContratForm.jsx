@@ -1,4 +1,4 @@
-// src/pages/rh-planning/ContratForm.jsx
+﻿// src/pages/rh-planning/ContratForm.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import api from '../../axios';
@@ -123,7 +123,7 @@ const ContratForm = () => {
             <input type="date" name="date_fin" value={formData.date_fin} onChange={handleChange} style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Salaire (€)</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Salaire (FC)</label>
             <input type="number" step="0.01" name="salaire" value={formData.salaire} onChange={handleChange} placeholder="ex: 2500.00" style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
           <div>

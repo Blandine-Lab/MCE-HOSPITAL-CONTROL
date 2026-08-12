@@ -38,7 +38,7 @@ const Login = () => {
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
-      {/* Vidéo en arrière‑plan */}
+      {/* Vidéo en arrière�FC�plan */}
       <video
         autoPlay
         loop

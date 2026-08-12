@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../axios'; // ✅ Instance avec intercepteur
 import { FaEuroSign, FaPrint, FaEnvelope, FaFilePdf, FaInfoCircle } from 'react-icons/fa';
@@ -203,8 +203,8 @@ const FactureDetail = () => {
                   <th style={{ padding: '8px', textAlign: 'left' }}>Code</th>
                   <th style={{ padding: '8px', textAlign: 'left' }}>Libellé</th>
                   <th style={{ textAlign: 'center', padding: '8px' }}>Qté</th>
-                  <th style={{ textAlign: 'right', padding: '8px' }}>PU (€)</th>
-                  <th style={{ textAlign: 'right', padding: '8px' }}>Total (€)</th>
+                  <th style={{ textAlign: 'right', padding: '8px' }}>PU (FC)</th>
+                  <th style={{ textAlign: 'right', padding: '8px' }}>Total (FC)</th>
                 </tr>
               </thead>
               <tbody>
@@ -220,13 +220,13 @@ const FactureDetail = () => {
               </tbody>
             </table>
             <div style={{ textAlign: 'right', marginTop: '16px', fontSize: '18px', fontWeight: 'bold' }}>
-              Total : {parseFloat(facture.montant_total).toFixed(2)} €
+              Total : {parseFloat(facture.montant_total).toFixed(2)} FC
             </div>
             <div style={{ textAlign: 'right' }}>
-              Montant payé : {parseFloat(facture.montant_paye).toFixed(2)} €
+              Montant payé : {parseFloat(facture.montant_paye).toFixed(2)} FC
             </div>
             <div style={{ textAlign: 'right', color: resteAPayer > 0 ? '#dc2626' : '#10b981', fontWeight: 'bold' }}>
-              Reste à payer : {resteAPayer.toFixed(2)} €
+              Reste à payer : {resteAPayer.toFixed(2)} FC
             </div>
             {facture.remise > 0 && (
               <div style={{ textAlign: 'right', color: '#6b7280' }}>

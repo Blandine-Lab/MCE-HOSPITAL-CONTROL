@@ -126,7 +126,7 @@ const ExamensList = ({ initialFilter = {} }) => {
     setPage(1);
   };
 
-  // ✅ Annulation (soft delete) – accessible à canManage
+  // ✅ Annulation (soft delete) �FC� accessible à canManage
   const handleAnnuler = async (id) => {
     if (!window.confirm('Confirmer l\'annulation de cet examen ?')) return;
     try {
@@ -139,7 +139,7 @@ const ExamensList = ({ initialFilter = {} }) => {
     }
   };
 
-  // ✅ Suppression définitive (hard delete) – réservée aux administrateurs
+  // ✅ Suppression définitive (hard delete) �FC� réservée aux administrateurs
   const handleDeleteDefinitive = async (id) => {
     if (!window.confirm('⚠️ Supprimer définitivement cet examen ? Cette action est irréversible.')) return;
     try {
@@ -433,7 +433,7 @@ const ExamensList = ({ initialFilter = {} }) => {
                           <FaEdit />
                         </Link>
                       )}
-                      {/* ✅ Bouton Annuler (soft delete) – accessible à canManage */}
+                      {/* ✅ Bouton Annuler (soft delete) �FC� accessible à canManage */}
                       {e.statut !== 'annulé' && e.statut !== 'valide' && canManage && (
                         <button
                           onClick={() => handleAnnuler(e.id)}
@@ -443,7 +443,7 @@ const ExamensList = ({ initialFilter = {} }) => {
                           <FaTimesCircle />
                         </button>
                       )}
-                      {/* ✅ Bouton Supprimer définitivement (hard delete) – réservé aux administrateurs */}
+                      {/* ✅ Bouton Supprimer définitivement (hard delete) �FC� réservé aux administrateurs */}
                       {isAdmin && e.statut !== 'valide' && (
                         <button
                           onClick={() => handleDeleteDefinitive(e.id)}

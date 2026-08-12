@@ -183,7 +183,7 @@ const ResultatForm = () => {
     }
   };
 
-  // Impression PDF â€“ avec token encodÃ© dans l'URL
+  // Impression PDF âFC“ avec token encodÃ© dans l'URL
   const handlePrint = () => {
     const token = localStorage.getItem('token');
     if (!token) {

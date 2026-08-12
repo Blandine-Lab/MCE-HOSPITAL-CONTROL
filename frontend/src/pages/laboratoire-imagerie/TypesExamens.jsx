@@ -1,4 +1,4 @@
-// src/pages/laboratoire-imagerie/TypesExamens.jsx
+﻿// src/pages/laboratoire-imagerie/TypesExamens.jsx
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../axios';
@@ -315,7 +315,7 @@ const TypesExamens = () => {
                   <option value="">Aucune (prix par défaut)</option>
                   {prestations.map(p => (
                     <option key={p.id} value={p.id}>
-                      {p.code} - {p.libelle} ({p.prix_unitaire} €)
+                      {p.code} - {p.libelle} ({p.prix_unitaire} FC)
                     </option>
                   ))}
                 </select>

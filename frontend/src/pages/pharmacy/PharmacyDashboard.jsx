@@ -41,7 +41,7 @@ const PharmacyDashboard = () => {
     <div style={{ minHeight: '100vh', backgroundColor: '#f0fdf4', padding: '32px' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#166534', marginBottom: '24px' }}>
-          ğŸ’Š Tableau de bord â€“ Pharmacie
+          ğŸ’Š Tableau de bord âFC“ Pharmacie
         </h1>
 
         {/* Widgets */}

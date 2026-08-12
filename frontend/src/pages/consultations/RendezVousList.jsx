@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import api from '../../axios'; // ✅ Instance avec intercepteur
 
 const RendezVousList = () => {
@@ -77,7 +77,7 @@ const RendezVousList = () => {
       showToast('Rendez-vous ajouté avec succès');
     } catch (err) {
       console.error(err);
-      showToast('Erreur lors de l’ajout', 'error');
+      showToast('Erreur lors de lFCajout', 'error');
     }
   };
 
@@ -236,7 +236,7 @@ const RendezVousList = () => {
             type="number"
             step="0.01"
             min="0"
-            placeholder="Prix (€)"
+            placeholder="Prix (FC)"
             value={form.prix}
             onChange={e => setForm({...form, prix: parseFloat(e.target.value) || 0})}
             style={inputStyle}
@@ -271,7 +271,7 @@ const RendezVousList = () => {
                   <td style={tdStyle}>{r.motif}</td>
                   <td style={tdStyle}>{r.type_consultation || 'générale'}</td>
                   <td style={tdStyle}>{r.categorie || 'ambulatoire'}</td>
-                  <td style={tdStyle}>{r.prix ? parseFloat(r.prix).toFixed(2) + ' €' : '50.00 €'}</td>
+                  <td style={tdStyle}>{r.prix ? parseFloat(r.prix).toFixed(2) + ' FC' : '50.00 FC'}</td>
                   <td style={tdStyle}><span style={statusBadge(r.statut)}>{r.statut}</span></td>
                   <td style={tdStyle}>
                     {r.statut === 'planifie' && (

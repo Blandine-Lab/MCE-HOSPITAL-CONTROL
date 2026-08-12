@@ -81,8 +81,8 @@ const Badge = () => {
           <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Poste :</strong> {employe.poste || 'Non d√©fini'}</p>
           <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Service :</strong> {employe.service_nom || employe.service || 'Non d√©fini'}</p>
           <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Matricule :</strong> {employe.id}</p>
-          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Email :</strong> {employe.email || '‚Äî'}</p>
-          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>T√©l :</strong> {employe.telephone || '‚Äî'}</p>
+          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Email :</strong> {employe.email || '‚FCî'}</p>
+          <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>T√©l :</strong> {employe.telephone || '‚FCî'}</p>
         </div>
 
         {/* Zone info */}

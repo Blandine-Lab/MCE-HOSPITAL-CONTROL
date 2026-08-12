@@ -46,7 +46,7 @@ const SoinForm = () => {
           const role = (e.role || e.poste || e.fonction || '').toLowerCase();
           return rolesParamedicaux.some(r => role.includes(r));
         });
-        console.log('🧑‍⚕️ Employés paramédicaux filtrés :', filtered);
+        console.log('🧑�FC�⚕️ Employés paramédicaux filtrés :', filtered);
         // Si aucun filtre ne correspond, on affiche tous les employés pour ne pas bloquer
         setEmployes(filtered.length > 0 ? filtered : res.data);
       })

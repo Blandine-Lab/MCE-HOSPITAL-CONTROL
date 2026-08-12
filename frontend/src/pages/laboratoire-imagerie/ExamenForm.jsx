@@ -404,7 +404,7 @@ const ExamenForm = () => {
               </select>
               {formData.priorite === 'urgent' && (
                 <div style={{ color: '#dc2626', fontSize: '14px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <FaExclamationTriangle /> Priorité urgente – délai réduit
+                  <FaExclamationTriangle /> Priorité urgente �FC� délai réduit
                 </div>
               )}
             </div>

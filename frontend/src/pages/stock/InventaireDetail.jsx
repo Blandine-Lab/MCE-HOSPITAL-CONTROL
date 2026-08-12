@@ -35,7 +35,7 @@ const InventaireDetail = () => {
         <p><strong>Date :</strong> {new Date(inventaire.date).toLocaleDateString()}</p>
         <p><strong>Type :</strong> {inventaire.type}</p>
         <p><strong>Statut :</strong> {inventaire.statut}</p>
-        <p><strong>Notes :</strong> {inventaire.notes || 'â€”'}</p>
+        <p><strong>Notes :</strong> {inventaire.notes || 'âFC”'}</p>
         <p><strong>Ã‰cart total :</strong>
           <span style={{
             fontWeight: 'bold',

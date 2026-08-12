@@ -1,4 +1,4 @@
-// src/pages/rh-planning/ContratsList.jsx
+﻿// src/pages/rh-planning/ContratsList.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../axios';
@@ -119,8 +119,8 @@ const ContratsList = () => {
                   <td style={{ padding: '12px 16px' }}>{c.employe_prenom} {c.employe_nom}</td>
                   <td style={{ padding: '12px 16px' }}>{c.type}</td>
                   <td style={{ padding: '12px 16px' }}>{new Date(c.date_debut).toLocaleDateString('fr-FR')}</td>
-                  <td style={{ padding: '12px 16px' }}>{c.date_fin ? new Date(c.date_fin).toLocaleDateString('fr-FR') : '—'}</td>
-                  <td style={{ padding: '12px 16px' }}>{c.salaire ? `${parseFloat(c.salaire).toFixed(2)} €` : '—'}</td>
+                  <td style={{ padding: '12px 16px' }}>{c.date_fin ? new Date(c.date_fin).toLocaleDateString('fr-FR') : 'FC'}</td>
+                  <td style={{ padding: '12px 16px' }}>{c.salaire ? `${parseFloat(c.salaire).toFixed(2)} FC` : 'FC'}</td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{
                       padding: '4px 12px',

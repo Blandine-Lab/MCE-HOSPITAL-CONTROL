@@ -1,4 +1,4 @@
-// frontend/src/pages/Admin.jsx
+﻿// frontend/src/pages/Admin.jsx
 import { useEffect, useState } from 'react';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaFlask, FaXRay } from 'react-icons/fa';
 import api from '../../axios'; // ✅ Utilisation de l'instance partagée
@@ -1209,7 +1209,7 @@ const Admin = () => {
               <tr>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Code</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Libellé</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Prix (€)</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Prix (FC)</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Catégorie</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Actions</th>
               </tr>
@@ -1284,7 +1284,7 @@ const Admin = () => {
                       <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{m.nom}</td>
                       <td style={{ padding: '8px', borderBottom: '1px solid #ddd', color: m.stock <= m.seuil_alerte ? 'red' : 'black' }}>{m.stock}</td>
                       <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{m.seuil_alerte}</td>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{m.prix_unitaire} €</td>
+                      <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{m.prix_unitaire} FC</td>
                       <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{m.est_stupefiant ? '✅' : '❌'}</td>
                       <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>
                         <button onClick={() => editMedicament(m)} style={{ color: '#eab308', background: 'none', border: 'none', cursor: 'pointer' }}><FaEdit /></button>
@@ -1328,7 +1328,7 @@ const Admin = () => {
                           <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{lot.numero_lot}</td>
                           <td style={{ padding: '8px', borderBottom: '1px solid #ddd', color: new Date(lot.date_peremption) < new Date() ? 'red' : 'black' }}>{lot.date_peremption}</td>
                           <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{lot.stock_actuel}</td>
-                          <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{lot.prix_achat} €</td>
+                          <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{lot.prix_achat} FC</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1620,7 +1620,7 @@ const Admin = () => {
             <form onSubmit={handlePrestationSubmit}>
               <div style={{ marginBottom: '12px' }}><label>Code *</label><input type="text" value={newPrestation.code} onChange={e => setNewPrestation({...newPrestation, code: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
               <div style={{ marginBottom: '12px' }}><label>Libellé *</label><input type="text" value={newPrestation.libelle} onChange={e => setNewPrestation({...newPrestation, libelle: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
-              <div style={{ marginBottom: '12px' }}><label>Prix unitaire (€) *</label><input type="number" step="0.01" value={newPrestation.prix_unitaire} onChange={e => setNewPrestation({...newPrestation, prix_unitaire: parseFloat(e.target.value)})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
+              <div style={{ marginBottom: '12px' }}><label>Prix unitaire (FC) *</label><input type="number" step="0.01" value={newPrestation.prix_unitaire} onChange={e => setNewPrestation({...newPrestation, prix_unitaire: parseFloat(e.target.value)})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
               <div style={{ marginBottom: '20px' }}><label>Catégorie</label><input type="text" value={newPrestation.categorie} onChange={e => setNewPrestation({...newPrestation, categorie: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                 <button type="button" onClick={() => setShowPrestationModal(false)} style={{ backgroundColor: '#e5e7eb', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><FaTimes /> Annuler</button>

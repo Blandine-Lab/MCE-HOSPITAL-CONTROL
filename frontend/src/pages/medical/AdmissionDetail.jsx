@@ -51,7 +51,7 @@ const AdmissionDetail = () => {
 
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, color: '#0f172a' }}>D√©tail de l‚Äôadmission #{admission.id}</h2>
+          <h2 style={{ margin: 0, color: '#0f172a' }}>D√©tail de l‚FCôadmission #{admission.id}</h2>
           <div style={{ display: 'flex', gap: '12px' }}>
             {/* ‚úÖ Correction : "/medical/admissions/edit/..." (pluriel) */}
             <Link
@@ -108,7 +108,7 @@ const AdmissionDetail = () => {
             <p style={{ color: '#0f172a', marginTop: '4px' }}>{admission.lit_numero || 'Non attribu√©'}</p>
           </div>
           <div>
-            <p><strong><FaCalendar style={{ marginRight: '8px' }} /> Date d‚Äôadmission</strong></p>
+            <p><strong><FaCalendar style={{ marginRight: '8px' }} /> Date d‚FCôadmission</strong></p>
             <p style={{ color: '#0f172a', marginTop: '4px' }}>{new Date(admission.date_admission).toLocaleString('fr-FR')}</p>
           </div>
           <div>
@@ -118,7 +118,7 @@ const AdmissionDetail = () => {
             </p>
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
-            <p><strong>Motif de l‚Äôadmission</strong></p>
+            <p><strong>Motif de l‚FCôadmission</strong></p>
             <p style={{ color: '#0f172a', marginTop: '4px' }}>{admission.motif || 'Non renseign√©'}</p>
           </div>
           {admission.notes && (

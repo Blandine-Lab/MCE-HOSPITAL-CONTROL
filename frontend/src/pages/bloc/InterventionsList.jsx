@@ -26,7 +26,7 @@ const InterventionsList = () => {
   }, []);
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return '—';
+    if (!dateStr) return '�FC�';
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return 'Date invalide';
     return d.toLocaleString('fr-FR', {
@@ -62,7 +62,7 @@ const InterventionsList = () => {
 
   // ✅ handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (window.confirm('⚠️ Confirmer l’annulation de cette intervention ? Cette action est irréversible.')) {
+    if (window.confirm('⚠️ Confirmer l�FC�annulation de cette intervention ? Cette action est irréversible.')) {
       try {
         await api.delete(`/bloc/interventions/${id}`);
         setToast('Intervention annulée');
@@ -72,7 +72,7 @@ const InterventionsList = () => {
         if (err.response?.status === 403) {
           setToast('❌ Seul un administrateur peut annuler/supprimer une intervention.');
         } else {
-          setToast('Erreur lors de l’annulation');
+          setToast('Erreur lors de l�FC�annulation');
         }
         setTimeout(() => setToast(null), 3000);
       }

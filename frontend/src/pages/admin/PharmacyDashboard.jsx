@@ -31,7 +31,7 @@ const PharmacyDashboard = () => {
           alertesStock: alertes.data.stockCritique?.length || 0,
           alertesPeremption: alertes.data.peremptionProche?.length || 0,
           commandesEnCours: commandes.data.filter(c => c.statut === 'en_cours').length || 0,
-          delivrancesAujourdhui: 0 // À compléter avec une requête dédiée si besoin
+          delivrancesAujourdhui: 0 // �FC compléter avec une requête dédiée si besoin
         });
         setLoading(false);
       } catch (err) {

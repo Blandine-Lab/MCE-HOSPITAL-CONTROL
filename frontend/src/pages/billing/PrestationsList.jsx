@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import api from '../../axios'; // ✅ Instance avec intercepteur
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes } from 'react-icons/fa';
 
@@ -176,7 +176,7 @@ const PrestationsList = () => {
               <tr>
                 <th style={thStyle}>Code</th>
                 <th style={thStyle}>Libellé</th>
-                <th style={thStyle}>Prix (€)</th>
+                <th style={thStyle}>Prix (FC)</th>
                 <th style={thStyle}>Catégorie</th>
                 <th style={thStyle}>Actions</th>
               </tr>
@@ -240,7 +240,7 @@ const PrestationsList = () => {
                 />
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Prix unitaire (€) *</label>
+                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Prix unitaire (FC) *</label>
                 <input
                   type="number"
                   step="0.01"

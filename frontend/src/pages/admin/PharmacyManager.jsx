@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
 const PharmacyManager = () => {
@@ -172,7 +172,7 @@ const PharmacyManager = () => {
                 <tr key={m.id} className="border-b">
                   <td className="p-2">{m.code}</td><td className="p-2">{m.nom}</td>
                   <td className="p-2">{m.stock}</td><td className="p-2">{m.seuil_alerte}</td>
-                  <td className="p-2">{m.prix_unitaire} €</td>
+                  <td className="p-2">{m.prix_unitaire} FC</td>
                   <td className="p-2">{m.est_stupefiant ? '✅' : '❌'}</td>
                   <td className="p-2">
                     <button onClick={() => editMedicament(m)} className="text-yellow-600 mr-2">✏️</button>
@@ -211,7 +211,7 @@ const PharmacyManager = () => {
                       <td className="p-2">{lot.numero_lot}</td>
                       <td className="p-2">{lot.date_peremption}</td>
                       <td className="p-2">{lot.stock_actuel}</td>
-                      <td className="p-2">{lot.prix_achat} €</td>
+                      <td className="p-2">{lot.prix_achat} FC</td>
                     </tr>
                   ))}
                 </tbody>

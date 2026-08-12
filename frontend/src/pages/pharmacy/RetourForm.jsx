@@ -90,7 +90,7 @@ const RetourForm = () => {
           motif: form.motif || 'Destruction',
           procede: 'Incincération' // valeur par défaut, peut être paramétré
         };
-        // La destruction utilise aussi le mot de passe – nous devons l'ajouter dans le payload
+        // La destruction utilise aussi le mot de passe �FC� nous devons l'ajouter dans le payload
         // mais la route actuelle ne l'accepte peut-être pas ; nous l'ajoutons quand même.
         payload.password = password;
       }
