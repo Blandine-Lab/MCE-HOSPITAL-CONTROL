@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const targetDir = path.join(__dirname, 'frontend', 'src');
+const srcDir = path.join(__dirname, 'frontend', 'src');
 const extensions = ['.jsx', '.js'];
 
 function walk(dir) {
@@ -17,10 +17,11 @@ function walk(dir) {
       const newContent = content.replace(/€/g, 'FC').replace(/ FC /g, 'FC');
       if (content !== newContent) {
         fs.writeFileSync(fullPath, newContent, 'utf8');
-        console.log(`Modifié : ${fullPath}`);
+        console.log(`✅ ${fullPath}`);
       }
     }
   }
 }
 
-walk(targetDir);
+walk(srcDir);
+console.log('✅ Remplacement terminé.');
