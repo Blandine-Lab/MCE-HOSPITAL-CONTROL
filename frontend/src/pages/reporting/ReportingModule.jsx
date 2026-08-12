@@ -23,7 +23,7 @@ const ReportingModule = () => (
       </h2>
       <ul style={{ listStyle: 'none', padding: 0 }}>
         <li><NavLink to="/reporting" end style={linkStyle}><FaChartPie /> Tableau de bord</NavLink></li>
-        <li><NavLink to="/reporting/rapports" style={linkStyle}><FaSave /> Rapports sauvegardés</NavLink></li>
+        <li><NavLink to="/reporting/rapports" style={linkStyle}><FaSave /> Rapports sauvegards</NavLink></li>
         <li><NavLink to="/reporting/export" style={linkStyle}><FaFileExport /> Exports</NavLink></li>
       </ul>
     </nav>

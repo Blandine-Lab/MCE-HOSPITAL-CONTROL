@@ -47,9 +47,9 @@ const DashboardQualite = () => {
       const response = await api.get(`/dashboard/qualite?periode=${period}`);
       setData(response.data);
     } catch (err) {
-      console.error('Erreur chargement dashboard qualité :', err);
-      setError('Impossible de charger les données. Vérifiez votre connexion.');
-      // Données de fallback pour éviter écran vide (optionnel)
+      console.error('Erreur chargement dashboard qualit :', err);
+      setError('Impossible de charger les donnes. Vrifiez votre connexion.');
+      // Donnes de fallback pour viter cran vide (optionnel)
       setData({
         signalementsOuverts: 12,
         signalementsResolus: 8,
@@ -66,18 +66,18 @@ const DashboardQualite = () => {
         ],
         repartitionService: [
           { service: 'Urgences', count: 5 },
-          { service: 'Médecine', count: 3 },
+          { service: 'Mdecine', count: 3 },
           { service: 'Chirurgie', count: 2 },
-          { service: 'Pédiatrie', count: 1 }
+          { service: 'Pdiatrie', count: 1 }
         ],
         risquesCategorie: [
           { categorie: 'Infectieux', count: 3 },
-          { categorie: 'Médicamenteux', count: 2 },
+          { categorie: 'Mdicamenteux', count: 2 },
           { categorie: 'Chirurgical', count: 1 },
           { categorie: 'Organisationnel', count: 1 }
         ],
         alertes: [
-          { id: 1, message: 'Signalement #45 non traité depuis 72h', priorite: 'haute' },
+          { id: 1, message: 'Signalement #45 non trait depuis 72h', priorite: 'haute' },
           { id: 2, message: 'Audit #12 en retard de 5 jours', priorite: 'moyenne' }
         ]
       });
@@ -124,7 +124,7 @@ const DashboardQualite = () => {
     }]
   };
 
-  // Composant TrendBadge (inchangé)
+  // Composant TrendBadge (inchang)
   const TrendBadge = ({ value, label }) => {
     const isPositive = value > 0;
     const isNegative = value < 0;
@@ -148,7 +148,7 @@ const DashboardQualite = () => {
     );
   };
 
-  // Composant StatCard (inchangé)
+  // Composant StatCard (inchang)
   const StatCard = ({ icon: Icon, label, value, color, trend, subtitle }) => (
     <div style={{
       backgroundColor: 'white',
@@ -170,7 +170,7 @@ const DashboardQualite = () => {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
         <Icon style={{ fontSize: '24px', color: color }} />
-        {trend !== undefined && <TrendBadge value={trend} label="vs mois précédent" />}
+        {trend !== undefined && <TrendBadge value={trend} label="vs mois prcdent" />}
       </div>
       <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#0f172a' }}>{value}</div>
       <div style={{ fontSize: '14px', color: '#64748b' }}>{label}</div>
@@ -192,7 +192,7 @@ const DashboardQualite = () => {
     <div style={{ padding: '0 0 24px 0' }}>
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
 
-      {/* En-tête */}
+      {/* En-tte */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -203,7 +203,7 @@ const DashboardQualite = () => {
       }}>
         <h1 style={{ fontSize: '28px', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
           <FaShieldAlt style={{ color: '#ef4444' }} />
-          Tableau de bord Qualité & Risques
+          Tableau de bord Qualit & Risques
         </h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <select
@@ -235,7 +235,7 @@ const DashboardQualite = () => {
               gap: '6px'
             }}
           >
-            <FaSync /> Rafraîchir
+            <FaSync /> Rafrachir
           </button>
         </div>
       </div>
@@ -248,7 +248,7 @@ const DashboardQualite = () => {
           borderRadius: '8px',
           marginBottom: '20px'
         }}>
-          ⚠️ {error}
+          ?? {error}
         </div>
       )}
 
@@ -262,7 +262,7 @@ const DashboardQualite = () => {
           marginBottom: '20px'
         }}>
           <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: '#92400e' }}>
-            <FaExclamationTriangle style={{ marginRight: '8px' }} /> Alertes qualité
+            <FaExclamationTriangle style={{ marginRight: '8px' }} /> Alertes qualit
           </h4>
           <ul style={{ margin: 0, paddingLeft: '20px', listStyle: 'disc', color: '#78350f' }}>
             {data.alertes.map(a => (
@@ -295,11 +295,11 @@ const DashboardQualite = () => {
           label="Signalements ouverts"
           value={data?.signalementsOuverts || 0}
           color="#f59e0b"
-          trend={12} // à calculer ou supprimer si pas de trend
+          trend={12} //  calculer ou supprimer si pas de trend
         />
         <StatCard
           icon={FaClipboardCheck}
-          label="Signalements résolus"
+          label="Signalements rsolus"
           value={data?.signalementsResolus || 0}
           color="#10b981"
           trend={0}
@@ -320,7 +320,7 @@ const DashboardQualite = () => {
         />
         <StatCard
           icon={FaTimes}
-          label="Non-conformités"
+          label="Non-conformits"
           value={data?.nonConformites || 0}
           color="#ef4444"
         />
@@ -346,7 +346,7 @@ const DashboardQualite = () => {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
           <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>
-            📈 Évolution des signalements
+            ?? volution des signalements
           </h3>
           <Line
             data={evolutionChartData}
@@ -365,7 +365,7 @@ const DashboardQualite = () => {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
           <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>
-            🏥 Répartition par service
+            ?? Rpartition par service
           </h3>
           <div style={{ maxWidth: '280px', margin: '0 auto' }}>
             <Doughnut
@@ -385,7 +385,7 @@ const DashboardQualite = () => {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
           <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>
-            🧬 Risques par catégorie
+            ?? Risques par catgorie
           </h3>
           <div style={{ maxWidth: '280px', margin: '0 auto' }}>
             <Doughnut
@@ -399,7 +399,7 @@ const DashboardQualite = () => {
         </div>
       </div>
 
-      {/* Résumé des indicateurs clés */}
+      {/* Rsum des indicateurs cls */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
@@ -408,11 +408,11 @@ const DashboardQualite = () => {
         marginBottom: '20px'
       }}>
         <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>
-          📊 Indicateurs clés
+          ?? Indicateurs cls
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
           <div>
-            <div style={{ fontSize: '14px', color: '#64748b' }}>Taux de résolution</div>
+            <div style={{ fontSize: '14px', color: '#64748b' }}>Taux de rsolution</div>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a' }}>
               {data?.signalementsTotal > 0
                 ? Math.round((data.signalementsResolus / data.signalementsTotal) * 100)
@@ -420,7 +420,7 @@ const DashboardQualite = () => {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '14px', color: '#64748b' }}>Délai moyen de traitement</div>
+            <div style={{ fontSize: '14px', color: '#64748b' }}>Dlai moyen de traitement</div>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a' }}>4.2 jours</div>
           </div>
           <div>

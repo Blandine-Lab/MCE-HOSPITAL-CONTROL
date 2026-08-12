@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaExchangeAlt, FaBed, FaStethoscope, FaClipboardList, FaSave } from 'react-icons/fa';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partage
 
 const TransfertForm = () => {
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ const TransfertForm = () => {
     }).catch(err => {
       console.error(err);
       setLoading(false);
-      setToast('Erreur chargement des données');
+      setToast('Erreur chargement des donnes');
       setTimeout(() => setToast(null), 3000);
     });
   }, []);
@@ -36,7 +36,7 @@ const TransfertForm = () => {
     e.preventDefault();
     try {
       await api.post('/consultations/transferts', form);
-      setToast('Transfert effectué avec succès');
+      setToast('Transfert effectu avec succs');
       setTimeout(() => setToast(null), 3000);
       setTimeout(() => navigate('/patients'), 1500);
     } catch (err) {
@@ -45,7 +45,7 @@ const TransfertForm = () => {
     }
   };
 
-  // Styles (inchangés)
+  // Styles (inchangs)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#f0f9ff',
@@ -138,11 +138,11 @@ const TransfertForm = () => {
         </div>
       )}
       <div style={innerStyle}>
-        <h1 style={titleStyle}>🔄 Transfert de patient</h1>
+        <h1 style={titleStyle}>?? Transfert de patient</h1>
         <div style={cardStyle}>
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Patient hospitalisé *</label>
+              <label style={labelStyle}>Patient hospitalis *</label>
               <select
                 value={form.patient_id}
                 onChange={e => setForm({...form, patient_id: e.target.value})}
@@ -151,7 +151,7 @@ const TransfertForm = () => {
                 onFocus={e => e.target.style.borderColor = '#3b82f6'}
                 onBlur={e => e.target.style.borderColor = '#cbd5e1'}
               >
-                <option value="">-- Sélectionner un patient --</option>
+                <option value="">-- Slectionner un patient --</option>
                 {patients.map(p => (
                   <option key={p.id} value={p.id}>
                     {p.nom} {p.prenom} (Lit {p.lit_numero} - {p.chambre_nom || 'Sans chambre'})
@@ -219,7 +219,7 @@ const TransfertForm = () => {
                 onMouseEnter={e => e.target.style.backgroundColor = '#2563eb'}
                 onMouseLeave={e => e.target.style.backgroundColor = '#3b82f6'}
               >
-                <FaExchangeAlt /> Transférer
+                <FaExchangeAlt /> Transfrer
               </button>
             </div>
           </form>

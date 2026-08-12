@@ -1,5 +1,5 @@
 const SurgeriesTable = ({ data }) => {
-  if (!data || data.length === 0) return <p>Aucune intervention prévue aujourd'hui.</p>;
+  if (!data || data.length === 0) return <p>Aucune intervention prvue aujourd'hui.</p>;
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-white border">

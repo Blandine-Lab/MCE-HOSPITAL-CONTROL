@@ -12,7 +12,7 @@ const PermissionsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const PermissionsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -56,24 +56,24 @@ const PermissionsList = () => {
       setPermissions([...permissions, res.data]);
       setShowForm(false);
       setFormData({ code: '', nom: '', description: '', module: '' });
-      showToast('Permission ajoutée avec succès');
+      showToast('Permission ajoute avec succs');
     } catch (err) {
       console.error(err);
       showToast('Erreur lors de l\'ajout', 'error');
     }
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id, nom) => {
-    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer la permission "${nom}" ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`?? Voulez-vous vraiment supprimer la permission "${nom}" ? Cette action est irrversible.`)) return;
     try {
       await api.delete(`/security/permissions/${id}`);
       setPermissions(permissions.filter(p => p.id !== id));
-      showToast('Permission supprimée avec succès');
+      showToast('Permission supprime avec succs');
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer une permission.', 'error');
+        showToast('? Seul un administrateur peut supprimer une permission.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -82,7 +82,7 @@ const PermissionsList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -116,7 +116,7 @@ const PermissionsList = () => {
             <input name="module" placeholder="Module" value={formData.module} onChange={e => setFormData({ ...formData, module: e.target.value })} style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
             <input name="description" placeholder="Description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
             <div style={{ gridColumn: 'span 2' }}>
-              <button type="submit" style={{ backgroundColor: '#f59e0b', color: 'white', padding: '8px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Créer</button>
+              <button type="submit" style={{ backgroundColor: '#f59e0b', color: 'white', padding: '8px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Crer</button>
               <button type="button" onClick={() => setShowForm(false)} style={{ marginLeft: '12px', padding: '8px 24px', border: '1px solid #e2e8f0', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>Annuler</button>
             </div>
           </form>
@@ -138,7 +138,7 @@ const PermissionsList = () => {
                   {isAdmin ? (
                     <button onClick={() => handleDelete(p.id, p.nom)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

@@ -12,7 +12,7 @@ const PlanningsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const PlanningsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -50,17 +50,17 @@ const PlanningsList = () => {
     fetchPlannings();
   }, [filterDate]);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Voulez-vous vraiment supprimer ce planning ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Voulez-vous vraiment supprimer ce planning ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/plannings/${id}`);
       setPlannings(plannings.filter(p => p.id !== id));
-      showToast('Planning supprimé avec succès');
+      showToast('Planning supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un planning.', 'error');
+        showToast('? Seul un administrateur peut supprimer un planning.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -69,7 +69,7 @@ const PlanningsList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{textAlign:'center', padding:60}}>⏳ Chargement...</div>;
+  if (loading) return <div style={{textAlign:'center', padding:60}}>? Chargement...</div>;
 
   return (
     <div>
@@ -101,7 +101,7 @@ const PlanningsList = () => {
       <div style={{backgroundColor:'white', borderRadius:12, boxShadow:'0 1px 3px rgba(0,0,0,0.1)', overflow:'hidden'}}>
         <table style={{width:'100%', borderCollapse:'collapse'}}>
           <thead style={{backgroundColor:'#f1f5f9'}}>
-            <tr><th>Employé</th><th>Date</th><th>Horaire</th><th>Type</th><th style={{textAlign:'center'}}>Actions</th></tr>
+            <tr><th>Employ</th><th>Date</th><th>Horaire</th><th>Type</th><th style={{textAlign:'center'}}>Actions</th></tr>
           </thead>
           <tbody>
             {plannings.map((p,i) => (
@@ -116,7 +116,7 @@ const PlanningsList = () => {
                   {isAdmin ? (
                     <button onClick={() => handleDelete(p.id)} style={{color:'#ef4444', background:'none', border:'none', cursor:'pointer'}}><FaTrash /></button>
                   ) : (
-                    <span style={{color:'#94a3b8', fontSize:'14px'}} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{color:'#94a3b8', fontSize:'14px'}} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

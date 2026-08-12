@@ -39,12 +39,12 @@ const BudgetForm = () => {
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div><label>Compte *</label>
             <select name="compte_id" value={formData.compte_id} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {comptes.map(c => <option key={c.id} value={c.id}>{c.code} - {c.nom}</option>)}
             </select>
           </div>
           <div><label>Exercice *</label><input name="exercice" type="number" value={formData.exercice} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-          <div><label>Montant prévu *</label><input name="montant_prevu" type="number" step="0.01" value={formData.montant_prevu} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+          <div><label>Montant prvu *</label><input name="montant_prevu" type="number" step="0.01" value={formData.montant_prevu} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div style={{ gridColumn: 'span 2' }}>
             <button type="submit" disabled={loading} style={{ backgroundColor: '#f59e0b', color: 'white', padding: '12px 32px', border: 'none', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
               <FaSave /> {loading ? 'Enregistrement...' : 'Enregistrer'}

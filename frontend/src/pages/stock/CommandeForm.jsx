@@ -72,12 +72,12 @@ const CommandeForm = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
             <div><label>Fournisseur *</label>
               <select name="fournisseur_id" value={formData.fournisseur_id} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                <option value="">Sélectionner</option>
+                <option value="">Slectionner</option>
                 {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
               </select>
             </div>
             <div><label>Date commande *</label><input name="date_commande" type="date" value={formData.date_commande} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-            <div><label>Date livraison prévue</label><input name="date_livraison_prevue" type="date" value={formData.date_livraison_prevue} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+            <div><label>Date livraison prvue</label><input name="date_livraison_prevue" type="date" value={formData.date_livraison_prevue} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
             <div style={{ gridColumn: 'span 3' }}><label>Notes</label><textarea name="notes" value={formData.notes} onChange={handleChange} rows="2" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           </div>
 
@@ -85,7 +85,7 @@ const CommandeForm = () => {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ backgroundColor: '#f1f5f9' }}>
-                <tr><th>Produit</th><th style={{ textAlign: 'right' }}>Quantité</th><th style={{ textAlign: 'right' }}>Prix unitaire</th><th style={{ textAlign: 'right' }}>Total</th><th></th></tr>
+                <tr><th>Produit</th><th style={{ textAlign: 'right' }}>Quantit</th><th style={{ textAlign: 'right' }}>Prix unitaire</th><th style={{ textAlign: 'right' }}>Total</th><th></th></tr>
               </thead>
               <tbody>
                 {formData.lignes.map((ligne, index) => {
@@ -94,7 +94,7 @@ const CommandeForm = () => {
                     <tr key={index} style={{ borderBottom: '1px solid #e2e8f0' }}>
                       <td style={{ padding: '8px' }}>
                         <select value={ligne.produit_id} onChange={e => handleLigneChange(index, 'produit_id', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-                          <option value="">Sélectionner</option>
+                          <option value="">Slectionner</option>
                           {produits.map(p => <option key={p.id} value={p.id}>{p.code} - {p.nom}</option>)}
                         </select>
                       </td>

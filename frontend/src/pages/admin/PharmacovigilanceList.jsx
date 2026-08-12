@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FaPlus, FaSave, FaTimes } from 'react-icons/fa';
-import api from '../../axios'; // ✅ Instance partagée
+import api from '../../axios'; // ? Instance partage
 
 const PharmacovigilanceList = () => {
   const [declarations, setDeclarations] = useState([]);
@@ -18,9 +18,9 @@ const PharmacovigilanceList = () => {
   });
   const [patients, setPatients] = useState([]);
   const [medicaments, setMedicaments] = useState([]);
-  const [userRole, setUserRole] = useState(null); // ✅ Pour future utilisation
+  const [userRole, setUserRole] = useState(null); // ? Pour future utilisation
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -28,7 +28,7 @@ const PharmacovigilanceList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -45,7 +45,7 @@ const PharmacovigilanceList = () => {
       setDeclarations(res.data);
     } catch (err) {
       console.error('Erreur fetchDeclarations:', err);
-      showToast('Erreur chargement déclarations', 'error');
+      showToast('Erreur chargement dclarations', 'error');
     } finally {
       setLoading(false);
     }
@@ -80,7 +80,7 @@ const PharmacovigilanceList = () => {
     e.preventDefault();
     try {
       await api.post('/pharmacy/pharmacovigilance/effets-indesirables', form);
-      showToast('Déclaration enregistrée');
+      showToast('Dclaration enregistre');
       setShowForm(false);
       setForm({ patient_id: '', medicament_id: '', effet: '', description: '', severite: 'leger', date_survenue: '' });
       fetchDeclarations();
@@ -91,7 +91,7 @@ const PharmacovigilanceList = () => {
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+    return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
   }
 
   return (
@@ -105,14 +105,14 @@ const PharmacovigilanceList = () => {
           {toast}
         </div>
       )}
-      <h2 style={{ marginBottom: '20px' }}>⚠️ Pharmacovigilance �FC� Effets indésirables</h2>
+      <h2 style={{ marginBottom: '20px' }}>?? Pharmacovigilance ?FC? Effets indsirables</h2>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div></div>
         <button
           onClick={() => { setShowForm(true); setForm({ patient_id: '', medicament_id: '', effet: '', description: '', severite: 'leger', date_survenue: '' }); }}
           style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
         >
-          <FaPlus /> Déclarer un effet
+          <FaPlus /> Dclarer un effet
         </button>
       </div>
       <div style={{ overflowX: 'auto' }}>
@@ -121,11 +121,11 @@ const PharmacovigilanceList = () => {
             <tr>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>ID</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Patient</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Médicament</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Mdicament</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Effet</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Sévérité</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Svrit</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Date de survenue</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Déclaré par</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Dclar par</th>
             </tr>
           </thead>
           <tbody>
@@ -157,21 +157,21 @@ const PharmacovigilanceList = () => {
       {showForm && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '500px', maxWidth: '90%' }}>
-            <h2 style={{ marginBottom: '16px' }}>Déclarer un effet indésirable</h2>
+            <h2 style={{ marginBottom: '16px' }}>Dclarer un effet indsirable</h2>
             <form onSubmit={handleSubmit}>
               <select value={form.patient_id} onChange={e => setForm({...form, patient_id: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }}>
                 <option value="">Patient</option>
                 {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
               </select>
               <select value={form.medicament_id} onChange={e => setForm({...form, medicament_id: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }}>
-                <option value="">Médicament</option>
+                <option value="">Mdicament</option>
                 {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
               </select>
               <input type="text" placeholder="Effet *" value={form.effet} onChange={e => setForm({...form, effet: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <textarea placeholder="Description" value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows="3" style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <select value={form.severite} onChange={e => setForm({...form, severite: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }}>
-                <option value="leger">Léger</option>
-                <option value="modere">Modéré</option>
+                <option value="leger">Lger</option>
+                <option value="modere">Modr</option>
                 <option value="grave">Grave</option>
                 <option value="mortel">Mortel</option>
               </select>

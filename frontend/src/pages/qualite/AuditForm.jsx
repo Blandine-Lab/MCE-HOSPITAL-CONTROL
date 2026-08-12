@@ -84,10 +84,10 @@ const AuditForm = () => {
       };
       if (isEdit) {
         await api.put(`/audits/${id}`, payload);
-        setToast({ type: 'success', message: 'Audit modifié avec succès' });
+        setToast({ type: 'success', message: 'Audit modifi avec succs' });
       } else {
         await api.post('/audits', payload);
-        setToast({ type: 'success', message: 'Audit créé avec succès' });
+        setToast({ type: 'success', message: 'Audit cr avec succs' });
       }
       setTimeout(() => navigate('/qualite/audits'), 1500);
     } catch (err) {
@@ -98,7 +98,7 @@ const AuditForm = () => {
   };
 
   if (loadingData) {
-    return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement des données...</div>;
+    return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement des donnes...</div>;
   }
 
   return (
@@ -147,7 +147,7 @@ const AuditForm = () => {
 
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Numéro audit *</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Numro audit *</label>
             <input
               name="numero_audit"
               value={formData.numero_audit}
@@ -191,10 +191,10 @@ const AuditForm = () => {
               onChange={handleChange}
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
             >
-              <option value="planifie">📋 Planifié</option>
-              <option value="en_cours">⏳ En cours</option>
-              <option value="termine">✅ Terminé</option>
-              <option value="annule">❌ Annulé</option>
+              <option value="planifie">?? Planifi</option>
+              <option value="en_cours">? En cours</option>
+              <option value="termine">? Termin</option>
+              <option value="annule">? Annul</option>
             </select>
           </div>
 
@@ -206,7 +206,7 @@ const AuditForm = () => {
               onChange={handleChange}
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
             >
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {services.map(s => (
                 <option key={s.id} value={s.id}>{s.nom}</option>
               ))}
@@ -224,7 +224,7 @@ const AuditForm = () => {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Date début *</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Date dbut *</label>
             <input
               name="date_debut"
               type="date"
@@ -246,7 +246,7 @@ const AuditForm = () => {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Équipe d'audit</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>quipe d'audit</label>
             <input
               name="equipe_audit"
               value={formData.equipe_audit}
@@ -268,25 +268,25 @@ const AuditForm = () => {
           </div>
 
           <div style={{ gridColumn: 'span 2' }}>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Scope (périmètre)</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Scope (primtre)</label>
             <textarea
               name="scope"
               value={formData.scope}
               onChange={handleChange}
               rows="2"
-              placeholder="Périmètre de l'audit..."
+              placeholder="Primtre de l'audit..."
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px', resize: 'vertical' }}
             />
           </div>
 
           <div style={{ gridColumn: 'span 2' }}>
-            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Critères</label>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Critres</label>
             <textarea
               name="criteres"
               value={formData.criteres}
               onChange={handleChange}
               rows="2"
-              placeholder="Critères d'évaluation..."
+              placeholder="Critres d'valuation..."
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px', resize: 'vertical' }}
             />
           </div>
@@ -322,7 +322,7 @@ const AuditForm = () => {
               value={formData.recommandations}
               onChange={handleChange}
               rows="2"
-              placeholder="Recommandations pour l'amélioration..."
+              placeholder="Recommandations pour l'amlioration..."
               style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px', resize: 'vertical' }}
             />
           </div>

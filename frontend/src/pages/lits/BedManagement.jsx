@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partage
 
 const BedManagement = () => {
   const [chambres, setChambres] = useState([]);
@@ -7,7 +7,7 @@ const BedManagement = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    api.get('/consultations/lits/all') // ✅ Suppression de l'URL absolue
+    api.get('/consultations/lits/all') // ? Suppression de l'URL absolue
       .then(res => {
         const lits = res.data;
         // Regrouper les lits par chambre (nom)
@@ -20,7 +20,7 @@ const BedManagement = () => {
             id: lit.id,
             numero: lit.numero,
             statut: lit.statut,
-            patient: lit.patient // peut être null ou undefined
+            patient: lit.patient // peut tre null ou undefined
           });
           return acc;
         }, {});
@@ -43,7 +43,7 @@ const BedManagement = () => {
     <div style={{ padding: '20px' }}>
       <h1>Gestion des lits et chambres</h1>
       {chambres.length === 0 ? (
-        <p>Aucune chambre trouvée.</p>
+        <p>Aucune chambre trouve.</p>
       ) : (
         chambres.map((ch, idx) => (
           <div key={idx} style={{ border: '1px solid #ccc', margin: '10px', padding: '10px' }}>
@@ -56,7 +56,7 @@ const BedManagement = () => {
                   borderRadius: '5px',
                   color: 'white'
                 }}>
-                  Lit {lit.numero} - {lit.statut === 'occupe' ? 'Occupé' : 'Libre'}
+                  Lit {lit.numero} - {lit.statut === 'occupe' ? 'Occup' : 'Libre'}
                   {lit.patient && <div style={{ fontSize: '12px' }}>{lit.patient}</div>}
                 </div>
               ))}

@@ -1,7 +1,7 @@
-﻿// frontend/src/pages/Admin.jsx
+// frontend/src/pages/Admin.jsx
 import { useEffect, useState } from 'react';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaFlask, FaXRay } from 'react-icons/fa';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partagïe
 import DispositifsList from './DispositifsList';
 import PharmacovigilanceList from './PharmacovigilanceList';
 import RupturesSuggestions from './RupturesSuggestions';
@@ -10,7 +10,7 @@ import HistoriqueExecutions from './HistoriqueExecutions';
 import PharmacyDashboard from './PharmacyDashboard';
 import OrdonnancesList from '../pharmacy/OrdonnancesList';
 
-// ===================== COMPOSANT FOURNISSEURS (intégré) =====================
+// ===================== COMPOSANT FOURNISSEURS (intïgrï) =====================
 const FournisseursList = () => {
   const [fournisseurs, setFournisseurs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,10 +40,10 @@ const FournisseursList = () => {
     try {
       if (editId) {
         await api.put(`/pharmacy/fournisseurs/${editId}`, form);
-        setToast('Fournisseur modifié');
+        setToast('Fournisseur modifiï');
       } else {
         await api.post('/pharmacy/fournisseurs', form);
-        setToast('Fournisseur ajouté');
+        setToast('Fournisseur ajoutï');
       }
       setShowForm(false);
       setEditId(null);
@@ -62,7 +62,7 @@ const FournisseursList = () => {
     try {
       await api.delete(`/pharmacy/fournisseurs/${id}`);
       fetchFournisseurs();
-      setToast('Fournisseur supprimé');
+      setToast('Fournisseur supprimï');
       setTimeout(() => setToast(null), 3000);
     } catch (err) {
       setToast('Erreur suppression');
@@ -74,7 +74,7 @@ const FournisseursList = () => {
   return (
     <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
       {toast && <div style={{ position: 'fixed', top: '20px', right: '20px', backgroundColor: '#10b981', color: 'white', padding: '12px 24px', borderRadius: '8px', zIndex: 1000 }}>{toast}</div>}
-      <h2 style={{ marginBottom: '20px' }}>🏢 Gestion des Fournisseurs</h2>
+      <h2 style={{ marginBottom: '20px' }}>?? Gestion des Fournisseurs</h2>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div></div>
         <button
@@ -91,7 +91,7 @@ const FournisseursList = () => {
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>ID</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Nom</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Email</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Téléphone</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Tïlïphone</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Adresse</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Actif</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Actions</th>
@@ -105,7 +105,7 @@ const FournisseursList = () => {
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>{f.contact_email || '-'}</td>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>{f.telephone || '-'}</td>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>{f.adresse || '-'}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{f.actif ? '✅' : '❌'}</td>
+                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{f.actif ? '?' : '?'}</td>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                   <button
                     onClick={() => { setEditId(f.id); setForm(f); setShowForm(true); }}
@@ -132,7 +132,7 @@ const FournisseursList = () => {
             <form onSubmit={handleSubmit}>
               <input type="text" placeholder="Nom *" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <input type="email" placeholder="Email contact" value={form.contact_email} onChange={e => setForm({...form, contact_email: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
-              <input type="text" placeholder="Téléphone" value={form.telephone} onChange={e => setForm({...form, telephone: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
+              <input type="text" placeholder="Tïlïphone" value={form.telephone} onChange={e => setForm({...form, telephone: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <textarea placeholder="Adresse" value={form.adresse} onChange={e => setForm({...form, adresse: e.target.value})} rows="2" style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                 <input type="checkbox" checked={form.actif} onChange={e => setForm({...form, actif: e.target.checked})} />
@@ -190,7 +190,7 @@ const TypesExamensAdmin = () => {
         try {
           JSON.parse(params);
         } catch {
-          setToast('Le format des paramètres par défaut est invalide (JSON)');
+          setToast('Le format des paramïtres par dïfaut est invalide (JSON)');
           setTimeout(() => setToast(null), 3000);
           return;
         }
@@ -200,10 +200,10 @@ const TypesExamensAdmin = () => {
       const payload = { ...formData, parametres_defaut: params };
       if (editingId) {
         await api.put(`/types-examens/${editingId}`, payload);
-        setToast('Type modifié');
+        setToast('Type modifiï');
       } else {
         await api.post('/types-examens', payload);
-        setToast('Type ajouté');
+        setToast('Type ajoutï');
       }
       setShowForm(false);
       setEditingId(null);
@@ -222,7 +222,7 @@ const TypesExamensAdmin = () => {
     try {
       await api.delete(`/types-examens/${id}`);
       fetchTypes();
-      setToast('Type supprimé');
+      setToast('Type supprimï');
       setTimeout(() => setToast(null), 3000);
     } catch (err) {
       setToast('Erreur suppression');
@@ -249,7 +249,7 @@ const TypesExamensAdmin = () => {
   return (
     <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
       {toast && <div style={{ position: 'fixed', top: '20px', right: '20px', backgroundColor: '#10b981', color: 'white', padding: '12px 24px', borderRadius: '8px', zIndex: 1000 }}>{toast}</div>}
-      <h2 style={{ marginBottom: '20px' }}>🔬 Types d'examens</h2>
+      <h2 style={{ marginBottom: '20px' }}>?? Types d'examens</h2>
       <button
         onClick={() => { setShowForm(true); setEditingId(null); setFormData({ nom: '', categorie: 'laboratoire', description: '', duree_estimee: '', prix: '', preparation: '', parametres_defaut: '' }); }}
         style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
@@ -261,10 +261,10 @@ const TypesExamensAdmin = () => {
           <thead>
             <tr style={{ background: '#f3f4f6' }}>
               <th style={{ padding: '8px', border: '1px solid #ddd' }}>Nom</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Catégorie</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Durée</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Catïgorie</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Durïe</th>
               <th style={{ padding: '8px', border: '1px solid #ddd' }}>Prix</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Préparation</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Prïparation</th>
               <th style={{ padding: '8px', border: '1px solid #ddd' }}>Actions</th>
             </tr>
           </thead>
@@ -308,14 +308,14 @@ const TypesExamensAdmin = () => {
                 <input type="text" value={formData.nom} onChange={e => setFormData({...formData, nom: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} />
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <label>Catégorie *</label>
+                <label>Catïgorie *</label>
                 <select value={formData.categorie} onChange={e => setFormData({...formData, categorie: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }}>
                   <option value="laboratoire">Laboratoire</option>
                   <option value="imagerie">Imagerie</option>
                 </select>
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <label>Durée estimée (minutes)</label>
+                <label>Durïe estimïe (minutes)</label>
                 <input type="number" value={formData.duree_estimee} onChange={e => setFormData({...formData, duree_estimee: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} />
               </div>
               <div style={{ marginBottom: '12px' }}>
@@ -327,16 +327,16 @@ const TypesExamensAdmin = () => {
                 <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} rows="2" style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} />
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <label>Préparation nécessaire</label>
+                <label>Prïparation nïcessaire</label>
                 <input type="text" value={formData.preparation} onChange={e => setFormData({...formData, preparation: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} />
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <label>Paramètres par défaut (JSON - optionnel)</label>
+                <label>Paramïtres par dïfaut (JSON - optionnel)</label>
                 <textarea
                   value={formData.parametres_defaut}
                   onChange={e => setFormData({...formData, parametres_defaut: e.target.value})}
                   rows="4"
-                  placeholder='[{"nom":"Hémoglobine","unite":"g/dL","ref_min":"12","ref_max":"16"}]'
+                  placeholder='[{"nom":"Hïmoglobine","unite":"g/dL","ref_min":"12","ref_max":"16"}]'
                   style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px', fontFamily: 'monospace' }}
                 />
                 <small style={{ color: '#6b7280' }}>Format JSON : tableau d'objets avec les champs nom, unite, ref_min, ref_max.</small>
@@ -355,7 +355,7 @@ const TypesExamensAdmin = () => {
 
 // ===================== COMPOSANT PRINCIPAL ADMIN =====================
 const Admin = () => {
-  // États existants
+  // ïtats existants
   const [batiments, setBatiments] = useState([]);
   const [etages, setEtages] = useState([]);
   const [chambres, setChambres] = useState([]);
@@ -367,7 +367,7 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState('services');
   const [pharmacySubTab, setPharmacySubTab] = useState('medicaments');
 
-  // États pour les utilisateurs
+  // ïtats pour les utilisateurs
   const [utilisateurs, setUtilisateurs] = useState([]);
   const [showUserForm, setShowUserForm] = useState(false);
   const [editUserId, setEditUserId] = useState(null);
@@ -381,16 +381,16 @@ const Admin = () => {
     actif: true
   });
 
-  // Liste des rôles pour le select dynamique (onglet Utilisateurs)
+  // Liste des rïles pour le select dynamique (onglet Utilisateurs)
   const [rolesList, setRolesList] = useState([]);
 
-  // États pour la gestion des rôles (onglet Rôles)
+  // ïtats pour la gestion des rïles (onglet Rïles)
   const [roles, setRoles] = useState([]);
   const [showRoleForm, setShowRoleForm] = useState(false);
   const [roleForm, setRoleForm] = useState({ id: null, nom: '' });
   const [editingRoleId, setEditingRoleId] = useState(null);
 
-  // ========== NOUVEAUX ÉTATS POUR AUTORISATIONS ==========
+  // ========== NOUVEAUX ïTATS POUR AUTORISATIONS ==========
   const [selectedRoleId, setSelectedRoleId] = useState('');
   const [modulesList, setModulesList] = useState([]);
   const [roleAuthorizations, setRoleAuthorizations] = useState([]);
@@ -415,13 +415,13 @@ const Admin = () => {
   const [editPrestationId, setEditPrestationId] = useState(null);
   const [showPrestationModal, setShowPrestationModal] = useState(false);
 
-  // États pour la pharmacie
+  // ïtats pour la pharmacie
   const [medicaments, setMedicaments] = useState([]);
   const [alertes, setAlertes] = useState({ stockCritique: [], peremptionProche: [] });
   const [showMedicamentForm, setShowMedicamentForm] = useState(false);
   const [medicamentForm, setMedicamentForm] = useState({
     code: "", nom: "", description: "", stock: 0, seuil_alerte: 10,
-    unite: "boîte", prix_unitaire: 0, principe_actif: "", forme: "", dosage: "", est_stupefiant: false
+    unite: "boïte", prix_unitaire: 0, principe_actif: "", forme: "", dosage: "", est_stupefiant: false
   });
   const [editingMedicamentId, setEditingMedicamentId] = useState(null);
   const [selectedMedicamentId, setSelectedMedicamentId] = useState("");
@@ -440,7 +440,7 @@ const Admin = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ========== CHARGEMENT DES DONNÉES EXISTANTES ==========
+  // ========== CHARGEMENT DES DONNïES EXISTANTES ==========
   const fetchData = async () => {
     try {
       const [batRes, etageRes, chambreRes, litRes, servRes, medRes, prestaRes] = await Promise.all([
@@ -460,7 +460,7 @@ const Admin = () => {
       setMedecins(medRes.data);
       setPrestations(prestaRes.data);
     } catch (err) {
-      showToast('Erreur chargement données', 'error');
+      showToast('Erreur chargement donnïes', 'error');
     }
   };
 
@@ -507,24 +507,24 @@ const Admin = () => {
     }
   };
 
-  // ===== CHARGEMENT DES RÔLES (pour le select utilisateur) =====
+  // ===== CHARGEMENT DES RïLES (pour le select utilisateur) =====
   const fetchRoles = async () => {
     try {
       const res = await api.get('/security/roles');
-      console.log('📦 Rôles reçus (brut) :', res.data);
+      console.log('?? Rïles reïus (brut) :', res.data);
       setRolesList(res.data);
     } catch (err) {
-      console.error('❌ Erreur chargement rôles:', err);
+      console.error('? Erreur chargement rïles:', err);
     }
   };
 
-  // ===== CHARGEMENT DES RÔLES (pour l'onglet Rôles) =====
+  // ===== CHARGEMENT DES RïLES (pour l'onglet Rïles) =====
   const fetchRolesList = async () => {
     try {
       const res = await api.get('/security/roles');
       setRoles(res.data);
     } catch (err) {
-      showToast('Erreur chargement des rôles', 'error');
+      showToast('Erreur chargement des rïles', 'error');
     }
   };
 
@@ -534,7 +534,7 @@ const Admin = () => {
       const res = await api.get('/security/roles');
       setRolesListForAuth(res.data);
     } catch (err) {
-      showToast('Erreur chargement rôles', 'error');
+      showToast('Erreur chargement rïles', 'error');
     }
   };
 
@@ -566,35 +566,35 @@ const Admin = () => {
       await api.put(`/security/roles/${selectedRoleId}/authorizations`, {
         authorizations: roleAuthorizations
       });
-      showToast('Autorisations enregistrées');
+      showToast('Autorisations enregistrïes');
     } catch (err) {
       showToast('Erreur lors de l\'enregistrement', 'error');
     }
   };
 
-  // ========== CRUD MÉDICAMENTS ==========
+  // ========== CRUD MïDICAMENTS ==========
   const handleMedicamentSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingMedicamentId) {
         await api.put(`/pharmacy/medicaments/${editingMedicamentId}`, medicamentForm);
-        showToast('Médicament modifié');
+        showToast('Mïdicament modifiï');
       } else {
         await api.post('/pharmacy/medicaments', medicamentForm);
-        showToast('Médicament ajouté');
+        showToast('Mïdicament ajoutï');
       }
       setShowMedicamentForm(false);
       setEditingMedicamentId(null);
-      setMedicamentForm({ code: "", nom: "", description: "", stock: 0, seuil_alerte: 10, unite: "boîte", prix_unitaire: 0, principe_actif: "", forme: "", dosage: "", est_stupefiant: false });
+      setMedicamentForm({ code: "", nom: "", description: "", stock: 0, seuil_alerte: 10, unite: "boïte", prix_unitaire: 0, principe_actif: "", forme: "", dosage: "", est_stupefiant: false });
       fetchMedicaments();
       fetchAlertes();
     } catch (err) { showToast('Erreur', 'error'); }
   };
   const deleteMedicament = async (id) => {
-    if (!window.confirm('Supprimer ce médicament ?')) return;
+    if (!window.confirm('Supprimer ce mïdicament ?')) return;
     try {
       await api.delete(`/pharmacy/medicaments/${id}`);
-      showToast('Médicament supprimé');
+      showToast('Mïdicament supprimï');
       fetchMedicaments();
       fetchAlertes();
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
@@ -612,11 +612,11 @@ const Admin = () => {
       const payload = { ...userForm };
       if (!editUserId) {
         await api.post('/admin/utilisateurs', payload);
-        showToast('Utilisateur créé');
+        showToast('Utilisateur crïï');
       } else {
         if (!payload.password) delete payload.password;
         await api.put(`/admin/utilisateurs/${editUserId}`, payload);
-        showToast('Utilisateur modifié');
+        showToast('Utilisateur modifiï');
       }
       setShowUserForm(false);
       setEditUserId(null);
@@ -628,10 +628,10 @@ const Admin = () => {
   };
 
   const deleteUser = async (id) => {
-    if (!window.confirm('Supprimer définitivement cet utilisateur ?')) return;
+    if (!window.confirm('Supprimer dïfinitivement cet utilisateur ?')) return;
     try {
       await api.delete(`/admin/utilisateurs/${id}`);
-      showToast('Utilisateur supprimé');
+      showToast('Utilisateur supprimï');
       fetchUtilisateurs();
     } catch (err) {
       showToast('Erreur', 'error');
@@ -641,44 +641,44 @@ const Admin = () => {
   const toggleActif = async (id, currentActif) => {
     try {
       await api.patch(`/admin/utilisateurs/${id}/actif`, { actif: !currentActif });
-      showToast(`Utilisateur ${!currentActif ? 'activé' : 'désactivé'}`);
+      showToast(`Utilisateur ${!currentActif ? 'activï' : 'dïsactivï'}`);
       fetchUtilisateurs();
     } catch (err) {
       showToast('Erreur', 'error');
     }
   };
 
-  // ========== CRUD RÔLES ==========
+  // ========== CRUD RïLES ==========
   const handleRoleSubmit = async (e) => {
     e.preventDefault();
     if (!roleForm.nom.trim()) {
-      showToast('Le nom du rôle est requis', 'error');
+      showToast('Le nom du rïle est requis', 'error');
       return;
     }
     try {
       if (editingRoleId) {
         await api.put(`/security/roles/${editingRoleId}`, { nom: roleForm.nom });
-        showToast('Rôle modifié');
+        showToast('Rïle modifiï');
       } else {
         await api.post('/security/roles', { nom: roleForm.nom });
-        showToast('Rôle ajouté');
+        showToast('Rïle ajoutï');
       }
       setShowRoleForm(false);
       setEditingRoleId(null);
       setRoleForm({ id: null, nom: '' });
       fetchRolesList();
-      fetchRoles(); // met à jour le select utilisateur
-      fetchRolesForAuth(); // met à jour le select autorisations
+      fetchRoles(); // met ï jour le select utilisateur
+      fetchRolesForAuth(); // met ï jour le select autorisations
     } catch (err) {
       showToast(err.response?.data?.error || 'Erreur', 'error');
     }
   };
 
   const deleteRole = async (id) => {
-    if (!window.confirm('Supprimer ce rôle ? Les utilisateurs avec ce rôle ne seront pas supprimés.')) return;
+    if (!window.confirm('Supprimer ce rïle ? Les utilisateurs avec ce rïle ne seront pas supprimïs.')) return;
     try {
       await api.delete(`/security/roles/${id}`);
-      showToast('Rôle supprimé');
+      showToast('Rïle supprimï');
       fetchRolesList();
       fetchRoles();
       fetchRolesForAuth();
@@ -697,7 +697,7 @@ const Admin = () => {
         medicament_id: selectedMedicamentId,
         quantite: parseInt(lotForm.quantite)
       });
-      showToast('Lot ajouté');
+      showToast('Lot ajoutï');
       setShowLotForm(false);
       setLotForm({ numero_lot: "", date_peremption: "", quantite: 0, prix_achat: 0 });
       fetchLots(selectedMedicamentId);
@@ -724,14 +724,14 @@ const Admin = () => {
     }
     try {
       await api.post('/pharmacy/commandes', { fournisseur_id: 1, lignes: lignesValides });
-      showToast('Commande créée');
+      showToast('Commande crïïe');
       setShowCommandeForm(false);
       setCommandeLignes([{ medicament_id: "", quantite_commandee: 0, prix_unitaire_ht: 0 }]);
       fetchCommandes();
     } catch (err) { showToast('Erreur', 'error'); }
   };
 
-  // ========== DÉLIVRANCE ==========
+  // ========== DïLIVRANCE ==========
   const handleDeliverySubmit = async (e) => {
     e.preventDefault();
     if (!deliveryForm.medicament_id || !deliveryForm.quantite || !deliveryForm.patient_id) {
@@ -740,13 +740,13 @@ const Admin = () => {
     }
     try {
       await api.post('/pharmacy/delivrance', deliveryForm);
-      setDeliveryMessage('✅ Délivrance enregistrée');
+      setDeliveryMessage('? Dïlivrance enregistrïe');
       setDeliveryForm({ medicament_id: "", quantite: 1, patient_id: "", posologie: "", prescripteur_nom: "" });
       fetchMedicaments();
       fetchAlertes();
       if (selectedMedicamentId) fetchLots(selectedMedicamentId);
     } catch (err) {
-      setDeliveryMessage('❌ Erreur : ' + (err.response?.data?.error || err.message));
+      setDeliveryMessage('? Erreur : ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -778,7 +778,7 @@ const Admin = () => {
     }
   }, [activeTab]);
 
-  // Quand le rôle sélectionné change dans l'onglet autorisations
+  // Quand le rïle sïlectionnï change dans l'onglet autorisations
   useEffect(() => {
     if (selectedRoleId) {
       fetchRoleAuthorizations(selectedRoleId);
@@ -796,7 +796,7 @@ const Admin = () => {
       await api.post('/consultations/services', { nom: newService });
       setNewService('');
       fetchData();
-      showToast('Service ajouté');
+      showToast('Service ajoutï');
     } catch (err) { showToast('Erreur', 'error'); }
   };
   const deleteService = async (id) => {
@@ -804,13 +804,13 @@ const Admin = () => {
     try {
       await api.delete(`/consultations/services/${id}`);
       fetchData();
-      showToast('Service supprimé');
+      showToast('Service supprimï');
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
   };
 
   const addMedecin = async () => {
     if (!newMedecin.nom || !newMedecin.prenom || !newMedecin.password) {
-      showToast('Nom, prénom et mot de passe sont requis', 'error');
+      showToast('Nom, prïnom et mot de passe sont requis', 'error');
       return;
     }
     try {
@@ -820,18 +820,18 @@ const Admin = () => {
       });
       setNewMedecin({ nom: '', prenom: '', specialite: '', email: '', login: '', password: '' });
       fetchData();
-      showToast('Médecin et compte créés avec succès');
+      showToast('Mïdecin et compte crïïs avec succïs');
     } catch (err) {
-      showToast(err.response?.data?.error || 'Erreur lors de la création', 'error');
+      showToast(err.response?.data?.error || 'Erreur lors de la crïation', 'error');
     }
   };
 
   const deleteMedecin = async (id) => {
-    if (!window.confirm('Supprimer ce médecin ?')) return;
+    if (!window.confirm('Supprimer ce mïdecin ?')) return;
     try {
       await api.delete(`/consultations/medecins/${id}`);
       fetchData();
-      showToast('Médecin supprimé');
+      showToast('Mïdecin supprimï');
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
   };
   const addBatiment = async () => {
@@ -840,15 +840,15 @@ const Admin = () => {
       await api.post('/consultations/batiments', newBatiment);
       setNewBatiment({ nom: '' });
       fetchData();
-      showToast('Bâtiment ajouté');
+      showToast('Bïtiment ajoutï');
     } catch (err) { showToast('Erreur', 'error'); }
   };
   const deleteBatiment = async (id) => {
-    if (!window.confirm('Supprimer ce bâtiment ?')) return;
+    if (!window.confirm('Supprimer ce bïtiment ?')) return;
     try {
       await api.delete(`/consultations/batiments/${id}`);
       fetchData();
-      showToast('Bâtiment supprimé');
+      showToast('Bïtiment supprimï');
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
   };
   const addEtage = async () => {
@@ -857,15 +857,15 @@ const Admin = () => {
       await api.post('/consultations/etages', newEtage);
       setNewEtage({ batiment_id: '', numero: '' });
       fetchData();
-      showToast('Étage ajouté');
+      showToast('ïtage ajoutï');
     } catch (err) { showToast('Erreur', 'error'); }
   };
   const deleteEtage = async (id) => {
-    if (!window.confirm('Supprimer cet étage ?')) return;
+    if (!window.confirm('Supprimer cet ïtage ?')) return;
     try {
       await api.delete(`/consultations/etages/${id}`);
       fetchData();
-      showToast('Étage supprimé');
+      showToast('ïtage supprimï');
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
   };
   const addChambre = async () => {
@@ -874,7 +874,7 @@ const Admin = () => {
       await api.post('/consultations/chambres', newChambre);
       setNewChambre({ nom: '', batiment_id: '', etage_id: '', type: 'public', capacite: 2 });
       fetchData();
-      showToast('Chambre ajoutée');
+      showToast('Chambre ajoutïe');
     } catch (err) { showToast('Erreur', 'error'); }
   };
   const deleteChambre = async (id) => {
@@ -882,7 +882,7 @@ const Admin = () => {
     try {
       await api.delete(`/consultations/chambres/${id}`);
       fetchData();
-      showToast('Chambre supprimée');
+      showToast('Chambre supprimïe');
     } catch (err) { showToast(err.response?.data?.error || 'Erreur', 'error'); }
   };
   const addLit = async () => {
@@ -895,7 +895,7 @@ const Admin = () => {
       });
       setNewLit({ chambre_id: '', numero: '', statut: 'libre' });
       fetchData();
-      showToast('Lit ajouté');
+      showToast('Lit ajoutï');
     } catch (err) { showToast('Erreur', 'error'); }
   };
   const deleteLit = async (id) => {
@@ -903,7 +903,7 @@ const Admin = () => {
     try {
       await api.delete(`/consultations/lits/${id}`);
       fetchData();
-      showToast('Lit supprimé');
+      showToast('Lit supprimï');
     } catch (err) { showToast('Erreur', 'error'); }
   };
   const handlePrestationSubmit = async (e) => {
@@ -911,10 +911,10 @@ const Admin = () => {
     try {
       if (editPrestationId) {
         await api.put(`/billing/prestations/${editPrestationId}`, newPrestation);
-        showToast('Prestation modifiée');
+        showToast('Prestation modifiïe');
       } else {
         await api.post('/billing/prestations', newPrestation);
-        showToast('Prestation ajoutée');
+        showToast('Prestation ajoutïe');
       }
       setShowPrestationModal(false);
       setEditPrestationId(null);
@@ -927,7 +927,7 @@ const Admin = () => {
     try {
       await api.delete(`/billing/prestations/${id}`);
       fetchData();
-      showToast('Prestation supprimée');
+      showToast('Prestation supprimïe');
     } catch (err) { showToast('Erreur', 'error'); }
   };
 
@@ -942,25 +942,25 @@ const Admin = () => {
       <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>Administration</h1>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button onClick={() => setActiveTab('services')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'services' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Services</button>
-        <button onClick={() => setActiveTab('medecins')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'medecins' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Médecins</button>
-        <button onClick={() => setActiveTab('batiments')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'batiments' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Bâtiments</button>
-        <button onClick={() => setActiveTab('etages')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'etages' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Étages</button>
+        <button onClick={() => setActiveTab('medecins')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'medecins' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Mïdecins</button>
+        <button onClick={() => setActiveTab('batiments')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'batiments' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Bïtiments</button>
+        <button onClick={() => setActiveTab('etages')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'etages' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>ïtages</button>
         <button onClick={() => setActiveTab('chambres')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'chambres' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Chambres</button>
         <button onClick={() => setActiveTab('lits')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'lits' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Lits</button>
         <button onClick={() => setActiveTab('prestations')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'prestations' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Prestations (tarifs)</button>
-        <button onClick={() => setActiveTab('pharmacy')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'pharmacy' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>💊 Pharmacie</button>
-        <button onClick={() => setActiveTab('fournisseurs')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'fournisseurs' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🏢 Fournisseurs</button>
-        <button onClick={() => setActiveTab('dispositifs')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'dispositifs' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🩺 Dispositifs</button>
-        <button onClick={() => setActiveTab('pharmacovigilance')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'pharmacovigilance' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>⚠️ Pharmacovigilance</button>
-        <button onClick={() => setActiveTab('ruptures')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'ruptures' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>📉 Ruptures & Suggestions</button>
-        <button onClick={() => setActiveTab('recettes')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'recettes' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🧪 Recettes</button>
-        <button onClick={() => setActiveTab('historique')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'historique' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>📋 Historique</button>
-        <button onClick={() => setActiveTab('pharmadashboard')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'pharmadashboard' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>📊 Dashboard Pharmacie</button>
-        <button onClick={() => setActiveTab('ordonnances')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'ordonnances' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>📋 Ordonnances</button>
-        <button onClick={() => setActiveTab('utilisateurs')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'utilisateurs' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>👤 Utilisateurs</button>
-        <button onClick={() => setActiveTab('roles')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'roles' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🔑 Rôles</button>
-        <button onClick={() => setActiveTab('authorizations')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'authorizations' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🔓 Autorisations</button>
-        <button onClick={() => setActiveTab('typesexamens')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'typesexamens' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🔬 Types examens</button>
+        <button onClick={() => setActiveTab('pharmacy')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'pharmacy' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Pharmacie</button>
+        <button onClick={() => setActiveTab('fournisseurs')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'fournisseurs' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Fournisseurs</button>
+        <button onClick={() => setActiveTab('dispositifs')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'dispositifs' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Dispositifs</button>
+        <button onClick={() => setActiveTab('pharmacovigilance')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'pharmacovigilance' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Pharmacovigilance</button>
+        <button onClick={() => setActiveTab('ruptures')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'ruptures' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Ruptures & Suggestions</button>
+        <button onClick={() => setActiveTab('recettes')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'recettes' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Recettes</button>
+        <button onClick={() => setActiveTab('historique')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'historique' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Historique</button>
+        <button onClick={() => setActiveTab('pharmadashboard')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'pharmadashboard' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Dashboard Pharmacie</button>
+        <button onClick={() => setActiveTab('ordonnances')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'ordonnances' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Ordonnances</button>
+        <button onClick={() => setActiveTab('utilisateurs')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'utilisateurs' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Utilisateurs</button>
+        <button onClick={() => setActiveTab('roles')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'roles' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Rïles</button>
+        <button onClick={() => setActiveTab('authorizations')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'authorizations' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Autorisations</button>
+        <button onClick={() => setActiveTab('typesexamens')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'typesexamens' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>?? Types examens</button>
       </div>
 
       {/* SERVICES */}
@@ -994,14 +994,14 @@ const Admin = () => {
         </div>
       )}
 
-      {/* MÉDECINS */}
+      {/* MïDECINS */}
       {activeTab === 'medecins' && (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
-          <h2>Médecins référents</h2>
+          <h2>Mïdecins rïfïrents</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr auto', gap: '10px', marginBottom: '20px' }}>
             <input type="text" placeholder="Nom *" value={newMedecin.nom} onChange={e => setNewMedecin({ ...newMedecin, nom: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
-            <input type="text" placeholder="Prénom *" value={newMedecin.prenom} onChange={e => setNewMedecin({ ...newMedecin, prenom: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
-            <input type="text" placeholder="Spécialité" value={newMedecin.specialite} onChange={e => setNewMedecin({ ...newMedecin, specialite: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+            <input type="text" placeholder="Prïnom *" value={newMedecin.prenom} onChange={e => setNewMedecin({ ...newMedecin, prenom: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+            <input type="text" placeholder="Spïcialitï" value={newMedecin.specialite} onChange={e => setNewMedecin({ ...newMedecin, specialite: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
             <input type="email" placeholder="Email" value={newMedecin.email} onChange={e => setNewMedecin({ ...newMedecin, email: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
             <input type="text" placeholder="Login (ou laisser vide)" value={newMedecin.login} onChange={e => setNewMedecin({ ...newMedecin, login: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
             <input type="password" placeholder="Mot de passe *" value={newMedecin.password} onChange={e => setNewMedecin({ ...newMedecin, password: e.target.value })} required style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
@@ -1012,8 +1012,8 @@ const Admin = () => {
               <tr>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>ID</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Nom</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Prénom</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Spécialité</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Prïnom</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Spïcialitï</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Email</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Action</th>
               </tr>
@@ -1036,12 +1036,12 @@ const Admin = () => {
         </div>
       )}
 
-      {/* BÂTIMENTS */}
+      {/* BïTIMENTS */}
       {activeTab === 'batiments' && (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
-          <h2>Bâtiments</h2>
+          <h2>Bïtiments</h2>
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-            <input type="text" placeholder="Nom du bâtiment" value={newBatiment.nom} onChange={e => setNewBatiment({ ...newBatiment, nom: e.target.value })} style={{ flex: 1, padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+            <input type="text" placeholder="Nom du bïtiment" value={newBatiment.nom} onChange={e => setNewBatiment({ ...newBatiment, nom: e.target.value })} style={{ flex: 1, padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
             <button onClick={addBatiment} style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Ajouter</button>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1067,24 +1067,24 @@ const Admin = () => {
         </div>
       )}
 
-      {/* ÉTAGES */}
+      {/* ïTAGES */}
       {activeTab === 'etages' && (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
-          <h2>Étages</h2>
+          <h2>ïtages</h2>
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
             <select value={newEtage.batiment_id} onChange={e => setNewEtage({ ...newEtage, batiment_id: e.target.value })} style={{ padding: '8px', flex: 1, border: '1px solid #ccc', borderRadius: '4px' }}>
-              <option value="">Bâtiment</option>
+              <option value="">Bïtiment</option>
               {batiments.map(b => <option key={b.id} value={b.id}>{b.nom}</option>)}
             </select>
-            <input type="number" placeholder="Numéro" value={newEtage.numero} onChange={e => setNewEtage({ ...newEtage, numero: e.target.value })} style={{ width: '100px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+            <input type="number" placeholder="Numïro" value={newEtage.numero} onChange={e => setNewEtage({ ...newEtage, numero: e.target.value })} style={{ width: '100px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
             <button onClick={addEtage} style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Ajouter</button>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>ID</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Bâtiment</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Numéro</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Bïtiment</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Numïro</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Action</th>
               </tr>
             </thead>
@@ -1111,17 +1111,17 @@ const Admin = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr auto', gap: '10px', marginBottom: '20px' }}>
             <input type="text" placeholder="Nom" value={newChambre.nom} onChange={e => setNewChambre({ ...newChambre, nom: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
             <select value={newChambre.batiment_id} onChange={e => setNewChambre({ ...newChambre, batiment_id: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}>
-              <option value="">Bâtiment</option>
+              <option value="">Bïtiment</option>
               {batiments.map(b => <option key={b.id} value={b.id}>{b.nom}</option>)}
             </select>
             <select value={newChambre.etage_id} onChange={e => setNewChambre({ ...newChambre, etage_id: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}>
-              <option value="">Étage</option>
-              {etages.map(e => <option key={e.id} value={e.id}>Étage {e.numero}</option>)}
+              <option value="">ïtage</option>
+              {etages.map(e => <option key={e.id} value={e.id}>ïtage {e.numero}</option>)}
             </select>
             <select value={newChambre.type} onChange={e => setNewChambre({ ...newChambre, type: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}>
-              <option value="public">Public</option><option value="prive">Privé</option>
+              <option value="public">Public</option><option value="prive">Privï</option>
             </select>
-            <input type="number" placeholder="Capacité" value={newChambre.capacite} onChange={e => setNewChambre({ ...newChambre, capacite: parseInt(e.target.value) })} style={{ width: '100px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+            <input type="number" placeholder="Capacitï" value={newChambre.capacite} onChange={e => setNewChambre({ ...newChambre, capacite: parseInt(e.target.value) })} style={{ width: '100px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
             <button onClick={addChambre} style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Ajouter</button>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1129,10 +1129,10 @@ const Admin = () => {
               <tr>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>ID</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Nom</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Bâtiment</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Étage</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Bïtiment</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>ïtage</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Type</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Capacité</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Capacitï</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Action</th>
               </tr>
             </thead>
@@ -1162,11 +1162,11 @@ const Admin = () => {
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
             <select value={newLit.chambre_id} onChange={e => setNewLit({ ...newLit, chambre_id: e.target.value })} style={{ flex: 2, padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}>
               <option value="">Chambre</option>
-              {chambres.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.batiment_nom} - Étage {c.etage_numero})</option>)}
+              {chambres.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.batiment_nom} - ïtage {c.etage_numero})</option>)}
             </select>
-            <input type="text" placeholder="Numéro de lit" value={newLit.numero} onChange={e => setNewLit({ ...newLit, numero: e.target.value })} style={{ width: '120px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+            <input type="text" placeholder="Numïro de lit" value={newLit.numero} onChange={e => setNewLit({ ...newLit, numero: e.target.value })} style={{ width: '120px', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
             <select value={newLit.statut} onChange={e => setNewLit({ ...newLit, statut: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}>
-              <option value="libre">Libre</option><option value="occupe">Occupé</option><option value="maintenance">Maintenance</option>
+              <option value="libre">Libre</option><option value="occupe">Occupï</option><option value="maintenance">Maintenance</option>
             </select>
             <button onClick={addLit} style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Ajouter</button>
           </div>
@@ -1175,7 +1175,7 @@ const Admin = () => {
               <tr>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>ID</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Chambre</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Numéro</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Numïro</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Statut</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Action</th>
               </tr>
@@ -1208,9 +1208,9 @@ const Admin = () => {
             <thead>
               <tr>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Code</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Libellé</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Libellï</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Prix (FC)</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Catégorie</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Catïgorie</th>
                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Actions</th>
               </tr>
             </thead>
@@ -1235,25 +1235,25 @@ const Admin = () => {
       {/* PHARMACIE */}
       {activeTab === 'pharmacy' && (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
-          <h2>💊 Gestion de la Pharmacie</h2>
+          <h2>?? Gestion de la Pharmacie</h2>
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>
-            <button onClick={() => setPharmacySubTab('medicaments')} style={{ padding: '8px 16px', background: pharmacySubTab === 'medicaments' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Médicaments</button>
-            <button onClick={() => setPharmacySubTab('lots')} style={{ padding: '8px 16px', background: pharmacySubTab === 'lots' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Lots & Péremption</button>
+            <button onClick={() => setPharmacySubTab('medicaments')} style={{ padding: '8px 16px', background: pharmacySubTab === 'medicaments' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Mïdicaments</button>
+            <button onClick={() => setPharmacySubTab('lots')} style={{ padding: '8px 16px', background: pharmacySubTab === 'lots' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Lots & Pïremption</button>
             <button onClick={() => setPharmacySubTab('commandes')} style={{ padding: '8px 16px', background: pharmacySubTab === 'commandes' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Commandes</button>
-            <button onClick={() => setPharmacySubTab('delivrance')} style={{ padding: '8px 16px', background: pharmacySubTab === 'delivrance' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Délivrance</button>
+            <button onClick={() => setPharmacySubTab('delivrance')} style={{ padding: '8px 16px', background: pharmacySubTab === 'delivrance' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Dïlivrance</button>
           </div>
 
-          {/* Médicaments */}
+          {/* Mïdicaments */}
           {pharmacySubTab === 'medicaments' && (
             <div>
               {(alertes.stockCritique.length > 0 || alertes.peremptionProche.length > 0) && (
                 <div style={{ background: '#fff3cd', borderLeft: '5px solid #ffc107', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
-                  {alertes.stockCritique.length > 0 && <p>⚠️ Stock critique : {alertes.stockCritique.map(m => m.nom).join(', ')}</p>}
-                  {alertes.peremptionProche.length > 0 && <p>⚠️ Péremption proche : {alertes.peremptionProche.map(l => l.medicament_nom).join(', ')}</p>}
+                  {alertes.stockCritique.length > 0 && <p>?? Stock critique : {alertes.stockCritique.map(m => m.nom).join(', ')}</p>}
+                  {alertes.peremptionProche.length > 0 && <p>?? Pïremption proche : {alertes.peremptionProche.map(l => l.medicament_nom).join(', ')}</p>}
                 </div>
               )}
-              <button onClick={() => { setShowMedicamentForm(!showMedicamentForm); setEditingMedicamentId(null); setMedicamentForm({ code: "", nom: "", description: "", stock: 0, seuil_alerte: 10, unite: "boîte", prix_unitaire: 0, principe_actif: "", forme: "", dosage: "", est_stupefiant: false }); }} style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                <FaPlus /> Ajouter un médicament
+              <button onClick={() => { setShowMedicamentForm(!showMedicamentForm); setEditingMedicamentId(null); setMedicamentForm({ code: "", nom: "", description: "", stock: 0, seuil_alerte: 10, unite: "boïte", prix_unitaire: 0, principe_actif: "", forme: "", dosage: "", est_stupefiant: false }); }} style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                <FaPlus /> Ajouter un mïdicament
               </button>
               {showMedicamentForm && (
                 <form onSubmit={handleMedicamentSubmit} style={{ background: '#f1f9fe', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
@@ -1262,12 +1262,12 @@ const Admin = () => {
                   <textarea placeholder="Description" value={medicamentForm.description} onChange={e => setMedicamentForm({...medicamentForm, description: e.target.value})} rows={2} style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
                   <input type="number" placeholder="Stock" value={medicamentForm.stock} onChange={e => setMedicamentForm({...medicamentForm, stock: parseInt(e.target.value) || 0})} style={{ width: '48%', marginRight: '4%', marginBottom: '8px', padding: '8px' }} />
                   <input type="number" placeholder="Seuil alerte" value={medicamentForm.seuil_alerte} onChange={e => setMedicamentForm({...medicamentForm, seuil_alerte: parseInt(e.target.value) || 0})} style={{ width: '48%', marginBottom: '8px', padding: '8px' }} />
-                  <input type="text" placeholder="Unité" value={medicamentForm.unite} onChange={e => setMedicamentForm({...medicamentForm, unite: e.target.value})} style={{ width: '48%', marginRight: '4%', marginBottom: '8px', padding: '8px' }} />
+                  <input type="text" placeholder="Unitï" value={medicamentForm.unite} onChange={e => setMedicamentForm({...medicamentForm, unite: e.target.value})} style={{ width: '48%', marginRight: '4%', marginBottom: '8px', padding: '8px' }} />
                   <input type="number" step="0.01" placeholder="Prix unitaire" value={medicamentForm.prix_unitaire} onChange={e => setMedicamentForm({...medicamentForm, prix_unitaire: parseFloat(e.target.value) || 0})} style={{ width: '48%', marginBottom: '8px', padding: '8px' }} />
                   <input type="text" placeholder="Principe actif" value={medicamentForm.principe_actif} onChange={e => setMedicamentForm({...medicamentForm, principe_actif: e.target.value})} style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
                   <input type="text" placeholder="Forme" value={medicamentForm.forme} onChange={e => setMedicamentForm({...medicamentForm, forme: e.target.value})} style={{ width: '48%', marginRight: '4%', marginBottom: '8px', padding: '8px' }} />
                   <input type="text" placeholder="Dosage" value={medicamentForm.dosage} onChange={e => setMedicamentForm({...medicamentForm, dosage: e.target.value})} style={{ width: '48%', marginBottom: '8px', padding: '8px' }} />
-                  <label><input type="checkbox" checked={medicamentForm.est_stupefiant} onChange={e => setMedicamentForm({...medicamentForm, est_stupefiant: e.target.checked})} /> Stupéfiant</label>
+                  <label><input type="checkbox" checked={medicamentForm.est_stupefiant} onChange={e => setMedicamentForm({...medicamentForm, est_stupefiant: e.target.checked})} /> Stupïfiant</label>
                   <div><button type="submit" style={{ marginTop: '10px', background: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Enregistrer</button></div>
                 </form>
               )}
@@ -1285,7 +1285,7 @@ const Admin = () => {
                       <td style={{ padding: '8px', borderBottom: '1px solid #ddd', color: m.stock <= m.seuil_alerte ? 'red' : 'black' }}>{m.stock}</td>
                       <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{m.seuil_alerte}</td>
                       <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{m.prix_unitaire} FC</td>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{m.est_stupefiant ? '✅' : '❌'}</td>
+                      <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{m.est_stupefiant ? '?' : '?'}</td>
                       <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>
                         <button onClick={() => editMedicament(m)} style={{ color: '#eab308', background: 'none', border: 'none', cursor: 'pointer' }}><FaEdit /></button>
                         <button onClick={() => deleteMedicament(m.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>
@@ -1301,7 +1301,7 @@ const Admin = () => {
           {pharmacySubTab === 'lots' && (
             <div>
               <select value={selectedMedicamentId} onChange={e => setSelectedMedicamentId(e.target.value)} style={{ marginBottom: '20px', padding: '8px', width: '100%' }}>
-                <option value="">Choisir un médicament</option>
+                <option value="">Choisir un mïdicament</option>
                 {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
               </select>
               {selectedMedicamentId && (
@@ -1309,9 +1309,9 @@ const Admin = () => {
                   <button onClick={() => setShowLotForm(!showLotForm)} style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}><FaPlus /> Ajouter un lot</button>
                   {showLotForm && (
                     <form onSubmit={handleLotSubmit} style={{ background: '#f1f9fe', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-                      <input type="text" placeholder="Numéro de lot" value={lotForm.numero_lot} onChange={e => setLotForm({...lotForm, numero_lot: e.target.value})} required style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
-                      <input type="date" placeholder="Date péremption" value={lotForm.date_peremption} onChange={e => setLotForm({...lotForm, date_peremption: e.target.value})} required style={{ width: '48%', marginRight: '4%', marginBottom: '8px', padding: '8px' }} />
-                      <input type="number" placeholder="Quantité" value={lotForm.quantite} onChange={e => setLotForm({...lotForm, quantite: parseInt(e.target.value) || 0})} required style={{ width: '48%', marginBottom: '8px', padding: '8px' }} />
+                      <input type="text" placeholder="Numïro de lot" value={lotForm.numero_lot} onChange={e => setLotForm({...lotForm, numero_lot: e.target.value})} required style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
+                      <input type="date" placeholder="Date pïremption" value={lotForm.date_peremption} onChange={e => setLotForm({...lotForm, date_peremption: e.target.value})} required style={{ width: '48%', marginRight: '4%', marginBottom: '8px', padding: '8px' }} />
+                      <input type="number" placeholder="Quantitï" value={lotForm.quantite} onChange={e => setLotForm({...lotForm, quantite: parseInt(e.target.value) || 0})} required style={{ width: '48%', marginBottom: '8px', padding: '8px' }} />
                       <input type="number" step="0.01" placeholder="Prix achat" value={lotForm.prix_achat} onChange={e => setLotForm({...lotForm, prix_achat: parseFloat(e.target.value) || 0})} style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
                       <button type="submit" style={{ background: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Ajouter</button>
                     </form>
@@ -1319,7 +1319,7 @@ const Admin = () => {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#3b82f6', color: 'white' }}>
-                        <th>Lot</th><th>Péremption</th><th>Stock actuel</th><th>Prix achat</th>
+                        <th>Lot</th><th>Pïremption</th><th>Stock actuel</th><th>Prix achat</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1348,21 +1348,21 @@ const Admin = () => {
                   {commandeLignes.map((ligne, idx) => (
                     <div key={idx} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                       <select value={ligne.medicament_id} onChange={e => updateCommandeLigne(idx, 'medicament_id', e.target.value)} required style={{ flex: 2, padding: '6px' }}>
-                        <option value="">Médicament</option>
+                        <option value="">Mïdicament</option>
                         {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
                       </select>
-                      <input type="number" placeholder="Quantité" value={ligne.quantite_commandee} onChange={e => updateCommandeLigne(idx, 'quantite_commandee', parseInt(e.target.value) || 0)} required style={{ flex: 1, padding: '6px' }} />
+                      <input type="number" placeholder="Quantitï" value={ligne.quantite_commandee} onChange={e => updateCommandeLigne(idx, 'quantite_commandee', parseInt(e.target.value) || 0)} required style={{ flex: 1, padding: '6px' }} />
                       <input type="number" step="0.01" placeholder="Prix HT" value={ligne.prix_unitaire_ht} onChange={e => updateCommandeLigne(idx, 'prix_unitaire_ht', parseFloat(e.target.value) || 0)} style={{ flex: 1, padding: '6px' }} />
                     </div>
                   ))}
                   <button type="button" onClick={addCommandeLigne} style={{ marginBottom: '10px', background: '#6c757d', color: 'white', border: 'none', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer' }}>+ Ajouter ligne</button>
-                  <div><button type="submit" style={{ background: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Créer commande</button></div>
+                  <div><button type="submit" style={{ background: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Crïer commande</button></div>
                 </form>
               )}
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#3b82f6', color: 'white' }}>
-                    <th>N° commande</th><th>Date</th><th>Statut</th>
+                    <th>Nï commande</th><th>Date</th><th>Statut</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1378,23 +1378,23 @@ const Admin = () => {
             </div>
           )}
 
-          {/* Délivrance */}
+          {/* Dïlivrance */}
           {pharmacySubTab === 'delivrance' && (
             <div>
               {deliveryMessage && <div style={{ background: '#d4edda', color: '#155724', padding: '8px', borderRadius: '4px', marginBottom: '15px' }}>{deliveryMessage}</div>}
               <form onSubmit={handleDeliverySubmit} style={{ background: '#f1f9fe', padding: '15px', borderRadius: '8px' }}>
                 <select value={deliveryForm.medicament_id} onChange={e => setDeliveryForm({...deliveryForm, medicament_id: e.target.value})} required style={{ width: '100%', marginBottom: '8px', padding: '8px' }}>
-                  <option value="">Médicament</option>
+                  <option value="">Mïdicament</option>
                   {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom} (stock: {m.stock})</option>)}
                 </select>
-                <input type="number" placeholder="Quantité" value={deliveryForm.quantite} onChange={e => setDeliveryForm({...deliveryForm, quantite: parseInt(e.target.value) || 1})} required min="1" style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
+                <input type="number" placeholder="Quantitï" value={deliveryForm.quantite} onChange={e => setDeliveryForm({...deliveryForm, quantite: parseInt(e.target.value) || 1})} required min="1" style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
                 <select value={deliveryForm.patient_id} onChange={e => setDeliveryForm({...deliveryForm, patient_id: e.target.value})} required style={{ width: '100%', marginBottom: '8px', padding: '8px' }}>
                   <option value="">Patient</option>
                   {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
                 </select>
-                <input type="text" placeholder="Posologie (ex: 1 comprimé matin)" value={deliveryForm.posologie} onChange={e => setDeliveryForm({...deliveryForm, posologie: e.target.value})} style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
-                <input type="text" placeholder="Prescripteur (nom du médecin)" value={deliveryForm.prescripteur_nom} onChange={e => setDeliveryForm({...deliveryForm, prescripteur_nom: e.target.value})} style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
-                <button type="submit" style={{ background: '#3b82f6', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Délivrer</button>
+                <input type="text" placeholder="Posologie (ex: 1 comprimï matin)" value={deliveryForm.posologie} onChange={e => setDeliveryForm({...deliveryForm, posologie: e.target.value})} style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
+                <input type="text" placeholder="Prescripteur (nom du mïdecin)" value={deliveryForm.prescripteur_nom} onChange={e => setDeliveryForm({...deliveryForm, prescripteur_nom: e.target.value})} style={{ width: '100%', marginBottom: '8px', padding: '8px' }} />
+                <button type="submit" style={{ background: '#3b82f6', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Dïlivrer</button>
               </form>
             </div>
           )}
@@ -1425,10 +1425,10 @@ const Admin = () => {
       {/* OrdonnancesList */}
       {activeTab === 'ordonnances' && <OrdonnancesList />}
 
-      {/* ========== UTILISATEURS (avec select dynamique des rôles) ========== */}
+      {/* ========== UTILISATEURS (avec select dynamique des rïles) ========== */}
       {activeTab === 'utilisateurs' && (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
-          <h2>👤 Gestion des utilisateurs</h2>
+          <h2>?? Gestion des utilisateurs</h2>
           <button
             onClick={() => { setEditUserId(null); setUserForm({ login: '', nom: '', prenom: '', email: '', role: '', password: '', actif: true }); setShowUserForm(true); }}
             style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
@@ -1441,9 +1441,9 @@ const Admin = () => {
                 <th style={{ padding: '8px', border: '1px solid #ddd' }}>ID</th>
                 <th style={{ padding: '8px', border: '1px solid #ddd' }}>Login</th>
                 <th style={{ padding: '8px', border: '1px solid #ddd' }}>Nom</th>
-                <th style={{ padding: '8px', border: '1px solid #ddd' }}>Prénom</th>
+                <th style={{ padding: '8px', border: '1px solid #ddd' }}>Prïnom</th>
                 <th style={{ padding: '8px', border: '1px solid #ddd' }}>Email</th>
-                <th style={{ padding: '8px', border: '1px solid #ddd' }}>Rôle</th>
+                <th style={{ padding: '8px', border: '1px solid #ddd' }}>Rïle</th>
                 <th style={{ padding: '8px', border: '1px solid #ddd' }}>Actif</th>
                 <th style={{ padding: '8px', border: '1px solid #ddd' }}>Actions</th>
               </tr>
@@ -1496,15 +1496,15 @@ const Admin = () => {
         </div>
       )}
 
-      {/* ========== GESTION DES RÔLES ========== */}
+      {/* ========== GESTION DES RïLES ========== */}
       {activeTab === 'roles' && (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
-          <h2>🔑 Gestion des rôles</h2>
+          <h2>?? Gestion des rïles</h2>
           <button
             onClick={() => { setEditingRoleId(null); setRoleForm({ id: null, nom: '' }); setShowRoleForm(true); }}
             style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
           >
-            <FaPlus /> Nouveau rôle
+            <FaPlus /> Nouveau rïle
           </button>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -1543,15 +1543,15 @@ const Admin = () => {
       {/* ========== GESTION DES AUTORISATIONS ========== */}
       {activeTab === 'authorizations' && (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
-          <h2>🔓 Gestion des autorisations par rôle</h2>
+          <h2>?? Gestion des autorisations par rïle</h2>
           <div style={{ marginBottom: '20px' }}>
-            <label>Rôle : </label>
+            <label>Rïle : </label>
             <select
               value={selectedRoleId}
               onChange={e => setSelectedRoleId(e.target.value)}
               style={{ padding: '8px', marginLeft: '10px', minWidth: '200px' }}
             >
-              <option value="">Sélectionner un rôle</option>
+              <option value="">Sïlectionner un rïle</option>
               {rolesListForAuth.map(r => (
                 <option key={r.id} value={r.id}>{r.nom}</option>
               ))}
@@ -1564,7 +1564,7 @@ const Admin = () => {
                 <thead>
                   <tr style={{ background: '#3b82f6', color: 'white' }}>
                     <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'left' }}>Module</th>
-                    <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'center' }}>Niveau d'accès</th>
+                    <th style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'center' }}>Niveau d'accïs</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1585,10 +1585,10 @@ const Admin = () => {
                             }}
                             style={{ padding: '4px 8px', borderRadius: '4px' }}
                           >
-                            <option value="none">❌ Aucun</option>
-                            <option value="read">👁️ Lecture</option>
-                            <option value="write">✏️ Écriture</option>
-                            <option value="full">✅ Complet</option>
+                            <option value="none">? Aucun</option>
+                            <option value="read">??? Lecture</option>
+                            <option value="write">?? ïcriture</option>
+                            <option value="full">? Complet</option>
                           </select>
                         </td>
                       </tr>
@@ -1601,7 +1601,7 @@ const Admin = () => {
                   onClick={saveAuthorizations}
                   style={{ padding: '8px 20px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                 >
-                  💾 Enregistrer
+                  ?? Enregistrer
                 </button>
               </div>
             </>
@@ -1619,9 +1619,9 @@ const Admin = () => {
             <h2 style={{ marginBottom: '16px' }}>{editPrestationId ? 'Modifier' : 'Ajouter'} une prestation</h2>
             <form onSubmit={handlePrestationSubmit}>
               <div style={{ marginBottom: '12px' }}><label>Code *</label><input type="text" value={newPrestation.code} onChange={e => setNewPrestation({...newPrestation, code: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
-              <div style={{ marginBottom: '12px' }}><label>Libellé *</label><input type="text" value={newPrestation.libelle} onChange={e => setNewPrestation({...newPrestation, libelle: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
+              <div style={{ marginBottom: '12px' }}><label>Libellï *</label><input type="text" value={newPrestation.libelle} onChange={e => setNewPrestation({...newPrestation, libelle: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
               <div style={{ marginBottom: '12px' }}><label>Prix unitaire (FC) *</label><input type="number" step="0.01" value={newPrestation.prix_unitaire} onChange={e => setNewPrestation({...newPrestation, prix_unitaire: parseFloat(e.target.value)})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
-              <div style={{ marginBottom: '20px' }}><label>Catégorie</label><input type="text" value={newPrestation.categorie} onChange={e => setNewPrestation({...newPrestation, categorie: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
+              <div style={{ marginBottom: '20px' }}><label>Catïgorie</label><input type="text" value={newPrestation.categorie} onChange={e => setNewPrestation({...newPrestation, categorie: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} /></div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                 <button type="button" onClick={() => setShowPrestationModal(false)} style={{ backgroundColor: '#e5e7eb', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><FaTimes /> Annuler</button>
                 <button type="submit" style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><FaSave /> Enregistrer</button>
@@ -1646,7 +1646,7 @@ const Admin = () => {
                 <input type="text" value={userForm.nom} onChange={e => setUserForm({...userForm, nom: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} />
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <label>Prénom</label>
+                <label>Prïnom</label>
                 <input type="text" value={userForm.prenom} onChange={e => setUserForm({...userForm, prenom: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} />
               </div>
               <div style={{ marginBottom: '12px' }}>
@@ -1654,16 +1654,16 @@ const Admin = () => {
                 <input type="email" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} />
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <label>Rôle *</label>
+                <label>Rïle *</label>
                 <select
                   value={userForm.role || ''}
                   onChange={e => setUserForm({...userForm, role: e.target.value})}
                   required
                   style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }}
                 >
-                  <option value="">Sélectionner un rôle</option>
+                  <option value="">Sïlectionner un rïle</option>
                   {rolesList.length === 0 ? (
-                    <option value="" disabled>Chargement des rôles...</option>
+                    <option value="" disabled>Chargement des rïles...</option>
                   ) : (
                     rolesList.map(role => (
                       <option key={role.id} value={role.nom}>{role.nom}</option>
@@ -1690,14 +1690,14 @@ const Admin = () => {
         </div>
       )}
 
-      {/* MODAL RÔLES */}
+      {/* MODAL RïLES */}
       {showRoleForm && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '400px', maxWidth: '90%' }}>
-            <h2 style={{ marginBottom: '16px' }}>{editingRoleId ? 'Modifier' : 'Nouveau'} rôle</h2>
+            <h2 style={{ marginBottom: '16px' }}>{editingRoleId ? 'Modifier' : 'Nouveau'} rïle</h2>
             <form onSubmit={handleRoleSubmit}>
               <div style={{ marginBottom: '12px' }}>
-                <label>Nom du rôle *</label>
+                <label>Nom du rïle *</label>
                 <input
                   type="text"
                   value={roleForm.nom}

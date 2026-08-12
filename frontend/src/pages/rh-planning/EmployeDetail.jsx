@@ -1,4 +1,4 @@
-﻿// src/pages/rh-planning/EmployeDetail.jsx
+// src/pages/rh-planning/EmployeDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../axios';
@@ -14,7 +14,7 @@ const EmployeDetail = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-  // États pour lFCéditeur de contrat
+  // ïtats pour lFCïditeur de contrat
   const [showEditor, setShowEditor] = useState(false);
   const [articles, setArticles] = useState([]);
   const [salaire, setSalaire] = useState('');
@@ -26,26 +26,26 @@ const EmployeDetail = () => {
       .catch(err => { console.error(err); setLoading(false); });
   }, [id]);
 
-  // Articles par défaut (fallback)
+  // Articles par dïfaut (fallback)
   const getDefaultArticles = (salaireValue) => [
-    { id: 1, texte: 'Le présent contrat est régi par le Code du travail.' },
-    { id: 2, texte: 'La période d\'essai est de 2 mois renouvelable une fois.' },
+    { id: 1, texte: 'Le prïsent contrat est rïgi par le Code du travail.' },
+    { id: 2, texte: 'La pïriode d\'essai est de 2 mois renouvelable une fois.' },
     { id: 3, texte: `Le salaire mensuel brut est de ${salaireValue || '2500'} FC.` },
     { id: 4, texte: 'Les horaires de travail sont de 35 heures par semaine.' },
-    { id: 5, texte: 'Le lieu de travail est fixé à l\'établissement de l\'employeur.' },
-    { id: 6, texte: 'Le salarié bénéficie de 5 semaines de congés payés par an.' },
+    { id: 5, texte: 'Le lieu de travail est fixï ï l\'ïtablissement de l\'employeur.' },
+    { id: 6, texte: 'Le salariï bïnïficie de 5 semaines de congïs payïs par an.' },
   ];
 
   const openEditor = async () => {
     setShowEditor(true);
     setGenerating(true);
     try {
-      // Récupérer les articles par défaut depuis le backend (selon le type de contrat)
+      // Rïcupïrer les articles par dïfaut depuis le backend (selon le type de contrat)
       const res = await api.get(`/contrats/articles?type=${contratType}`);
       setArticles(res.data.articles || getDefaultArticles(employe.salaire));
       setSalaire(res.data.salaire || employe.salaire || '2500');
     } catch (err) {
-      // Fallback : articles par défaut
+      // Fallback : articles par dïfaut
       setArticles(getDefaultArticles(employe.salaire));
       setSalaire(employe.salaire || '2500');
     } finally {
@@ -102,14 +102,14 @@ const EmployeDetail = () => {
       setShowEditor(false);
     } catch (err) {
       console.error(err);
-      alert('Erreur lors de la génération du contrat personnalisé.');
+      alert('Erreur lors de la gïnïration du contrat personnalisï.');
     } finally {
       setGenerating(false);
     }
   };
 
-  if (loading) return <div style={{textAlign:'center', padding:60}}>⏳ Chargement...</div>;
-  if (!employe) return <div style={{textAlign:'center', padding:60}}>Employé non trouvé</div>;
+  if (loading) return <div style={{textAlign:'center', padding:60}}>? Chargement...</div>;
+  if (!employe) return <div style={{textAlign:'center', padding:60}}>Employï non trouvï</div>;
 
   return (
     <div>
@@ -124,7 +124,7 @@ const EmployeDetail = () => {
               <FaEdit /> Modifier
             </Link>
             <button onClick={openEditor} style={{backgroundColor:'#10b981', color:'white', padding:'8px 16px', borderRadius:8, border:'none', display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer'}}>
-              <FaFileContract /> Générer le contrat
+              <FaFileContract /> Gïnïrer le contrat
             </button>
           </div>
         </div>
@@ -132,13 +132,13 @@ const EmployeDetail = () => {
           <div><FaUser style={{marginRight:8}} /> <strong>Poste :</strong> {employe.poste || '-'}</div>
           <div><FaBuilding style={{marginRight:8}} /> <strong>Service :</strong> {employe.service_nom || '-'}</div>
           <div><FaEnvelope style={{marginRight:8}} /> <strong>Email :</strong> {employe.email || '-'}</div>
-          <div><FaPhone style={{marginRight:8}} /> <strong>Téléphone :</strong> {employe.telephone || '-'}</div>
+          <div><FaPhone style={{marginRight:8}} /> <strong>Tïlïphone :</strong> {employe.telephone || '-'}</div>
           <div><FaCalendar style={{marginRight:8}} /> <strong>Date d'embauche :</strong> {employe.date_embauche ? new Date(employe.date_embauche).toLocaleDateString('fr-FR') : '-'}</div>
-          <div><strong>Statut :</strong> {employe.statut === 'actif' ? '🟢 Actif' : '🔴 Inactif'}</div>
+          <div><strong>Statut :</strong> {employe.statut === 'actif' ? '?? Actif' : '?? Inactif'}</div>
         </div>
       </div>
 
-      {/* ========== MODAL ÉDITEUR DE CONTRAT AVEC ARTICLES DYNAMIQUES ========== */}
+      {/* ========== MODAL ïDITEUR DE CONTRAT AVEC ARTICLES DYNAMIQUES ========== */}
       {showEditor && (
         <div style={{
           position: 'fixed',
@@ -160,7 +160,7 @@ const EmployeDetail = () => {
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
           }}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
-              <h2 style={{margin:0}}>✏️ Personnaliser le contrat</h2>
+              <h2 style={{margin:0}}>?? Personnaliser le contrat</h2>
               <button onClick={() => setShowEditor(false)} style={{background:'none', border:'none', fontSize:24, cursor:'pointer'}}><FaTimes /></button>
             </div>
 
@@ -170,7 +170,7 @@ const EmployeDetail = () => {
                 <select value={contratType} onChange={e => setContratType(e.target.value)} style={{width:'100%', padding:8, border:'1px solid #e2e8f0', borderRadius:6}}>
                   <option value="CDI">CDI</option>
                   <option value="CDD">CDD</option>
-                  <option value="Intérim">Intérim</option>
+                  <option value="Intïrim">Intïrim</option>
                   <option value="Stage">Stage</option>
                 </select>
               </div>
@@ -215,7 +215,7 @@ const EmployeDetail = () => {
             <div style={{display:'flex', gap:12, justifyContent:'flex-end', borderTop:'1px solid #e2e8f0', paddingTop:16}}>
               <button onClick={() => setShowEditor(false)} style={{backgroundColor:'#e5e7eb', padding:'10px 20px', border:'none', borderRadius:6, cursor:'pointer'}}>Annuler</button>
               <button onClick={handleGenerateCustom} disabled={generating} style={{backgroundColor:'#10b981', color:'white', padding:'10px 20px', border:'none', borderRadius:6, cursor:'pointer', opacity:generating?0.6:1}}>
-                <FaSave style={{marginRight:6}} /> {generating ? 'Génération...' : 'Générer le PDF'}
+                <FaSave style={{marginRight:6}} /> {generating ? 'Gïnïration...' : 'Gïnïrer le PDF'}
               </button>
             </div>
           </div>

@@ -19,7 +19,7 @@ const RupturesSuggestions = () => {
       setLoading(false);
     } catch (err) {
       console.error(err);
-      setToast('Erreur chargement données');
+      setToast('Erreur chargement donnes');
       setTimeout(() => setToast(null), 3000);
       setLoading(false);
     }
@@ -35,7 +35,7 @@ const RupturesSuggestions = () => {
     <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
       {toast && <div style={{ position: 'fixed', top: '20px', right: '20px', backgroundColor: '#10b981', color: 'white', padding: '12px 24px', borderRadius: '8px', zIndex: 1000 }}>{toast}</div>}
       
-      <h2 style={{ marginBottom: '20px' }}>📉 Ruptures de stock & Suggestions de commandes</h2>
+      <h2 style={{ marginBottom: '20px' }}>?? Ruptures de stock & Suggestions de commandes</h2>
       
       {/* Ruptures */}
       <div style={{ marginBottom: '40px' }}>
@@ -73,7 +73,7 @@ const RupturesSuggestions = () => {
       {/* Suggestions */}
       <div>
         <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2563eb' }}>
-          <FaShoppingCart /> Suggestions de réapprovisionnement
+          <FaShoppingCart /> Suggestions de rapprovisionnement
         </h3>
         {suggestions.length === 0 ? (
           <p>Aucune suggestion pour le moment.</p>

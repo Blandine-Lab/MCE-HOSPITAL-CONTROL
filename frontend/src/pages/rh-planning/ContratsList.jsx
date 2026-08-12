@@ -1,4 +1,4 @@
-﻿// src/pages/rh-planning/ContratsList.jsx
+// src/pages/rh-planning/ContratsList.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../axios';
@@ -12,7 +12,7 @@ const ContratsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rïcupïrer le rïle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const ContratsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dïcodage token', e);
       }
     }
   }, []);
@@ -48,17 +48,17 @@ const ContratsList = () => {
     }
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Voulez-vous vraiment supprimer ce contrat ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Voulez-vous vraiment supprimer ce contrat ? Cette action est irrïversible.')) return;
     try {
       await api.delete(`/contrats/${id}`);
       setContrats(contrats.filter(c => c.id !== id));
-      showToast('Contrat supprimé avec succès');
+      showToast('Contrat supprimï avec succïs');
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un contrat.', 'error');
+        showToast('? Seul un administrateur peut supprimer un contrat.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -67,7 +67,7 @@ const ContratsList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ padding: 60, textAlign: 'center' }}>? Chargement...</div>;
   if (error) return <div style={{ padding: 60, color: 'red' }}>{error}</div>;
 
   return (
@@ -101,9 +101,9 @@ const ContratsList = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
-              <th>Employé</th>
+              <th>Employï</th>
               <th>Type</th>
-              <th>Début</th>
+              <th>Dïbut</th>
               <th>Fin</th>
               <th>Salaire</th>
               <th>Statut</th>
@@ -138,7 +138,7 @@ const ContratsList = () => {
                     {isAdmin ? (
                       <button onClick={() => handleDelete(c.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rïservï aux administrateurs">??</span>
                     )}
                   </td>
                 </tr>

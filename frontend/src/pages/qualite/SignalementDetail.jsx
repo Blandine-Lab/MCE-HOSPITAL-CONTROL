@@ -17,17 +17,17 @@ const SignalementDetail = () => {
 
   const getStatusBadge = (statut) => {
     const configs = {
-      ouvert: { bg: '#fef3c7', color: '#92400e', label: '📋 Ouvert' },
-      en_cours: { bg: '#dbeafe', color: '#1e40af', label: '⏳ En cours' },
-      résolu: { bg: '#d1fae5', color: '#065f46', label: '✅ Résolu' },
-      fermé: { bg: '#f1f5f9', color: '#475569', label: '🔒 Fermé' }
+      ouvert: { bg: '#fef3c7', color: '#92400e', label: '?? Ouvert' },
+      en_cours: { bg: '#dbeafe', color: '#1e40af', label: '? En cours' },
+      rsolu: { bg: '#d1fae5', color: '#065f46', label: '? Rsolu' },
+      ferm: { bg: '#f1f5f9', color: '#475569', label: '?? Ferm' }
     };
     const c = configs[statut] || configs.ouvert;
     return <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', backgroundColor: c.bg, color: c.color }}>{c.label}</span>;
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
-  if (!signalement) return <div style={{ textAlign: 'center', padding: '60px' }}>Signalement non trouvé</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
+  if (!signalement) return <div style={{ textAlign: 'center', padding: '60px' }}>Signalement non trouv</div>;
 
   return (
     <div>
@@ -38,20 +38,20 @@ const SignalementDetail = () => {
           <Link to={`/qualite/signalements/${id}/edit`} style={{ backgroundColor: '#f59e0b', color: 'white', padding: '6px 16px', borderRadius: '6px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}><FaEdit /> Modifier</Link>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '20px' }}>
-          <div><FaCalendar style={{ marginRight: '8px' }} /> <strong>Date événement :</strong> {new Date(signalement.date_evenement).toLocaleDateString('fr-FR')}</div>
-          <div><FaTag style={{ marginRight: '8px' }} /> <strong>Catégorie :</strong> {signalement.categorie_nom || '-'}</div>
-          <div><strong>Criticité :</strong> <span style={{ color: signalement.criticite_couleur }}>{signalement.criticite_nom || '-'}</span></div>
+          <div><FaCalendar style={{ marginRight: '8px' }} /> <strong>Date vnement :</strong> {new Date(signalement.date_evenement).toLocaleDateString('fr-FR')}</div>
+          <div><FaTag style={{ marginRight: '8px' }} /> <strong>Catgorie :</strong> {signalement.categorie_nom || '-'}</div>
+          <div><strong>Criticit :</strong> <span style={{ color: signalement.criticite_couleur }}>{signalement.criticite_nom || '-'}</span></div>
           <div><FaUser style={{ marginRight: '8px' }} /> <strong>Patient :</strong> {signalement.patient_prenom} {signalement.patient_nom}</div>
           <div><strong>Statut :</strong> {getStatusBadge(signalement.statut)}</div>
-          <div><strong>Priorité :</strong> {signalement.priorite}</div>
+          <div><strong>Priorit :</strong> {signalement.priorite}</div>
         </div>
         <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
           <strong>Description :</strong> <p>{signalement.description}</p>
         </div>
         {signalement.circonstances && <div style={{ marginTop: '12px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}><strong>Circonstances :</strong> <p>{signalement.circonstances}</p></div>}
-        {signalement.consequence_patient && <div style={{ marginTop: '12px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}><strong>Conséquences patient :</strong> <p>{signalement.consequence_patient}</p></div>}
-        {signalement.actions_immediates && <div style={{ marginTop: '12px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}><strong>Actions immédiates :</strong> <p>{signalement.actions_immediates}</p></div>}
-        {signalement.resolution_notes && <div style={{ marginTop: '12px', padding: '16px', backgroundColor: '#d1fae5', borderRadius: '8px' }}><strong>Résolution :</strong> <p>{signalement.resolution_notes}</p></div>}
+        {signalement.consequence_patient && <div style={{ marginTop: '12px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}><strong>Consquences patient :</strong> <p>{signalement.consequence_patient}</p></div>}
+        {signalement.actions_immediates && <div style={{ marginTop: '12px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}><strong>Actions immdiates :</strong> <p>{signalement.actions_immediates}</p></div>}
+        {signalement.resolution_notes && <div style={{ marginTop: '12px', padding: '16px', backgroundColor: '#d1fae5', borderRadius: '8px' }}><strong>Rsolution :</strong> <p>{signalement.resolution_notes}</p></div>}
       </div>
     </div>
   );

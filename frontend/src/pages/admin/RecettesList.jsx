@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaPlay } from 'react-icons/fa';
-import api from '../../axios'; // ✅ Instance partagée
+import api from '../../axios'; // ? Instance partage
 
 const RecettesList = () => {
   const [recettes, setRecettes] = useState([]);
@@ -24,9 +24,9 @@ const RecettesList = () => {
   });
   const [patients, setPatients] = useState([]);
   const [medicaments, setMedicaments] = useState([]);
-  const [userRole, setUserRole] = useState(null); // ✅ Rôle de l'utilisateur
+  const [userRole, setUserRole] = useState(null); // ? Rle de l'utilisateur
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -34,7 +34,7 @@ const RecettesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -91,10 +91,10 @@ const RecettesList = () => {
       };
       if (editId) {
         await api.put(`/pharmacy/preparations/recettes/${editId}`, payload);
-        showToast('Recette modifiée');
+        showToast('Recette modifie');
       } else {
         await api.post('/pharmacy/preparations/recettes', payload);
-        showToast('Recette ajoutée');
+        showToast('Recette ajoute');
       }
       setShowForm(false);
       setEditId(null);
@@ -106,16 +106,16 @@ const RecettesList = () => {
     }
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement cette recette ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement cette recette ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/pharmacy/preparations/recettes/${id}`);
       fetchRecettes();
-      showToast('Recette supprimée');
+      showToast('Recette supprime');
     } catch (err) {
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer une recette.', 'error');
+        showToast('? Seul un administrateur peut supprimer une recette.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -131,19 +131,19 @@ const RecettesList = () => {
         quantite_finale: parseFloat(executionForm.quantite_finale),
         lot_id_medicament: executionForm.lot_id_medicament || null
       });
-      showToast('Préparation exécutée');
+      showToast('Prparation excute');
       setShowExecuterModal(false);
       setSelectedRecette(null);
       setExecutionForm({ patient_id: '', quantite_finale: 0, lot_id_medicament: '' });
     } catch (err) {
       console.error(err);
-      showToast('Erreur lors de l\'exécution', 'error');
+      showToast('Erreur lors de l\'excution', 'error');
     }
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
 
   return (
     <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
@@ -156,7 +156,7 @@ const RecettesList = () => {
           {toast}
         </div>
       )}
-      <h2 style={{ marginBottom: '20px' }}>🧪 Recettes de préparations magistrales</h2>
+      <h2 style={{ marginBottom: '20px' }}>?? Recettes de prparations magistrales</h2>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div></div>
         <button
@@ -173,8 +173,8 @@ const RecettesList = () => {
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>ID</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Nom</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Description</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Ingrédients</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Étapes</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Ingrdients</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>tapes</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Actions</th>
             </tr>
           </thead>
@@ -197,7 +197,7 @@ const RecettesList = () => {
                   >
                     <FaEdit />
                   </button>
-                  {/* ✅ Bouton supprimer visible uniquement pour admin */}
+                  {/* ? Bouton supprimer visible uniquement pour admin */}
                   {isAdmin ? (
                     <button
                       onClick={() => handleDelete(r.id)}
@@ -206,13 +206,13 @@ const RecettesList = () => {
                       <FaTrash />
                     </button>
                   ) : (
-                    <span style={{ marginRight: '8px', color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ marginRight: '8px', color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                   <button
                     onClick={() => { setSelectedRecette(r); setShowExecuterModal(true); }}
                     style={{ background: '#3b82f6', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
                   >
-                    <FaPlay /> Exécuter
+                    <FaPlay /> Excuter
                   </button>
                 </td>
               </tr>
@@ -221,7 +221,7 @@ const RecettesList = () => {
         </table>
       </div>
 
-      {/* Modal Formulaire (inchangé) */}
+      {/* Modal Formulaire (inchang) */}
       {showForm && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '600px', maxWidth: '90%' }}>
@@ -229,8 +229,8 @@ const RecettesList = () => {
             <form onSubmit={handleSubmit}>
               <input type="text" placeholder="Nom *" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <textarea placeholder="Description" value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows="2" style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
-              <textarea placeholder="Ingrédients (format JSON, ex: { 'Paracétamol': '500mg', 'Eau': '10ml' })" value={form.ingredients} onChange={e => setForm({...form, ingredients: e.target.value})} rows="3" style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
-              <textarea placeholder="Étapes (une par ligne)" value={form.etapes} onChange={e => setForm({...form, etapes: e.target.value})} rows="4" style={{ width: '100%', padding: '8px', marginBottom: '20px', border: '1px solid #ccc', borderRadius: '6px' }} />
+              <textarea placeholder="Ingrdients (format JSON, ex: { 'Paractamol': '500mg', 'Eau': '10ml' })" value={form.ingredients} onChange={e => setForm({...form, ingredients: e.target.value})} rows="3" style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
+              <textarea placeholder="tapes (une par ligne)" value={form.etapes} onChange={e => setForm({...form, etapes: e.target.value})} rows="4" style={{ width: '100%', padding: '8px', marginBottom: '20px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                 <button type="button" onClick={() => setShowForm(false)} style={{ backgroundColor: '#e5e7eb', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><FaTimes /> Annuler</button>
                 <button type="submit" style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><FaSave /> Enregistrer</button>
@@ -240,24 +240,24 @@ const RecettesList = () => {
         </div>
       )}
 
-      {/* Modal Exécuter (inchangé) */}
+      {/* Modal Excuter (inchang) */}
       {showExecuterModal && selectedRecette && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '500px', maxWidth: '90%' }}>
-            <h2 style={{ marginBottom: '16px' }}>Exécuter la préparation : {selectedRecette.nom}</h2>
+            <h2 style={{ marginBottom: '16px' }}>Excuter la prparation : {selectedRecette.nom}</h2>
             <form onSubmit={handleExecuter}>
               <select value={executionForm.patient_id} onChange={e => setExecutionForm({...executionForm, patient_id: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }}>
                 <option value="">Patient</option>
                 {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
               </select>
-              <input type="number" step="0.01" placeholder="Quantité finale" value={executionForm.quantite_finale} onChange={e => setExecutionForm({...executionForm, quantite_finale: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
+              <input type="number" step="0.01" placeholder="Quantit finale" value={executionForm.quantite_finale} onChange={e => setExecutionForm({...executionForm, quantite_finale: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <select value={executionForm.lot_id_medicament} onChange={e => setExecutionForm({...executionForm, lot_id_medicament: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '20px', border: '1px solid #ccc', borderRadius: '6px' }}>
-                <option value="">Lot de médicament (optionnel)</option>
+                <option value="">Lot de mdicament (optionnel)</option>
                 {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
               </select>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                 <button type="button" onClick={() => setShowExecuterModal(false)} style={{ backgroundColor: '#e5e7eb', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><FaTimes /> Annuler</button>
-                <button type="submit" style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><FaSave /> Exécuter</button>
+                <button type="submit" style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><FaSave /> Excuter</button>
               </div>
             </form>
           </div>

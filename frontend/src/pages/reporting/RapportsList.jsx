@@ -37,7 +37,7 @@ const RapportsList = () => {
     'general', 'finances', 'activite', 'personnel', 'stock', 'pharmacie'
   ]);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -45,7 +45,7 @@ const RapportsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -61,12 +61,12 @@ const RapportsList = () => {
       setRapports(res.data || []);
     } catch (err) {
       console.error('Erreur chargement rapports:', err);
-      // Données simulées pour l'exemple
+      // Donnes simules pour l'exemple
       setRapports([
         {
           id: 1,
-          nom: 'Activité mensuelle - Juin 2026',
-          description: 'Rapport complet de l\'activité du mois de juin',
+          nom: 'Activit mensuelle - Juin 2026',
+          description: 'Rapport complet de l\'activit du mois de juin',
           type: 'dashboard',
           categorie: 'activite',
           date_creation: '2026-06-30T14:00:00Z',
@@ -76,8 +76,8 @@ const RapportsList = () => {
         },
         {
           id: 2,
-          nom: 'Bilan financier - 2ème trimestre',
-          description: 'Analyse des revenus et dépenses du trimestre',
+          nom: 'Bilan financier - 2me trimestre',
+          description: 'Analyse des revenus et dpenses du trimestre',
           type: 'graphique',
           categorie: 'finances',
           date_creation: '2026-06-28T09:30:00Z',
@@ -113,13 +113,13 @@ const RapportsList = () => {
       let response;
       if (editingId) {
         response = await api.put(`/bi/rapports/${editingId}`, formData);
-        setToast({ type: 'success', message: 'Rapport modifié avec succès' });
+        setToast({ type: 'success', message: 'Rapport modifi avec succs' });
       } else {
         response = await api.post('/bi/rapports', {
           ...formData,
-          created_by: 'user-id' // à remplacer par l'utilisateur réel
+          created_by: 'user-id' //  remplacer par l'utilisateur rel
         });
-        setToast({ type: 'success', message: 'Rapport créé avec succès' });
+        setToast({ type: 'success', message: 'Rapport cr avec succs' });
       }
       
       fetchRapports();
@@ -130,17 +130,17 @@ const RapportsList = () => {
     }
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce rapport ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement ce rapport ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/bi/rapports/${id}`);
       setRapports(rapports.filter(r => r.id !== id));
-      setToast({ type: 'success', message: 'Rapport supprimé avec succès' });
+      setToast({ type: 'success', message: 'Rapport supprim avec succs' });
     } catch (err) {
       console.error('Erreur suppression:', err);
       if (err.response?.status === 403) {
-        setToast({ type: 'error', message: '❌ Seul un administrateur peut supprimer un rapport.' });
+        setToast({ type: 'error', message: '? Seul un administrateur peut supprimer un rapport.' });
       } else {
         setToast({ type: 'error', message: 'Erreur lors de la suppression' });
       }
@@ -149,7 +149,7 @@ const RapportsList = () => {
 
   const handleExport = async (rapportId, format = 'pdf') => {
     try {
-      setToast({ type: 'info', message: `Génération du rapport en ${format.toUpperCase()}...` });
+      setToast({ type: 'info', message: `Gnration du rapport en ${format.toUpperCase()}...` });
       const res = await api.post('/bi/export', { 
         rapport_id: rapportId, 
         format: format 
@@ -157,7 +157,7 @@ const RapportsList = () => {
         responseType: 'blob'
       });
       
-      // Télécharger le fichier
+      // Tlcharger le fichier
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -167,7 +167,7 @@ const RapportsList = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
       
-      setToast({ type: 'success', message: 'Export téléchargé avec succès' });
+      setToast({ type: 'success', message: 'Export tlcharg avec succs' });
     } catch (err) {
       console.error('Erreur export:', err);
       setToast({ type: 'error', message: 'Erreur lors de l\'export' });
@@ -222,9 +222,9 @@ const RapportsList = () => {
 
   const getCategorieLabel = (categorie) => {
     const labels = {
-      general: 'Général',
+      general: 'Gnral',
       finances: 'Finances',
-      activite: 'Activité',
+      activite: 'Activit',
       personnel: 'Personnel',
       stock: 'Stock',
       pharmacie: 'Pharmacie'
@@ -254,7 +254,7 @@ const RapportsList = () => {
   });
 
   const formatDate = (date) => {
-    if (!date) return '�FC�';
+    if (!date) return '?FC?';
     return new Date(date).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
@@ -264,7 +264,7 @@ const RapportsList = () => {
     });
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement des rapports...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement des rapports...</div>;
 
   return (
     <div>
@@ -288,7 +288,7 @@ const RapportsList = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '28px', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
           <FaSave style={{ color: '#8b5cf6' }} />
-          Rapports sauvegardés
+          Rapports sauvegards
           <span style={{ fontSize: '14px', color: '#64748b', fontWeight: 'normal', marginLeft: '8px' }}>
             ({filteredRapports.length} rapports)
           </span>
@@ -314,7 +314,7 @@ const RapportsList = () => {
         </button>
       </div>
 
-      {/* Formulaire de création/modification */}
+      {/* Formulaire de cration/modification */}
       {showForm && (
         <div style={{
           backgroundColor: 'white',
@@ -355,7 +355,7 @@ const RapportsList = () => {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Catégorie</label>
+              <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Catgorie</label>
               <select
                 value={formData.categorie}
                 onChange={e => setFormData({ ...formData, categorie: e.target.value })}
@@ -382,7 +382,7 @@ const RapportsList = () => {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Période (début)</label>
+              <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Priode (dbut)</label>
               <input
                 type="date"
                 value={formData.date_debut}
@@ -391,7 +391,7 @@ const RapportsList = () => {
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Période (fin)</label>
+              <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Priode (fin)</label>
               <input
                 type="date"
                 value={formData.date_fin}
@@ -508,7 +508,7 @@ const RapportsList = () => {
             gap: '6px'
           }}
         >
-          <FaSave /> Rafraîchir
+          <FaSave /> Rafrachir
         </button>
       </div>
 
@@ -522,7 +522,7 @@ const RapportsList = () => {
         {filteredRapports.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
             <FaSave style={{ fontSize: '48px', marginBottom: '12px' }} />
-            <p>Aucun rapport trouvé. Créez votre premier rapport !</p>
+            <p>Aucun rapport trouv. Crez votre premier rapport !</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -531,10 +531,10 @@ const RapportsList = () => {
                 <tr>
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>Nom</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>Type</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Catégorie</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Catgorie</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>Description</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Créé le</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Créé par</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Cr le</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Cr par</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>Statut</th>
                   <th style={{ padding: '12px 16px', textAlign: 'center' }}>Actions</th>
                 </tr>
@@ -638,7 +638,7 @@ const RapportsList = () => {
                             <FaTrash />
                           </button>
                         ) : (
-                          <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                          <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                         )}
                       </div>
                     </td>

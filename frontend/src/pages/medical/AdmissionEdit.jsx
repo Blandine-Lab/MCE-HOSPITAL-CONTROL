@@ -48,14 +48,14 @@ const AdmissionEdit = () => {
 
         if (admission.service_id) {
           const litsRes = await api.get(`/consultations/lits/disponibles?service_id=${admission.service_id}`);
-          console.log('📦 Lits chargés (init) :', litsRes.data);
+          console.log('?? Lits chargs (init) :', litsRes.data);
           setLits(litsRes.data);
         }
 
         setLoading(false);
       } catch (err) {
-        console.error('Erreur chargement données :', err);
-        setError('Impossible de charger les données');
+        console.error('Erreur chargement donnes :', err);
+        setError('Impossible de charger les donnes');
         setLoading(false);
       }
     };
@@ -67,7 +67,7 @@ const AdmissionEdit = () => {
     if (formData.service_id) {
       api.get(`/consultations/lits/disponibles?service_id=${formData.service_id}`)
         .then(res => {
-          console.log(`🛏️ Lits pour service ${formData.service_id} :`, res.data);
+          console.log(`??? Lits pour service ${formData.service_id} :`, res.data);
           setLits(res.data);
         })
         .catch(err => console.error('Erreur chargement lits :', err));
@@ -89,25 +89,25 @@ const AdmissionEdit = () => {
       await api.put(`/consultations/admissions/${id}`, formData);
       navigate(`/medical/admissions/${id}`);
     } catch (err) {
-      console.error('Erreur mise à jour :', err);
+      console.error('Erreur mise  jour :', err);
       setError(err.response?.data?.error || 'Erreur lors de la modification');
       setSaving(false);
     }
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>? Chargement...</div>;
   if (error && !formData.patient_id) return <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>{error}</div>;
 
   return (
     <div>
       <div style={{ marginBottom: '24px' }}>
         <Link to={`/medical/admissions/${id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#3b82f6', textDecoration: 'none', fontWeight: '500' }}>
-          <FaArrowLeft /> Retour au détail
+          <FaArrowLeft /> Retour au dtail
         </Link>
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ marginTop: 0, color: '#0f172a' }}>Modifier l�FC�admission #{id}</h2>
+        <h2 style={{ marginTop: 0, color: '#0f172a' }}>Modifier l?FC?admission #{id}</h2>
         {error && <div style={{ color: '#ef4444', marginBottom: '16px', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px' }}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
@@ -130,7 +130,7 @@ const AdmissionEdit = () => {
                 cursor: 'not-allowed'
               }}
             >
-              <option value="">Sélectionner un patient</option>
+              <option value="">Slectionner un patient</option>
               {patients.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.nom} {p.prenom} ({p.ipp || 'N/A'})
@@ -156,7 +156,7 @@ const AdmissionEdit = () => {
                   backgroundColor: 'white'
                 }}
               >
-                <option value="">Sélectionner un service</option>
+                <option value="">Slectionner un service</option>
                 {services.map(s => (
                   <option key={s.id} value={s.id}>{s.nom}</option>
                 ))}
@@ -164,7 +164,7 @@ const AdmissionEdit = () => {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Date d�FC�admission *</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Date d?FC?admission *</label>
               <input
                 type="date"
                 name="date_admission"
@@ -184,7 +184,7 @@ const AdmissionEdit = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Médecin référent</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Mdecin rfrent</label>
               <select
                 name="medecin_referent_id"
                 value={formData.medecin_referent_id}
@@ -198,7 +198,7 @@ const AdmissionEdit = () => {
                   backgroundColor: 'white'
                 }}
               >
-                <option value="">Non attribué</option>
+                <option value="">Non attribu</option>
                 {medecins.map(m => (
                   <option key={m.id} value={m.id}>{m.nom} {m.prenom}</option>
                 ))}
@@ -224,7 +224,7 @@ const AdmissionEdit = () => {
               >
                 <option value="">
                   {formData.service_id
-                    ? (lits.length === 0 ? 'Aucun lit disponible' : 'Sélectionner un lit')
+                    ? (lits.length === 0 ? 'Aucun lit disponible' : 'Slectionner un lit')
                     : 'Choisissez un service d\'abord'}
                 </option>
                 {lits.map(l => (
@@ -235,14 +235,14 @@ const AdmissionEdit = () => {
               </select>
               {formData.service_id && lits.length === 0 && (
                 <div style={{ color: '#f59e0b', fontSize: '14px', marginTop: '4px' }}>
-                  ⚠️ Aucun lit disponible pour ce service. Veuillez choisir un autre service ou ajouter des lits.
+                  ?? Aucun lit disponible pour ce service. Veuillez choisir un autre service ou ajouter des lits.
                 </div>
               )}
             </div>
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Motif de l�FC�admission *</label>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Motif de l?FC?admission *</label>
             <textarea
               name="motif"
               value={formData.motif}

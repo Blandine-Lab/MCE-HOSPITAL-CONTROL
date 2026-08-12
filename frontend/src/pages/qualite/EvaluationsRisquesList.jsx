@@ -12,7 +12,7 @@ const EvaluationsRisquesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const EvaluationsRisquesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -41,7 +41,7 @@ const EvaluationsRisquesList = () => {
       })
       .catch(err => {
         console.error(err);
-        showToast('Erreur chargement évaluations', 'error');
+        showToast('Erreur chargement valuations', 'error');
         setLoading(false);
       });
   };
@@ -50,17 +50,17 @@ const EvaluationsRisquesList = () => {
     fetchItems();
   }, [filter]);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id, numero) => {
-    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer l'évaluation n°${numero} ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`?? Voulez-vous vraiment supprimer l'valuation n${numero} ? Cette action est irrversible.`)) return;
     try {
       await api.delete(`/evaluations-risques/${id}`);
       setItems(items.filter(item => item.id !== id));
-      showToast('Évaluation supprimée avec succès');
+      showToast('valuation supprime avec succs');
     } catch (err) {
       console.error(err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer une évaluation des risques.', 'error');
+        showToast('? Seul un administrateur peut supprimer une valuation des risques.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -74,7 +74,7 @@ const EvaluationsRisquesList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -96,7 +96,7 @@ const EvaluationsRisquesList = () => {
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <h1 style={{ fontSize: '28px', color: '#0f172a' }}>
-          <FaExclamationTriangle style={{ color: '#dc2626', marginRight: '12px' }} /> Évaluations des risques
+          <FaExclamationTriangle style={{ color: '#dc2626', marginRight: '12px' }} /> valuations des risques
         </h1>
         <Link to="/qualite/evaluations-risques/nouveau" style={{ backgroundColor: '#dc2626', color: 'white', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <FaPlus /> Ajouter
@@ -107,8 +107,8 @@ const EvaluationsRisquesList = () => {
         <select value={filter} onChange={e => setFilter(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
           <option value="">Tous niveaux</option>
           <option value="faible">Faible</option>
-          <option value="modere">Modéré</option>
-          <option value="eleve">Élevé</option>
+          <option value="modere">Modr</option>
+          <option value="eleve">lev</option>
           <option value="critique">Critique</option>
         </select>
       </div>
@@ -116,12 +116,12 @@ const EvaluationsRisquesList = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
-              <th style={{ padding: '14px 20px', textAlign: 'left' }}>N° Éval</th>
+              <th style={{ padding: '14px 20px', textAlign: 'left' }}>N val</th>
               <th>Date</th>
               <th>Service</th>
               <th>Type</th>
               <th>Description</th>
-              <th>Criticité</th>
+              <th>Criticit</th>
               <th>Niveau</th>
               <th style={{ textAlign: 'center' }}>Actions</th>
             </tr>
@@ -134,7 +134,7 @@ const EvaluationsRisquesList = () => {
                 <td>{r.service_nom || '-'}</td>
                 <td>{r.type}</td>
                 <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</td>
-                <td>{r.probabilite} × {r.impact} = {r.criticite}</td>
+                <td>{r.probabilite}  {r.impact} = {r.criticite}</td>
                 <td>{getNiveauBadge(r.niveau_risque)}</td>
                 <td style={{ textAlign: 'center' }}>
                   <Link to={`/qualite/evaluations-risques/${r.id}/edit`} style={{ color: '#f59e0b', marginRight: '12px' }}><FaEdit /></Link>
@@ -147,7 +147,7 @@ const EvaluationsRisquesList = () => {
                       <FaTrash />
                     </button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

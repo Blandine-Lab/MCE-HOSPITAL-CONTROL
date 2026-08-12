@@ -11,14 +11,14 @@ const PrescriptionCreation = () => {
   const [medecins, setMedecins] = useState([]);
   const [formData, setFormData] = useState({
     patient_id: patientId || '',
-    doctor_id: '', // ✅ renommé
+    doctor_id: '', // ? renomm
     notes: '',
     items: [{ medicament_id: '', quantite: 1, posologie: '' }]
   });
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // Charger les patients, médicaments (depuis le stock) et médecins
+  // Charger les patients, mdicaments (depuis le stock) et mdecins
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -28,7 +28,7 @@ const PrescriptionCreation = () => {
           headers: { Authorization: `Bearer ${token}` } 
         });
 
-        // ✅ Récupérer les médicaments depuis le stock (catégorie 1)
+        // ? Rcuprer les mdicaments depuis le stock (catgorie 1)
         const produitsRes = await axios.get('/api/produits', { 
           headers: { Authorization: `Bearer ${token}` } 
         });
@@ -45,7 +45,7 @@ const PrescriptionCreation = () => {
           return { ...m, stock: stock?.quantite || 0 };
         });
 
-        // ✅ Médecins
+        // ? Mdecins
         const medecinsRes = await axios.get('/api/consultations/medecins/all', { 
           headers: { Authorization: `Bearer ${token}` } 
         });
@@ -54,8 +54,8 @@ const PrescriptionCreation = () => {
         setMedicaments(medicamentsAvecStock);
         setMedecins(medecinsRes.data);
       } catch (err) {
-        console.error('Erreur chargement données:', err);
-        setError('Impossible de charger les données. Vérifiez votre connexion.');
+        console.error('Erreur chargement donnes:', err);
+        setError('Impossible de charger les donnes. Vrifiez votre connexion.');
       }
     };
     fetchData();
@@ -105,14 +105,14 @@ const PrescriptionCreation = () => {
     }
 
     if (!formData.doctor_id) {
-      setError('Veuillez sélectionner un médecin prescripteur.');
+      setError('Veuillez slectionner un mdecin prescripteur.');
       setLoading(false);
       return;
     }
 
     const validItems = formData.items.filter(item => item.medicament_id);
     if (validItems.length === 0) {
-      setError('Ajoutez au moins un médicament valide.');
+      setError('Ajoutez au moins un mdicament valide.');
       setLoading(false);
       return;
     }
@@ -121,7 +121,7 @@ const PrescriptionCreation = () => {
       const token = localStorage.getItem('token');
       const payload = {
         patient_id: parseInt(formData.patient_id),
-        doctor_id: parseInt(formData.doctor_id), // ✅ doctor_id
+        doctor_id: parseInt(formData.doctor_id), // ? doctor_id
         notes: formData.notes,
         items: validItems.map(item => ({
           medicament_id: parseInt(item.medicament_id),
@@ -135,14 +135,14 @@ const PrescriptionCreation = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      alert('✅ Prescription créée avec succès !');
+      alert('? Prescription cre avec succs !');
       navigate('/doctor/prescriptions');
     } catch (err) {
-      console.error('Erreur création:', err);
+      console.error('Erreur cration:', err);
       // Afficher le message d'erreur du backend
       const backendError = err.response?.data?.error || err.message;
       if (err.response?.status === 403) {
-        setError('Mot de passe incorrect. Veuillez réessayer.');
+        setError('Mot de passe incorrect. Veuillez ressayer.');
       } else if (err.response?.status === 500) {
         setError(`Erreur serveur : ${backendError}`);
       } else {
@@ -155,7 +155,7 @@ const PrescriptionCreation = () => {
 
   return (
     <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff' }}>
-      <h2 style={{ marginTop: 0 }}>📝 Nouvelle prescription</h2>
+      <h2 style={{ marginTop: 0 }}>?? Nouvelle prescription</h2>
 
       {error && <div style={{ color: 'red', marginBottom: '16px', padding: '8px', backgroundColor: '#fee2e2', borderRadius: '4px' }}>{error}</div>}
 
@@ -170,7 +170,7 @@ const PrescriptionCreation = () => {
             required
             style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
           >
-            <option value="">Sélectionner un patient</option>
+            <option value="">Slectionner un patient</option>
             {patients.map(p => (
               <option key={p.id} value={p.id}>
                 {p.prenom} {p.nom} (ID: {p.id})
@@ -179,28 +179,28 @@ const PrescriptionCreation = () => {
           </select>
         </div>
 
-        {/* Médecin prescripteur (doctor_id) */}
+        {/* Mdecin prescripteur (doctor_id) */}
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontWeight: 'bold' }}>Médecin prescripteur *</label>
+          <label style={{ display: 'block', fontWeight: 'bold' }}>Mdecin prescripteur *</label>
           <select
-            name="doctor_id" // ✅ name="doctor_id"
+            name="doctor_id" // ? name="doctor_id"
             value={formData.doctor_id}
             onChange={handleChange}
             required
             style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
           >
-            <option value="">-- Choisir un médecin --</option>
+            <option value="">-- Choisir un mdecin --</option>
             {medecins.map(m => (
               <option key={m.id} value={m.id}>
-                {m.prenom} {m.nom} ({m.specialite || 'Généraliste'})
+                {m.prenom} {m.nom} ({m.specialite || 'Gnraliste'})
               </option>
             ))}
           </select>
         </div>
 
-        {/* Médicaments */}
+        {/* Mdicaments */}
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontWeight: 'bold' }}>Médicaments *</label>
+          <label style={{ display: 'block', fontWeight: 'bold' }}>Mdicaments *</label>
           {formData.items.map((item, index) => (
             <div key={index} style={{ border: '1px solid #eee', padding: '12px', marginBottom: '8px', borderRadius: '4px', backgroundColor: '#f9fafb' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '8px', alignItems: 'center' }}>
@@ -210,7 +210,7 @@ const PrescriptionCreation = () => {
                   required
                   style={{ padding: '6px', border: '1px solid #ccc', borderRadius: '4px' }}
                 >
-                  <option value="">Médicament</option>
+                  <option value="">Mdicament</option>
                   {medicaments.map(m => (
                     <option key={m.id} value={m.id}>
                       {m.nom} (stock: {m.stock || 0})
@@ -219,7 +219,7 @@ const PrescriptionCreation = () => {
                 </select>
                 <input
                   type="number"
-                  placeholder="Qté"
+                  placeholder="Qt"
                   value={item.quantite}
                   onChange={(e) => handleItemChange(index, 'quantite', parseInt(e.target.value) || 1)}
                   min="1"
@@ -237,7 +237,7 @@ const PrescriptionCreation = () => {
                   onClick={() => removeItem(index)}
                   style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
                 >
-                  ✕
+                  ?
                 </button>
               </div>
             </div>
@@ -247,7 +247,7 @@ const PrescriptionCreation = () => {
             onClick={addItem}
             style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '14px' }}
           >
-            + Ajouter un médicament
+            + Ajouter un mdicament
           </button>
         </div>
 
@@ -292,7 +292,7 @@ const PrescriptionCreation = () => {
               opacity: loading ? 0.6 : 1
             }}
           >
-            {loading ? 'Création...' : 'Créer la prescription'}
+            {loading ? 'Cration...' : 'Crer la prescription'}
           </button>
           <button
             type="button"

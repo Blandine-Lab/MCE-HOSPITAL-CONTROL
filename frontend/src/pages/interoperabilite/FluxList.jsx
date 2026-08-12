@@ -68,7 +68,7 @@ const FluxList = () => {
     } catch (err) { console.error(err); }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -102,9 +102,9 @@ const FluxList = () => {
               <option value="xml">XML</option>
               <option value="csv">CSV</option>
             </select>
-            <input name="periodicite" placeholder="Périodicité (ex: quotidien)" value={formData.periodicite} onChange={e => setFormData({ ...formData, periodicite: e.target.value })} style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
+            <input name="periodicite" placeholder="Priodicit (ex: quotidien)" value={formData.periodicite} onChange={e => setFormData({ ...formData, periodicite: e.target.value })} style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
             <div style={{ gridColumn: 'span 2' }}>
-              <button type="submit" style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Créer</button>
+              <button type="submit" style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Crer</button>
               <button type="button" onClick={() => setShowForm(false)} style={{ marginLeft: '12px', padding: '8px 24px', border: '1px solid #e2e8f0', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>Annuler</button>
             </div>
           </form>
@@ -123,7 +123,7 @@ const FluxList = () => {
                 <td>{f.source_nom || '-'}</td>
                 <td>{f.dest_nom || '-'}</td>
                 <td>{f.type_flux}</td>
-                <td>{f.statut === 'actif' ? '🟢 Actif' : '🔴 Inactif'}</td>
+                <td>{f.statut === 'actif' ? '?? Actif' : '?? Inactif'}</td>
                 <td style={{ textAlign: 'center' }}>
                   <button onClick={() => handleToggle(f.id, f.statut === 'actif')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: f.statut === 'actif' ? '#10b981' : '#ef4444', marginRight: '8px' }}>{f.statut === 'actif' ? <FaToggleOn /> : <FaToggleOff />}</button>
                   <Link to={`/interoperabilite/flux/${f.id}/edit`} style={{ color: '#f59e0b', marginRight: '8px' }}><FaEdit /></Link>

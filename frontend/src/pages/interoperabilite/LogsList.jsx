@@ -12,7 +12,7 @@ const LogsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const LogsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -60,7 +60,7 @@ const LogsList = () => {
       setLoading(false);
     }).catch(err => {
       console.error(err);
-      showToast('Erreur chargement données', 'error');
+      showToast('Erreur chargement donnes', 'error');
       setLoading(false);
     });
   }, []);
@@ -69,26 +69,26 @@ const LogsList = () => {
     fetchLogs();
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce log ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement ce log ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/interoperabilite/logs/${id}`);
       setLogs(logs.filter(l => l.id !== id));
-      showToast('Log supprimé avec succès');
+      showToast('Log supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression log:', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un log.', 'error');
+        showToast('? Seul un administrateur peut supprimer un log.', 'error');
       } else {
-        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -108,7 +108,7 @@ const LogsList = () => {
           {toast}
         </div>
       )}
-      <h1 style={{ fontSize: '28px', color: '#0f172a', marginBottom: '24px' }}><FaHistory style={{ color: '#f59e0b', marginRight: '12px' }} /> Logs d'interopérabilité</h1>
+      <h1 style={{ fontSize: '28px', color: '#0f172a', marginBottom: '24px' }}><FaHistory style={{ color: '#f59e0b', marginRight: '12px' }} /> Logs d'interoprabilit</h1>
       <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
         <FaFilter style={{ color: '#64748b' }} />
         <select value={filters.direction} onChange={e => setFilters({ ...filters, direction: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
@@ -117,18 +117,18 @@ const LogsList = () => {
           <option value="OUT">Sortant</option>
         </select>
         <select value={filters.systeme_id} onChange={e => setFilters({ ...filters, systeme_id: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-          <option value="">Système</option>
+          <option value="">Systme</option>
           {systemes.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
         </select>
         <input type="date" value={filters.date_debut} onChange={e => setFilters({ ...filters, date_debut: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
-        <span>→</span>
+        <span>?</span>
         <input type="date" value={filters.date_fin} onChange={e => setFilters({ ...filters, date_fin: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
         <button onClick={applyFilters} style={{ backgroundColor: '#3b82f6', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Filtrer</button>
       </div>
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
-            <tr><th>Date</th><th>Système</th><th>Flux</th><th>Direction</th><th>Statut</th><th>Durée (ms)</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
+            <tr><th>Date</th><th>Systme</th><th>Flux</th><th>Direction</th><th>Statut</th><th>Dure (ms)</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
           </thead>
           <tbody>
             {logs.map((l, i) => (
@@ -136,12 +136,12 @@ const LogsList = () => {
                 <td style={{ padding: '14px 20px' }}>{new Date(l.date_action).toLocaleString()}</td>
                 <td>{l.systeme_nom || '-'}</td>
                 <td>{l.flux_nom || '-'}</td>
-                <td>{l.direction === 'IN' ? '📥 Entrant' : '📤 Sortant'}</td>
+                <td>{l.direction === 'IN' ? '?? Entrant' : '?? Sortant'}</td>
                 <td>
                   {l.status_code && l.status_code < 400 ? (
-                    <span style={{ color: '#10b981' }}>✅ {l.status_code}</span>
+                    <span style={{ color: '#10b981' }}>? {l.status_code}</span>
                   ) : (
-                    <span style={{ color: '#ef4444' }}>❌ {l.status_code || 'Erreur'}</span>
+                    <span style={{ color: '#ef4444' }}>? {l.status_code || 'Erreur'}</span>
                   )}
                 </td>
                 <td>{l.duree_ms || '-'}</td>
@@ -151,7 +151,7 @@ const LogsList = () => {
                       <FaTrash />
                     </button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

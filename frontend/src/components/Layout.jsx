@@ -14,11 +14,11 @@ const Navbar = () => {
     navigate('/login');
   };
 
-  // Filtrer les éléments selon les permissions, puis forcer le chemin de la Pharmacie
+  // Filtrer les lments selon les permissions, puis forcer le chemin de la Pharmacie
   const filteredMenu = menuItems
     .filter(item => hasPermission(item.permission))
     .map(item => {
-      // 🔥 Forcer le chemin de la Pharmacie vers le dashboard
+      // ?? Forcer le chemin de la Pharmacie vers le dashboard
       if (item.label === 'Pharmacie') {
         return { ...item, path: '/pharmacy/dashboard' };
       }
@@ -138,7 +138,7 @@ const Navbar = () => {
           }}
         >
           <FaSignOutAlt size={11} />
-          <span className="nav-label">Déconnexion</span>
+          <span className="nav-label">Dconnexion</span>
         </button>
       </div>
     </nav>

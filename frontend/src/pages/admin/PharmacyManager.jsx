@@ -1,5 +1,5 @@
-﻿import { useState, useEffect } from 'react';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import { useState, useEffect } from 'react';
+import api from '../../axios'; // ? Utilisation de l'instance partagïe
 
 const PharmacyManager = () => {
   const [medicaments, setMedicaments] = useState([]);
@@ -7,7 +7,7 @@ const PharmacyManager = () => {
   const [showMedicamentForm, setShowMedicamentForm] = useState(false);
   const [medicamentForm, setMedicamentForm] = useState({
     code: "", nom: "", description: "", stock: 0, seuil_alerte: 10,
-    unite: "boîte", prix_unitaire: 0, principe_actif: "", forme: "", dosage: "", est_stupefiant: false
+    unite: "boïte", prix_unitaire: 0, principe_actif: "", forme: "", dosage: "", est_stupefiant: false
   });
   const [editingMedicamentId, setEditingMedicamentId] = useState(null);
   const [selectedMedicamentId, setSelectedMedicamentId] = useState("");
@@ -22,7 +22,7 @@ const PharmacyManager = () => {
   const [patients, setPatients] = useState([]);
   const [subTab, setSubTab] = useState('medicaments');
 
-  const showToast = (msg) => { alert(msg); }; // simplifié
+  const showToast = (msg) => { alert(msg); }; // simplifiï
 
   const fetchMedicaments = async () => {
     try { const res = await api.get('/pharmacy/medicaments'); setMedicaments(res.data); } catch(e) { console.error(e); }
@@ -62,10 +62,10 @@ const PharmacyManager = () => {
       }
       setShowMedicamentForm(false);
       setEditingMedicamentId(null);
-      setMedicamentForm({ code: "", nom: "", description: "", stock: 0, seuil_alerte: 10, unite: "boîte", prix_unitaire: 0, principe_actif: "", forme: "", dosage: "", est_stupefiant: false });
+      setMedicamentForm({ code: "", nom: "", description: "", stock: 0, seuil_alerte: 10, unite: "boïte", prix_unitaire: 0, principe_actif: "", forme: "", dosage: "", est_stupefiant: false });
       fetchMedicaments();
       fetchAlertes();
-      showToast('Médicament enregistré');
+      showToast('Mïdicament enregistrï');
     } catch(err) { showToast('Erreur'); }
   };
 
@@ -98,7 +98,7 @@ const PharmacyManager = () => {
       fetchLots(selectedMedicamentId);
       fetchMedicaments();
       fetchAlertes();
-      showToast('Lot ajouté');
+      showToast('Lot ajoutï');
     } catch(err) { showToast('Erreur'); }
   };
 
@@ -117,7 +117,7 @@ const PharmacyManager = () => {
       setShowCommandeForm(false);
       setCommandeLignes([{ medicament_id: "", quantite_commandee: 0, prix_unitaire_ht: 0 }]);
       fetchCommandes();
-      showToast('Commande créée');
+      showToast('Commande crïïe');
     } catch(err) { showToast('Erreur'); }
   };
 
@@ -125,33 +125,33 @@ const PharmacyManager = () => {
     e.preventDefault();
     try {
       await api.post('/pharmacy/delivrance', deliveryForm);
-      setDeliveryMessage('✅ Délivrance enregistrée');
+      setDeliveryMessage('? Dïlivrance enregistrïe');
       setDeliveryForm({ medicament_id: "", quantite: 1, patient_id: "", posologie: "", prescripteur_nom: "" });
       fetchMedicaments();
       fetchAlertes();
     } catch(err) {
-      setDeliveryMessage('❌ Erreur : ' + (err.response?.data?.error || err.message));
+      setDeliveryMessage('? Erreur : ' + (err.response?.data?.error || err.message));
     }
   };
 
   return (
     <div>
       <div className="mb-4 flex gap-2 border-b pb-2">
-        <button onClick={() => setSubTab('medicaments')} className={`px-4 py-2 rounded ${subTab === 'medicaments' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Médicaments</button>
-        <button onClick={() => setSubTab('lots')} className={`px-4 py-2 rounded ${subTab === 'lots' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Lots & Péremption</button>
+        <button onClick={() => setSubTab('medicaments')} className={`px-4 py-2 rounded ${subTab === 'medicaments' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Mïdicaments</button>
+        <button onClick={() => setSubTab('lots')} className={`px-4 py-2 rounded ${subTab === 'lots' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Lots & Pïremption</button>
         <button onClick={() => setSubTab('commandes')} className={`px-4 py-2 rounded ${subTab === 'commandes' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Commandes</button>
-        <button onClick={() => setSubTab('delivrance')} className={`px-4 py-2 rounded ${subTab === 'delivrance' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Délivrance</button>
+        <button onClick={() => setSubTab('delivrance')} className={`px-4 py-2 rounded ${subTab === 'delivrance' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Dïlivrance</button>
       </div>
 
       {subTab === 'medicaments' && (
         <div>
           {(alertes.stockCritique.length > 0 || alertes.peremptionProche.length > 0) && (
             <div className="bg-yellow-100 border-l-4 border-yellow-500 p-2 mb-4">
-              {alertes.stockCritique.length > 0 && <p>⚠️ Stock critique : {alertes.stockCritique.map(m => m.nom).join(', ')}</p>}
-              {alertes.peremptionProche.length > 0 && <p>⚠️ Péremption proche : {alertes.peremptionProche.map(l => l.medicament_nom).join(', ')}</p>}
+              {alertes.stockCritique.length > 0 && <p>?? Stock critique : {alertes.stockCritique.map(m => m.nom).join(', ')}</p>}
+              {alertes.peremptionProche.length > 0 && <p>?? Pïremption proche : {alertes.peremptionProche.map(l => l.medicament_nom).join(', ')}</p>}
             </div>
           )}
-          <button onClick={() => setShowMedicamentForm(!showMedicamentForm)} className="bg-blue-600 text-white px-4 py-2 rounded mb-4">+ Ajouter médicament</button>
+          <button onClick={() => setShowMedicamentForm(!showMedicamentForm)} className="bg-blue-600 text-white px-4 py-2 rounded mb-4">+ Ajouter mïdicament</button>
           {showMedicamentForm && (
             <form onSubmit={handleMedicamentSubmit} className="bg-gray-100 p-4 rounded mb-4">
               <input className="block w-full mb-2 p-2 border" placeholder="Code" value={medicamentForm.code} onChange={e => setMedicamentForm({...medicamentForm, code: e.target.value})} required />
@@ -173,10 +173,10 @@ const PharmacyManager = () => {
                   <td className="p-2">{m.code}</td><td className="p-2">{m.nom}</td>
                   <td className="p-2">{m.stock}</td><td className="p-2">{m.seuil_alerte}</td>
                   <td className="p-2">{m.prix_unitaire} FC</td>
-                  <td className="p-2">{m.est_stupefiant ? '✅' : '❌'}</td>
+                  <td className="p-2">{m.est_stupefiant ? '?' : '?'}</td>
                   <td className="p-2">
-                    <button onClick={() => editMedicament(m)} className="text-yellow-600 mr-2">✏️</button>
-                    <button onClick={() => deleteMedicament(m.id)} className="text-red-600">🗑️</button>
+                    <button onClick={() => editMedicament(m)} className="text-yellow-600 mr-2">??</button>
+                    <button onClick={() => deleteMedicament(m.id)} className="text-red-600">???</button>
                   </td>
                 </tr>
               ))}
@@ -188,7 +188,7 @@ const PharmacyManager = () => {
       {subTab === 'lots' && (
         <div>
           <select value={selectedMedicamentId} onChange={e => setSelectedMedicamentId(e.target.value)} className="w-full p-2 border mb-4">
-            <option value="">Choisir un médicament</option>
+            <option value="">Choisir un mïdicament</option>
             {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
           </select>
           {selectedMedicamentId && (
@@ -196,15 +196,15 @@ const PharmacyManager = () => {
               <button onClick={() => setShowLotForm(!showLotForm)} className="bg-blue-600 text-white px-4 py-2 rounded mb-4">+ Ajouter lot</button>
               {showLotForm && (
                 <form onSubmit={handleLotSubmit} className="bg-gray-100 p-4 rounded mb-4">
-                  <input className="block w-full mb-2 p-2 border" placeholder="Numéro lot" value={lotForm.numero_lot} onChange={e => setLotForm({...lotForm, numero_lot: e.target.value})} required />
+                  <input className="block w-full mb-2 p-2 border" placeholder="Numïro lot" value={lotForm.numero_lot} onChange={e => setLotForm({...lotForm, numero_lot: e.target.value})} required />
                   <input type="date" className="block w-full mb-2 p-2 border" value={lotForm.date_peremption} onChange={e => setLotForm({...lotForm, date_peremption: e.target.value})} required />
-                  <input type="number" placeholder="Quantité" className="block w-full mb-2 p-2 border" value={lotForm.quantite} onChange={e => setLotForm({...lotForm, quantite: parseInt(e.target.value) || 0})} required />
+                  <input type="number" placeholder="Quantitï" className="block w-full mb-2 p-2 border" value={lotForm.quantite} onChange={e => setLotForm({...lotForm, quantite: parseInt(e.target.value) || 0})} required />
                   <input type="number" step="0.01" placeholder="Prix achat" className="block w-full mb-2 p-2 border" value={lotForm.prix_achat} onChange={e => setLotForm({...lotForm, prix_achat: parseFloat(e.target.value) || 0})} />
                   <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded">Ajouter</button>
                 </form>
               )}
               <table className="w-full border-collapse">
-                <thead><tr className="bg-blue-600 text-white"><th>Lot</th><th>Péremption</th><th>Stock actuel</th><th>Prix achat</th></tr></thead>
+                <thead><tr className="bg-blue-600 text-white"><th>Lot</th><th>Pïremption</th><th>Stock actuel</th><th>Prix achat</th></tr></thead>
                 <tbody>
                   {lots.map(lot => (
                     <tr key={lot.id} className="border-b">
@@ -230,19 +230,19 @@ const PharmacyManager = () => {
               {commandeLignes.map((ligne, idx) => (
                 <div key={idx} className="flex gap-2 mb-2">
                   <select value={ligne.medicament_id} onChange={e => updateCommandeLigne(idx, 'medicament_id', e.target.value)} className="flex-1 p-2 border">
-                    <option value="">Médicament</option>
+                    <option value="">Mïdicament</option>
                     {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
                   </select>
-                  <input type="number" placeholder="Quantité" className="w-24 p-2 border" value={ligne.quantite_commandee} onChange={e => updateCommandeLigne(idx, 'quantite_commandee', parseInt(e.target.value) || 0)} required />
+                  <input type="number" placeholder="Quantitï" className="w-24 p-2 border" value={ligne.quantite_commandee} onChange={e => updateCommandeLigne(idx, 'quantite_commandee', parseInt(e.target.value) || 0)} required />
                   <input type="number" step="0.01" placeholder="Prix HT" className="w-32 p-2 border" value={ligne.prix_unitaire_ht} onChange={e => updateCommandeLigne(idx, 'prix_unitaire_ht', parseFloat(e.target.value) || 0)} />
                 </div>
               ))}
               <button type="button" onClick={addCommandeLigne} className="bg-gray-500 text-white px-2 py-1 rounded">+ Ajouter ligne</button>
-              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded ml-2">Créer commande</button>
+              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded ml-2">Crïer commande</button>
             </form>
           )}
           <table className="w-full border-collapse">
-            <thead><tr className="bg-blue-600 text-white"><th>N° commande</th><th>Date</th><th>Statut</th></tr></thead>
+            <thead><tr className="bg-blue-600 text-white"><th>Nï commande</th><th>Date</th><th>Statut</th></tr></thead>
             <tbody>
               {commandes.map(cmd => (
                 <tr key={cmd.id} className="border-b">
@@ -261,17 +261,17 @@ const PharmacyManager = () => {
           {deliveryMessage && <div className="bg-green-100 text-green-700 p-2 rounded mb-4">{deliveryMessage}</div>}
           <form onSubmit={handleDeliverySubmit} className="bg-gray-100 p-4 rounded">
             <select className="w-full p-2 mb-2 border" value={deliveryForm.medicament_id} onChange={e => setDeliveryForm({...deliveryForm, medicament_id: e.target.value})} required>
-              <option value="">Médicament</option>
+              <option value="">Mïdicament</option>
               {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom} (stock: {m.stock})</option>)}
             </select>
-            <input type="number" placeholder="Quantité" className="w-full p-2 mb-2 border" value={deliveryForm.quantite} onChange={e => setDeliveryForm({...deliveryForm, quantite: parseInt(e.target.value) || 1})} required min="1" />
+            <input type="number" placeholder="Quantitï" className="w-full p-2 mb-2 border" value={deliveryForm.quantite} onChange={e => setDeliveryForm({...deliveryForm, quantite: parseInt(e.target.value) || 1})} required min="1" />
             <select className="w-full p-2 mb-2 border" value={deliveryForm.patient_id} onChange={e => setDeliveryForm({...deliveryForm, patient_id: e.target.value})} required>
               <option value="">Patient</option>
               {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
             </select>
             <input type="text" placeholder="Posologie" className="w-full p-2 mb-2 border" value={deliveryForm.posologie} onChange={e => setDeliveryForm({...deliveryForm, posologie: e.target.value})} />
             <input type="text" placeholder="Prescripteur" className="w-full p-2 mb-2 border" value={deliveryForm.prescripteur_nom} onChange={e => setDeliveryForm({...deliveryForm, prescripteur_nom: e.target.value})} />
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Délivrer</button>
+            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Dïlivrer</button>
           </form>
         </div>
       )}

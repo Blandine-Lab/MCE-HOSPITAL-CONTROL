@@ -12,7 +12,7 @@ const RoleForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Charger les permissions et le rôle si édition
+  // Charger les permissions et le rle si dition
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -30,19 +30,19 @@ const RoleForm = () => {
         }
       } catch (err) {
         console.error('Erreur chargement:', err);
-        setError('Impossible de charger les données');
+        setError('Impossible de charger les donnes');
       }
     };
     fetchData();
   }, [id, isEdit]);
 
-  // Gérer les changements de champs texte
+  // Grer les changements de champs texte
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Gérer la sélection/désélection d'une permission
+  // Grer la slection/dslection d'une permission
   const togglePermission = (permId) => {
     setFormData(prev => ({
       ...prev,
@@ -52,7 +52,7 @@ const RoleForm = () => {
     }));
   };
 
-  // Sélectionner / désélectionner toutes les permissions d'un module
+  // Slectionner / dslectionner toutes les permissions d'un module
   const toggleModule = (moduleName) => {
     const modulePerms = permissions.filter(p => p.module === moduleName);
     const allIds = modulePerms.map(p => p.id);
@@ -107,7 +107,7 @@ const RoleForm = () => {
         <FaArrowLeft /> Retour
       </Link>
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', marginTop: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h2>{isEdit ? 'Modifier' : 'Nouveau'} rôle</h2>
+        <h2>{isEdit ? 'Modifier' : 'Nouveau'} rle</h2>
         {error && <div style={{ color: 'red', marginBottom: '12px' }}>{error}</div>}
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>

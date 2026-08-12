@@ -11,7 +11,7 @@ const ProtocolesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,7 +19,7 @@ const ProtocolesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -48,26 +48,26 @@ const ProtocolesList = () => {
     fetchProtocoles();
   }, []);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce protocole ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dfinitivement ce protocole ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/protocoles/${id}`);
       setProtocoles(protocoles.filter(p => p.id !== id));
-      showToast('Protocole supprimé avec succès');
+      showToast('Protocole supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression protocole:', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un protocole.', 'error');
+        showToast('? Seul un administrateur peut supprimer un protocole.', 'error');
       } else {
-        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px 20px' }}>⏳ Chargement des protocoles...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px 20px' }}>? Chargement des protocoles...</div>;
 
   return (
     <div>
@@ -135,13 +135,13 @@ const ProtocolesList = () => {
                         <button
                           onClick={() => handleDelete(p.id)}
                           style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                          title="Supprimer définitivement (admin)"
+                          title="Supprimer dfinitivement (admin)"
                         >
                           <FaTrash />
                         </button>
                       )}
                       {!isAdmin && (
-                        <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                        <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                       )}
                     </div>
                   </td>

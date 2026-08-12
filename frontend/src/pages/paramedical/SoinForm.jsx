@@ -17,7 +17,7 @@ const SoinForm = () => {
     date_soin: new Date().toISOString().split('T')[0],
     heure_soin: '09:00',
     prestataire: '',
-    statut: 'planifie',   // ✅ Valeur sans accent (correspond à la contrainte)
+    statut: 'planifie',   // ? Valeur sans accent (correspond  la contrainte)
     notes: ''
   });
   const [patients, setPatients] = useState([]);
@@ -31,28 +31,28 @@ const SoinForm = () => {
       .then(res => setPatients(res.data))
       .catch(err => console.error('Erreur chargement patients :', err));
 
-    // Charger la liste des employés (paramédicaux)
+    // Charger la liste des employs (paramdicaux)
     api.get('/employes')
       .then(res => {
-        console.log('🔍 Données employés brutes :', res.data);
-        // ✅ Liste des rôles paramédicaux (à adapter selon votre base)
+        console.log('?? Donnes employs brutes :', res.data);
+        // ? Liste des rles paramdicaux ( adapter selon votre base)
         const rolesParamedicaux = [
-          'infirmier', 'kinésithérapeute', 'aide-soignant',
-          'ergothérapeute', 'orthophoniste', 'psychologue',
-          'manipulateur_radio', 'diététicien', 'infirmière'
+          'infirmier', 'kinsithrapeute', 'aide-soignant',
+          'ergothrapeute', 'orthophoniste', 'psychologue',
+          'manipulateur_radio', 'ditticien', 'infirmire'
         ];
-        // Filtrer les employés dont le rôle correspond
+        // Filtrer les employs dont le rle correspond
         const filtered = res.data.filter(e => {
           const role = (e.role || e.poste || e.fonction || '').toLowerCase();
           return rolesParamedicaux.some(r => role.includes(r));
         });
-        console.log('🧑�FC�⚕️ Employés paramédicaux filtrés :', filtered);
-        // Si aucun filtre ne correspond, on affiche tous les employés pour ne pas bloquer
+        console.log('???FC??? Employs paramdicaux filtrs :', filtered);
+        // Si aucun filtre ne correspond, on affiche tous les employs pour ne pas bloquer
         setEmployes(filtered.length > 0 ? filtered : res.data);
       })
-      .catch(err => console.error('❌ Erreur chargement employés :', err));
+      .catch(err => console.error('? Erreur chargement employs :', err));
 
-    // Si édition, charger les données du soin
+    // Si dition, charger les donnes du soin
     if (isEdit) {
       api.get(`/soins/${id}`)
         .then(res => {
@@ -84,8 +84,8 @@ const SoinForm = () => {
     setLoading(true);
     setError('');
 
-    // 🔍 Vérification du statut avant envoi
-    console.log('📤 Données envoyées :', formData);
+    // ?? Vrification du statut avant envoi
+    console.log('?? Donnes envoyes :', formData);
 
     try {
       if (isEdit) {
@@ -112,7 +112,7 @@ const SoinForm = () => {
           textDecoration: 'none',
           fontWeight: '500'
         }}>
-          <FaArrowLeft /> Retour à la liste
+          <FaArrowLeft /> Retour  la liste
         </Link>
       </div>
 
@@ -158,7 +158,7 @@ const SoinForm = () => {
                   fontSize: '16px'
                 }}
               >
-                <option value="">Sélectionner un patient</option>
+                <option value="">Slectionner un patient</option>
                 {patients.map(p => (
                   <option key={p.id} value={p.id}>
                     {p.nom} {p.prenom}
@@ -185,13 +185,13 @@ const SoinForm = () => {
                   fontSize: '16px'
                 }}
               >
-                <option value="">Sélectionner un type</option>
+                <option value="">Slectionner un type</option>
                 <option value="Pansement">Pansement</option>
                 <option value="Injection">Injection</option>
                 <option value="Perfusion">Perfusion</option>
-                <option value="Rééducation">Rééducation</option>
-                <option value="Kinésithérapie">Kinésithérapie</option>
-                <option value="Ergothérapie">Ergothérapie</option>
+                <option value="Rducation">Rducation</option>
+                <option value="Kinsithrapie">Kinsithrapie</option>
+                <option value="Ergothrapie">Ergothrapie</option>
                 <option value="Orthophonie">Orthophonie</option>
                 <option value="Psychologie">Psychologie</option>
                 <option value="Soin infirmier">Soin infirmier</option>
@@ -240,7 +240,7 @@ const SoinForm = () => {
               />
             </div>
 
-            {/* Prestataire - Liste déroulante */}
+            {/* Prestataire - Liste droulante */}
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>
                 Prestataire
@@ -257,16 +257,16 @@ const SoinForm = () => {
                   fontSize: '16px'
                 }}
               >
-                <option value="">-- Sélectionner un prestataire --</option>
+                <option value="">-- Slectionner un prestataire --</option>
                 {employes.map(emp => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.prenom} {emp.nom} ({emp.role || emp.poste || emp.fonction || 'Paramédical'})
+                    {emp.prenom} {emp.nom} ({emp.role || emp.poste || emp.fonction || 'Paramdical'})
                   </option>
                 ))}
               </select>
               {employes.length === 0 && (
                 <p style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
-                  ⚠️ Aucun employé paramédical trouvé. Vérifiez le module RH.
+                  ?? Aucun employ paramdical trouv. Vrifiez le module RH.
                 </p>
               )}
             </div>
@@ -288,10 +288,10 @@ const SoinForm = () => {
                   fontSize: '16px'
                 }}
               >
-                <option value="planifie">📅 Planifié</option>
-                <option value="en_cours">⏳ En cours</option>
-                <option value="effectue">✅ Effectué</option>
-                <option value="annule">❌ Annulé</option>
+                <option value="planifie">?? Planifi</option>
+                <option value="en_cours">? En cours</option>
+                <option value="effectue">? Effectu</option>
+                <option value="annule">? Annul</option>
               </select>
             </div>
           </div>
@@ -356,7 +356,7 @@ const SoinForm = () => {
               gap: '8px'
             }}
           >
-            <FaSave /> {loading ? 'Enregistrement...' : isEdit ? 'Modifier' : 'Créer le soin'}
+            <FaSave /> {loading ? 'Enregistrement...' : isEdit ? 'Modifier' : 'Crer le soin'}
           </button>
         </form>
       </div>

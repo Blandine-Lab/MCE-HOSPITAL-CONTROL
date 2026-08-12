@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../axios';
 import { 
-  FaServer, FaExchangeAlt, FaHistory, FaPlug,  // ✅ FaPlug remplace FaWebhook
+  FaServer, FaExchangeAlt, FaHistory, FaPlug,  // ? FaPlug remplace FaWebhook
   FaCheckCircle, FaTimesCircle, FaClock, FaArrowUp, FaArrowDown,
   FaSync, FaExclamationTriangle 
 } from 'react-icons/fa';
@@ -112,7 +112,7 @@ const DashboardInteroperabilite = () => {
         labels: dates.map(d => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })),
         datasets: [
           {
-            label: 'Appels réussis',
+            label: 'Appels russis',
             data: successCounts,
             borderColor: '#10b981',
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -120,7 +120,7 @@ const DashboardInteroperabilite = () => {
             tension: 0.4,
           },
           {
-            label: 'Appels en échec',
+            label: 'Appels en chec',
             data: errorCounts,
             borderColor: '#ef4444',
             backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -148,8 +148,8 @@ const DashboardInteroperabilite = () => {
 
       setLastUpdated(new Date());
     } catch (err) {
-      console.error('Erreur chargement dashboard interopérabilité:', err);
-      setError('Impossible de charger les données du tableau de bord.');
+      console.error('Erreur chargement dashboard interoprabilit:', err);
+      setError('Impossible de charger les donnes du tableau de bord.');
       setStats({
         systemes: 0,
         systemesActifs: 0,
@@ -247,7 +247,7 @@ const DashboardInteroperabilite = () => {
       <div style={{ padding: '20px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px' }}>
         <FaExclamationTriangle style={{ marginRight: '8px' }} /> {error}
         <button onClick={fetchDashboardData} style={{ marginLeft: '16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer' }}>
-          Réessayer
+          Ressayer
         </button>
       </div>
     );
@@ -267,11 +267,11 @@ const DashboardInteroperabilite = () => {
       }}>
         <h1 style={{ fontSize: '28px', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
           <FaExchangeAlt style={{ color: '#3b82f6' }} />
-          Tableau de bord Interopérabilité
+          Tableau de bord Interoprabilit
         </h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-            Dernière mise à jour : {lastUpdated.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            Dernire mise  jour : {lastUpdated.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
           <button
             onClick={fetchDashboardData}
@@ -287,7 +287,7 @@ const DashboardInteroperabilite = () => {
               gap: '8px'
             }}
           >
-            <FaSync /> Rafraîchir
+            <FaSync /> Rafrachir
           </button>
         </div>
       </div>
@@ -298,12 +298,12 @@ const DashboardInteroperabilite = () => {
         gap: '16px',
         marginBottom: '24px'
       }}>
-        <StatCard icon={FaServer} label="Systèmes externes" value={stats.systemes} color="#3b82f6" subtitle={`${stats.systemesActifs} actifs`} />
+        <StatCard icon={FaServer} label="Systmes externes" value={stats.systemes} color="#3b82f6" subtitle={`${stats.systemesActifs} actifs`} />
         <StatCard icon={FaExchangeAlt} label="Flux" value={stats.flux} color="#8b5cf6" subtitle={`${stats.fluxActifs} actifs`} />
         <StatCard icon={FaHistory} label="Logs" value={stats.logs} color="#f59e0b" />
         <StatCard icon={FaPlug} label="Webhooks" value={stats.webhooks} color="#ec4899" subtitle={`${stats.webhooksActifs} actifs`} />
-        <StatCard icon={FaCheckCircle} label="Appels réussis" value={stats.logsSucces} color="#10b981" />
-        <StatCard icon={FaTimesCircle} label="Appels en échec" value={stats.logsEchec} color="#ef4444" />
+        <StatCard icon={FaCheckCircle} label="Appels russis" value={stats.logsSucces} color="#10b981" />
+        <StatCard icon={FaTimesCircle} label="Appels en chec" value={stats.logsEchec} color="#ef4444" />
       </div>
 
       <div style={{
@@ -319,7 +319,7 @@ const DashboardInteroperabilite = () => {
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
         }}>
           <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 16px 0' }}>
-            📈 Évolution des appels (30 derniers jours)
+            ?? volution des appels (30 derniers jours)
           </h3>
           {evolutionData ? (
             <Line
@@ -332,7 +332,7 @@ const DashboardInteroperabilite = () => {
             />
           ) : (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-              Données insuffisantes
+              Donnes insuffisantes
             </div>
           )}
         </div>
@@ -344,7 +344,7 @@ const DashboardInteroperabilite = () => {
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
         }}>
           <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 16px 0' }}>
-            🧩 Répartition des flux par direction
+            ?? Rpartition des flux par direction
           </h3>
           {fluxDirectionData && fluxDirectionData.datasets[0].data.reduce((a, b) => a + b, 0) > 0 ? (
             <div style={{ maxWidth: '280px', margin: '0 auto' }}>
@@ -358,7 +358,7 @@ const DashboardInteroperabilite = () => {
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-              Aucun flux configuré
+              Aucun flux configur
             </div>
           )}
         </div>
@@ -372,7 +372,7 @@ const DashboardInteroperabilite = () => {
         marginBottom: '24px'
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 16px 0' }}>
-          📋 Derniers logs d'interopérabilité
+          ?? Derniers logs d'interoprabilit
         </h3>
         {logsRecents.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>

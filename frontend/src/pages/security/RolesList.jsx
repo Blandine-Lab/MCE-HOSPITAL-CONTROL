@@ -11,7 +11,7 @@ const RolesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,7 +19,7 @@ const RolesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -39,7 +39,7 @@ const RolesList = () => {
       })
       .catch(err => {
         console.error(err);
-        showToast('Erreur chargement des rôles', 'error');
+        showToast('Erreur chargement des rles', 'error');
         setLoading(false);
       });
   };
@@ -48,17 +48,17 @@ const RolesList = () => {
     fetchRoles();
   }, []);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id, nom) => {
-    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer le rôle "${nom}" ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`?? Voulez-vous vraiment supprimer le rle "${nom}" ? Cette action est irrversible.`)) return;
     try {
       await api.delete(`/security/roles/${id}`);
       setRoles(roles.filter(r => r.id !== id));
-      showToast('Rôle supprimé avec succès');
+      showToast('Rle supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un rôle.', 'error');
+        showToast('? Seul un administrateur peut supprimer un rle.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -67,7 +67,7 @@ const RolesList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -88,9 +88,9 @@ const RolesList = () => {
         </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '28px', color: '#0f172a' }}><FaUsersCog style={{ color: '#f59e0b', marginRight: '12px' }} /> Rôles & Permissions</h1>
+        <h1 style={{ fontSize: '28px', color: '#0f172a' }}><FaUsersCog style={{ color: '#f59e0b', marginRight: '12px' }} /> Rles & Permissions</h1>
         <Link to="/security/roles/nouveau" style={{ backgroundColor: '#f59e0b', color: 'white', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <FaPlus /> Nouveau rôle
+          <FaPlus /> Nouveau rle
         </Link>
       </div>
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
@@ -109,7 +109,7 @@ const RolesList = () => {
                   {isAdmin ? (
                     <button onClick={() => handleDelete(r.id, r.nom)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

@@ -1,7 +1,7 @@
 // frontend/src/pages/consultations/PharmacistPrescriptionList.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../axios'; // ✅ Instance avec intercepteur
+import api from '../../axios'; // ? Instance avec intercepteur
 import { FaPills, FaCheckCircle, FaEye } from 'react-icons/fa';
 
 const PharmacistPrescriptionList = () => {
@@ -10,9 +10,9 @@ const PharmacistPrescriptionList = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
-  const [userRole, setUserRole] = useState(null); // ✅ Prêt pour l'avenir
+  const [userRole, setUserRole] = useState(null); // ? Prt pour l'avenir
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const PharmacistPrescriptionList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -44,7 +44,7 @@ const PharmacistPrescriptionList = () => {
       })
       .catch(err => {
         console.error('Erreur chargement prescriptions:', err);
-        showToast('Erreur chargement des données', 'error');
+        showToast('Erreur chargement des donnes', 'error');
         setLoading(false);
       });
   };
@@ -54,14 +54,14 @@ const PharmacistPrescriptionList = () => {
   }, []);
 
   const handleServe = async (id) => {
-    if (!window.confirm('✅ Confirmer la délivrance de cette ordonnance ?')) return;
+    if (!window.confirm('? Confirmer la dlivrance de cette ordonnance ?')) return;
     try {
       await api.put(`/prescriptions/${id}/serve`);
-      showToast('✅ Prescription servie avec succès !');
+      showToast('? Prescription servie avec succs !');
       fetchData();
     } catch (err) {
       const message = err.response?.data?.error || err.message;
-      showToast('❌ Erreur : ' + message, 'error');
+      showToast('? Erreur : ' + message, 'error');
     }
   };
 
@@ -74,7 +74,7 @@ const PharmacistPrescriptionList = () => {
         alignItems: 'center',
         background: 'linear-gradient(135deg, #1e3a8a 0%, #312e81 100%)'
       }}>
-        <div style={{ color: 'white', fontSize: '24px' }}>⏳ Chargement...</div>
+        <div style={{ color: 'white', fontSize: '24px' }}>? Chargement...</div>
       </div>
     );
   }
@@ -102,7 +102,7 @@ const PharmacistPrescriptionList = () => {
         </div>
       )}
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* En-tête */}
+        {/* En-tte */}
         <div style={{
           background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
           borderRadius: '20px',
@@ -124,17 +124,17 @@ const PharmacistPrescriptionList = () => {
           </h1>
           <div style={{ display: 'flex', gap: '24px', marginTop: '12px', flexWrap: 'wrap' }}>
             <span style={{ color: '#fbbf24', fontWeight: '500', fontSize: '18px' }}>
-              ⏳ En attente : {pending.length}
+              ? En attente : {pending.length}
             </span>
             <span style={{ color: '#6ee7b7', fontWeight: '500', fontSize: '18px' }}>
-              ✅ Servies : {history.length}
+              ? Servies : {history.length}
             </span>
           </div>
         </div>
 
         {/* Section en attente */}
         <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#fbbf24', marginBottom: '16px' }}>
-          ⏳ Ordonnances à servir
+          ? Ordonnances  servir
         </h2>
         {pending.length === 0 ? (
           <div style={{
@@ -146,7 +146,7 @@ const PharmacistPrescriptionList = () => {
             border: '1px solid rgba(255,255,255,0.1)',
             marginBottom: '40px'
           }}>
-            <p style={{ color: '#e2e8f0', fontSize: '18px' }}>✅ Aucune ordonnance en attente.</p>
+            <p style={{ color: '#e2e8f0', fontSize: '18px' }}>? Aucune ordonnance en attente.</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '20px', marginBottom: '40px' }}>
@@ -177,13 +177,13 @@ const PharmacistPrescriptionList = () => {
                       {p.patient_prenom} {p.patient_nom}
                     </p>
                     <p style={{ fontSize: '15px', color: '#cbd5e1', margin: '4px 0' }}>
-                      👨�FC�⚕️ Médecin : {p.doctor_prenom} {p.doctor_nom}
+                      ???FC??? Mdecin : {p.doctor_prenom} {p.doctor_nom}
                     </p>
                     <p style={{ fontSize: '15px', color: '#94a3b8', margin: '4px 0' }}>
-                      📅 {new Date(p.date_creation).toLocaleString('fr-FR')}
+                      ?? {new Date(p.date_creation).toLocaleString('fr-FR')}
                     </p>
                     <p style={{ fontSize: '15px', color: '#e2e8f0', marginTop: '8px' }}>
-                      💊 {p.items?.map(i => i.medicament).join(', ')}
+                      ?? {p.items?.map(i => i.medicament).join(', ')}
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -226,7 +226,7 @@ const PharmacistPrescriptionList = () => {
                         gap: '6px'
                       }}
                     >
-                      <FaEye /> Détails
+                      <FaEye /> Dtails
                     </Link>
                   </div>
                 </div>
@@ -237,7 +237,7 @@ const PharmacistPrescriptionList = () => {
 
         {/* Historique */}
         <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#6ee7b7', marginBottom: '16px' }}>
-          📜 Historique des ordonnances servies
+          ?? Historique des ordonnances servies
         </h2>
         {history.length === 0 ? (
           <div style={{
@@ -265,7 +265,7 @@ const PharmacistPrescriptionList = () => {
                   borderBottom: '2px solid rgba(255,255,255,0.1)'
                 }}>
                   <th style={{ padding: '16px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Patient</th>
-                  <th style={{ padding: '16px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Médecin</th>
+                  <th style={{ padding: '16px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Mdecin</th>
                   <th style={{ padding: '16px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Servie le</th>
                   <th style={{ padding: '16px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Actions</th>
                 </tr>

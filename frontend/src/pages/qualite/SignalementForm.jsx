@@ -70,38 +70,38 @@ const SignalementForm = () => {
         <h2>{isEdit ? 'Modifier' : 'Nouveau'} signalement</h2>
         {error && <div style={{ color: 'red' }}>{error}</div>}
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-          <div><label>Date de l'événement *</label><input name="date_evenement" type="date" value={formData.date_evenement} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-          <div><label>Catégorie</label>
+          <div><label>Date de l'vnement *</label><input name="date_evenement" type="date" value={formData.date_evenement} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+          <div><label>Catgorie</label>
             <select name="categorie_id" value={formData.categorie_id} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
           </div>
-          <div><label>Niveau de criticité</label>
+          <div><label>Niveau de criticit</label>
             <select name="criticite_id" value={formData.criticite_id} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {criticites.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
           </div>
           <div><label>Patient</label>
             <select name="patient_id" value={formData.patient_id} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {patients.map(p => <option key={p.id} value={p.id}>{p.prenom} {p.nom}</option>)}
             </select>
           </div>
-          <div><label>Employé</label>
+          <div><label>Employ</label>
             <select name="employe_id" value={formData.employe_id} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {employes.map(e => <option key={e.id} value={e.id}>{e.prenom} {e.nom}</option>)}
             </select>
           </div>
           <div><label>Service</label>
             <select name="service_id" value={formData.service_id} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {services.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
             </select>
           </div>
-          <div><label>Priorité</label>
+          <div><label>Priorit</label>
             <select name="priorite" value={formData.priorite} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
               <option value="basse">Basse</option>
               <option value="moyenne">Moyenne</option>
@@ -111,8 +111,8 @@ const SignalementForm = () => {
           </div>
           <div style={{ gridColumn: 'span 2' }}><label>Description *</label><textarea name="description" value={formData.description} onChange={handleChange} required rows="3" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div style={{ gridColumn: 'span 2' }}><label>Circonstances</label><textarea name="circonstances" value={formData.circonstances} onChange={handleChange} rows="2" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-          <div style={{ gridColumn: 'span 2' }}><label>Conséquences pour le patient</label><textarea name="consequence_patient" value={formData.consequence_patient} onChange={handleChange} rows="2" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-          <div style={{ gridColumn: 'span 2' }}><label>Actions immédiates</label><textarea name="actions_immediates" value={formData.actions_immediates} onChange={handleChange} rows="2" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+          <div style={{ gridColumn: 'span 2' }}><label>Consquences pour le patient</label><textarea name="consequence_patient" value={formData.consequence_patient} onChange={handleChange} rows="2" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+          <div style={{ gridColumn: 'span 2' }}><label>Actions immdiates</label><textarea name="actions_immediates" value={formData.actions_immediates} onChange={handleChange} rows="2" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div style={{ gridColumn: 'span 2' }}>
             <button type="submit" disabled={loading} style={{ backgroundColor: '#f59e0b', color: 'white', padding: '12px 32px', border: 'none', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
               <FaSave /> {loading ? 'Enregistrement...' : 'Enregistrer'}

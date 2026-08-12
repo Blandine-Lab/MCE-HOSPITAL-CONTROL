@@ -10,7 +10,7 @@ const SessionsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -18,7 +18,7 @@ const SessionsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -47,26 +47,26 @@ const SessionsList = () => {
     fetchSessions();
   }, []);
 
-  // ✅ handleDelete avec gestion 403 (révocation de session)
+  // ? handleDelete avec gestion 403 (rvocation de session)
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Voulez-vous vraiment déconnecter cette session ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Voulez-vous vraiment dconnecter cette session ? Cette action est irrversible.')) return;
     try {
       await api.delete(`/security/sessions/${id}`);
       setSessions(sessions.filter(s => s.id !== id));
-      showToast('Session révoquée avec succès');
+      showToast('Session rvoque avec succs');
     } catch (err) {
-      console.error('Erreur révocation :', err);
+      console.error('Erreur rvocation :', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut révoquer une session.', 'error');
+        showToast('? Seul un administrateur peut rvoquer une session.', 'error');
       } else {
-        showToast('Erreur lors de la révocation', 'error');
+        showToast('Erreur lors de la rvocation', 'error');
       }
     }
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -90,7 +90,7 @@ const SessionsList = () => {
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
-            <tr><th>Utilisateur</th><th>IP</th><th>User Agent</th><th>Création</th><th>Expiration</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
+            <tr><th>Utilisateur</th><th>IP</th><th>User Agent</th><th>Cration</th><th>Expiration</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
           </thead>
           <tbody>
             {sessions.map((s, i) => (
@@ -104,7 +104,7 @@ const SessionsList = () => {
                   {isAdmin ? (
                     <button onClick={() => handleDelete(s.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

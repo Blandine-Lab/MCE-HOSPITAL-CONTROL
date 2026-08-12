@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../axios'; // ? Utilisation de l'instance partage
 
 const UrgencesList = () => {
   const [urgences, setUrgences] = useState([]);
@@ -77,7 +77,7 @@ const UrgencesList = () => {
       {/* Liste des urgences */}
       <table className="min-w-full border">
         <thead className="bg-gray-200">
-          <tr><th className="border p-2">Priorité</th><th className="border p-2">Patient</th><th className="border p-2">Niveau</th><th className="border p-2">Heure arrivée</th><th className="border p-2">Motif</th><th className="border p-2">Statut</th><th className="border p-2">Action</th></tr>
+          <tr><th className="border p-2">Priorit</th><th className="border p-2">Patient</th><th className="border p-2">Niveau</th><th className="border p-2">Heure arrive</th><th className="border p-2">Motif</th><th className="border p-2">Statut</th><th className="border p-2">Action</th></tr>
         </thead>
         <tbody>
           {urgences.map(u => (

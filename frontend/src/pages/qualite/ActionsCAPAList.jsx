@@ -18,7 +18,7 @@ const ActionsCAPAList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -26,7 +26,7 @@ const ActionsCAPAList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -71,18 +71,18 @@ const ActionsCAPAList = () => {
     setCurrentPage(1);
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id, titre) => {
-    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer l'action "${titre}" ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`?? Voulez-vous vraiment supprimer l'action "${titre}" ? Cette action est irrversible.`)) return;
     try {
       await api.delete(`/actions-capa/${id}`);
-      setToast({ type: 'success', message: 'Action CAPA supprimée' });
+      setToast({ type: 'success', message: 'Action CAPA supprime' });
       setTimeout(() => setToast(null), 3000);
       fetchActions();
     } catch (err) {
       console.error(err);
       if (err.response?.status === 403) {
-        setToast({ type: 'error', message: '❌ Seul un administrateur peut supprimer une action CAPA.' });
+        setToast({ type: 'error', message: '? Seul un administrateur peut supprimer une action CAPA.' });
       } else {
         setToast({ type: 'error', message: 'Erreur lors de la suppression' });
       }
@@ -92,11 +92,11 @@ const ActionsCAPAList = () => {
 
   const getStatusBadge = (statut) => {
     const configs = {
-      ouverte: { bg: '#fef3c7', color: '#92400e', label: '📋 Ouverte' },
-      en_cours: { bg: '#dbeafe', color: '#1e40af', label: '⏳ En cours' },
-      realisee: { bg: '#d1fae5', color: '#065f46', label: '✅ Réalisée' },
-      verifiee: { bg: '#ede9fe', color: '#5b21b6', label: '✓ Vérifiée' },
-      cloturee: { bg: '#f1f5f9', color: '#475569', label: '🔒 Clôturée' }
+      ouverte: { bg: '#fef3c7', color: '#92400e', label: '?? Ouverte' },
+      en_cours: { bg: '#dbeafe', color: '#1e40af', label: '? En cours' },
+      realisee: { bg: '#d1fae5', color: '#065f46', label: '? Ralise' },
+      verifiee: { bg: '#ede9fe', color: '#5b21b6', label: '? Vrifie' },
+      cloturee: { bg: '#f1f5f9', color: '#475569', label: '?? Clture' }
     };
     const c = configs[statut] || configs.ouverte;
     return <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', backgroundColor: c.bg, color: c.color }}>{c.label}</span>;
@@ -105,8 +105,8 @@ const ActionsCAPAList = () => {
   const getTypeBadge = (type) => {
     const colors = {
       corrective: { bg: '#fee2e2', color: '#991b1b', label: 'Corrective' },
-      preventive: { bg: '#dbeafe', color: '#1e40af', label: 'Préventive' },
-      amélioration: { bg: '#d1fae5', color: '#065f46', label: 'Amélioration' }
+      preventive: { bg: '#dbeafe', color: '#1e40af', label: 'Prventive' },
+      amlioration: { bg: '#d1fae5', color: '#065f46', label: 'Amlioration' }
     };
     const c = colors[type] || colors.corrective;
     return <span style={{ padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '400', backgroundColor: c.bg, color: c.color }}>{c.label}</span>;
@@ -186,7 +186,7 @@ const ActionsCAPAList = () => {
           borderRadius: '8px',
           marginBottom: '16px'
         }}>
-          ⚠️ {error}
+          ?? {error}
         </div>
       )}
 
@@ -205,7 +205,7 @@ const ActionsCAPAList = () => {
         <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
           <input
             type="text"
-            placeholder="Rechercher par n°, titre, responsable..."
+            placeholder="Rechercher par n, titre, responsable..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
@@ -259,9 +259,9 @@ const ActionsCAPAList = () => {
             <option value="">Tous statuts</option>
             <option value="ouverte">Ouverte</option>
             <option value="en_cours">En cours</option>
-            <option value="realisee">Réalisée</option>
-            <option value="verifiee">Vérifiée</option>
-            <option value="cloturee">Clôturée</option>
+            <option value="realisee">Ralise</option>
+            <option value="verifiee">Vrifie</option>
+            <option value="cloturee">Clture</option>
           </select>
         </div>
 
@@ -279,7 +279,7 @@ const ActionsCAPAList = () => {
             fontSize: '14px'
           }}
         >
-          <FaTasks /> Rafraîchir
+          <FaTasks /> Rafrachir
         </button>
       </div>
 
@@ -288,18 +288,18 @@ const ActionsCAPAList = () => {
         {paginatedActions.length === 0 ? (
           <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
             <FaTasks style={{ fontSize: '48px', marginBottom: '12px', color: '#cbd5e1' }} />
-            <p>Aucune action CAPA trouvée.</p>
+            <p>Aucune action CAPA trouve.</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ backgroundColor: '#f1f5f9' }}>
                 <tr>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>N° Action</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>N Action</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Titre</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Type</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Responsable</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Date prévue</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Date prvue</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Statut</th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '600', color: '#475569' }}>Actions</th>
                 </tr>
@@ -326,7 +326,7 @@ const ActionsCAPAList = () => {
                         <Link
                           to={`/qualite/actions-capa/${a.id}`}
                           style={{ color: '#3b82f6', padding: '4px 8px', borderRadius: '4px', transition: 'background-color 0.2s' }}
-                          title="Voir le détail"
+                          title="Voir le dtail"
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
@@ -360,7 +360,7 @@ const ActionsCAPAList = () => {
                             <FaTrash />
                           </button>
                         ) : (
-                          <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                          <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                         )}
                       </div>
                     </td>
@@ -386,7 +386,7 @@ const ActionsCAPAList = () => {
               cursor: currentPage === 1 ? 'default' : 'pointer'
             }}
           >
-            Précédent
+            Prcdent
           </button>
           {[...Array(totalPages)].map((_, i) => (
             <button

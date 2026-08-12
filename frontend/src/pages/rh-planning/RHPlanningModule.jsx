@@ -39,13 +39,13 @@ const RHPlanningModule = () => (
         <FaUsers /> RH & Planning
       </h2>
       <ul style={{ listStyle: 'none', padding: 0 }}>
-        <li><NavLink to="/rh" end style={linkStyle}>📊 Tableau de bord</NavLink></li>
-        <li><NavLink to="/rh/employes" style={linkStyle}><FaUserMd /> Employés</NavLink></li>
+        <li><NavLink to="/rh" end style={linkStyle}>?? Tableau de bord</NavLink></li>
+        <li><NavLink to="/rh/employes" style={linkStyle}><FaUserMd /> Employs</NavLink></li>
         <li><NavLink to="/rh/services" style={linkStyle}><FaBuilding /> Services</NavLink></li>
         <li><NavLink to="/rh/plannings" style={linkStyle}><FaCalendarAlt /> Plannings</NavLink></li>
-        <li><NavLink to="/rh/conges" style={linkStyle}><FaPlane /> Congés</NavLink></li>
+        <li><NavLink to="/rh/conges" style={linkStyle}><FaPlane /> Congs</NavLink></li>
         <li><NavLink to="/rh/absences" style={linkStyle}><FaClipboardList /> Absences</NavLink></li>
-        {/* ✅ NOUVEAU : Lien vers la gestion des contrats */}
+        {/* ? NOUVEAU : Lien vers la gestion des contrats */}
         <li><NavLink to="/rh/contrats" style={linkStyle}><FaFileContract /> Contrats</NavLink></li>
         <li><NavLink to="/rh/stats" style={linkStyle}><FaChartPie /> Statistiques</NavLink></li>
       </ul>

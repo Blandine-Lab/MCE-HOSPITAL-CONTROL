@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        // Décoder le token JWT pour récupérer les infos
+        // Dcoder le token JWT pour rcuprer les infos
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUser({
           id: payload.id,
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
           permissions: payload.permissions || []
         });
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
         localStorage.removeItem('token');
         setUser(null);
       }

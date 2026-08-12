@@ -53,11 +53,11 @@ const NonConformiteForm = () => {
     <div>
       <Link to="/qualite/non-conformites" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#3b82f6', textDecoration: 'none' }}><FaArrowLeft /> Retour</Link>
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', marginTop: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h2>{isEdit ? 'Modifier' : 'Nouvelle'} non-conformité</h2>
+        <h2>{isEdit ? 'Modifier' : 'Nouvelle'} non-conformit</h2>
         {error && <div style={{ color: 'red' }}>{error}</div>}
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-          <div><label>Numéro NC *</label><input name="numero_nc" value={formData.numero_nc} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-          <div><label>Date détection *</label><input name="date_detection" type="date" value={formData.date_detection} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+          <div><label>Numro NC *</label><input name="numero_nc" value={formData.numero_nc} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+          <div><label>Date dtection *</label><input name="date_detection" type="date" value={formData.date_detection} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div><label>Source</label>
             <select name="source" value={formData.source} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
               <option value="interne">Interne</option>
@@ -66,7 +66,7 @@ const NonConformiteForm = () => {
               <option value="inspection">Inspection</option>
             </select>
           </div>
-          <div><label>Gravité</label>
+          <div><label>Gravit</label>
             <select name="gravite" value={formData.gravite} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
               <option value="mineure">Mineure</option>
               <option value="majeure">Majeure</option>
@@ -75,18 +75,18 @@ const NonConformiteForm = () => {
           </div>
           <div><label>Service</label>
             <select name="service_id" value={formData.service_id} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {services.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
             </select>
           </div>
           <div><label>Action corrective</label>
             <select name="action_corrective_id" value={formData.action_corrective_id} onChange={handleChange} style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <option value="">Sélectionner</option>
+              <option value="">Slectionner</option>
               {actions.map(a => <option key={a.id} value={a.id}>{a.numero_action} - {a.titre}</option>)}
             </select>
           </div>
           <div style={{ gridColumn: 'span 2' }}><label>Description *</label><textarea name="description" value={formData.description} onChange={handleChange} required rows="3" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-          <div style={{ gridColumn: 'span 2' }}><label>Action immédiate</label><textarea name="action_immediate" value={formData.action_immediate} onChange={handleChange} rows="2" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+          <div style={{ gridColumn: 'span 2' }}><label>Action immdiate</label><textarea name="action_immediate" value={formData.action_immediate} onChange={handleChange} rows="2" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div style={{ gridColumn: 'span 2' }}><label>Cause racine</label><textarea name="cause_racine" value={formData.cause_racine} onChange={handleChange} rows="2" style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
           <div style={{ gridColumn: 'span 2' }}>
             <button type="submit" disabled={loading} style={{ backgroundColor: '#ef4444', color: 'white', padding: '12px 32px', border: 'none', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>

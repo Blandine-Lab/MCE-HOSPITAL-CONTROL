@@ -5,7 +5,7 @@ function AppMinimal() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<div style={{color:'white', fontSize:'30px'}}>Accueil minimal</div>} />
-        <Route path="/test" element={<div style={{color:'lime', fontSize:'40px'}}>Test réussi</div>} />
+        <Route path="/test" element={<div style={{color:'lime', fontSize:'40px'}}>Test russi</div>} />
       </Routes>
     </BrowserRouter>
   );

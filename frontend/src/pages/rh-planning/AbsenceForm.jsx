@@ -24,7 +24,7 @@ const AbsenceForm = () => {
   useEffect(() => {
     api.get('/employes')
       .then(res => setEmployes(res.data))
-      .catch(err => console.error('Erreur chargement employés :', err));
+      .catch(err => console.error('Erreur chargement employs :', err));
 
     if (isEdit) {
       setLoading(true);
@@ -59,7 +59,7 @@ const AbsenceForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.employe_id) {
-      setError('Veuillez sélectionner un employé');
+      setError('Veuillez slectionner un employ');
       return;
     }
     if (!formData.date) {
@@ -90,13 +90,13 @@ const AbsenceForm = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>? Chargement...</div>;
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <Link to="/rh/absences" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#3b82f6', textDecoration: 'none' }}>
-          <FaArrowLeft /> Retour à la liste
+          <FaArrowLeft /> Retour  la liste
         </Link>
       </div>
 
@@ -107,7 +107,7 @@ const AbsenceForm = () => {
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
             <div>
-              <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employé *</label>
+              <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employ *</label>
               <select
                 name="employe_id"
                 value={formData.employe_id}
@@ -115,7 +115,7 @@ const AbsenceForm = () => {
                 required
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
               >
-                <option value="">Sélectionner</option>
+                <option value="">Slectionner</option>
                 {employes.map(e => (
                   <option key={e.id} value={e.id}>
                     {e.nom} {e.prenom}
@@ -158,8 +158,8 @@ const AbsenceForm = () => {
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
               >
                 <option value="en_attente">En attente</option>
-                <option value="approuvé">Approuvé</option>
-                <option value="refusé">Refusé</option>
+                <option value="approuv">Approuv</option>
+                <option value="refus">Refus</option>
               </select>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -170,7 +170,7 @@ const AbsenceForm = () => {
                   checked={formData.justifiee}
                   onChange={handleChange}
                 />
-                Justifiée
+                Justifie
               </label>
             </div>
           </div>

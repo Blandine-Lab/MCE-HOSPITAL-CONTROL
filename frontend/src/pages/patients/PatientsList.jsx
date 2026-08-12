@@ -20,10 +20,10 @@ const PatientsList = () => {
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
-  const [userRole, setUserRole] = useState(null); // ✅ Nouvel état
+  const [userRole, setUserRole] = useState(null); // ? Nouvel tat
   const itemsPerPage = 10;
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -31,13 +31,13 @@ const PatientsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
 
   useEffect(() => {
-    console.log('🟢 PatientsList monté - appel API');
+    console.log('?? PatientsList mont - appel API');
     api.get('/patients')
       .then(res => {
         setPatients(res.data);
@@ -46,7 +46,7 @@ const PatientsList = () => {
         setLoaded(true);
       })
       .catch(err => {
-        console.error('❌ Erreur chargement patients:', err);
+        console.error('? Erreur chargement patients:', err);
         setLoading(false);
         setLoaded(true);
       });
@@ -91,13 +91,13 @@ const PatientsList = () => {
       const excelData = filteredPatients.map(p => ({
         'IPP': p.ipp || '',
         'Nom': p.nom || '',
-        'Prénom': p.prenom || '',
-        'Téléphone': p.telephone || '',
+        'Prnom': p.prenom || '',
+        'Tlphone': p.telephone || '',
         'Email': p.email || '',
         'Adresse': p.adresse || '',
-        'Personne à prévenir 1': `${p.personne_a_prevenir_nom1||''} ${p.personne_a_prevenir_tel1||''}`,
-        'Personne à prévenir 2': `${p.personne_a_prevenir_nom2||''} ${p.personne_a_prevenir_tel2||''}`,
-        'Antécédents': p.antecedents || '',
+        'Personne  prvenir 1': `${p.personne_a_prevenir_nom1||''} ${p.personne_a_prevenir_tel1||''}`,
+        'Personne  prvenir 2': `${p.personne_a_prevenir_nom2||''} ${p.personne_a_prevenir_tel2||''}`,
+        'Antcdents': p.antecedents || '',
         'Allergies': p.allergies || '',
         'Traitements': p.traitements || '',
         'Consentement': p.consentements ? 'Oui' : 'Non'
@@ -106,13 +106,13 @@ const PatientsList = () => {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Patients');
       XLSX.writeFile(wb, `patients_${new Date().toISOString()}.xlsx`);
-      showToast('Export Excel réussi');
+      showToast('Export Excel russi');
     } catch(err) { showToast('Erreur export', 'error'); }
   };
 
   const exportToCSV = async () => {
     try {
-      const csvRows = [['IPP','Nom','Prénom','Téléphone','Email','Adresse','Personne à prévenir 1','Personne à prévenir 2','Antécédents','Allergies','Traitements','Consentement']];
+      const csvRows = [['IPP','Nom','Prnom','Tlphone','Email','Adresse','Personne  prvenir 1','Personne  prvenir 2','Antcdents','Allergies','Traitements','Consentement']];
       for (const p of filteredPatients) {
         csvRows.push([
           p.ipp||'', p.nom||'', p.prenom||'', p.telephone||'', p.email||'', p.adresse||'',
@@ -131,23 +131,23 @@ const PatientsList = () => {
       a.download = `patients_${new Date().toISOString()}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      showToast('Export CSV réussi');
+      showToast('Export CSV russi');
       await api.post('/logs/download', { fileName: `patients_${new Date().toISOString()}.csv`, type: 'patients_csv' });
     } catch(err) { showToast('Erreur export', 'error'); }
   };
 
-  // ✅ handleDelete modifié : gérer l'erreur 403
+  // ? handleDelete modifi : grer l'erreur 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce patient ? Cette action est irréversible.')) {
+    if (!window.confirm('?? Supprimer dfinitivement ce patient ? Cette action est irrversible.')) {
       return;
     }
     try {
       await api.delete(`/patients/${id}`);
       setPatients(patients.filter(p => p.id !== id));
-      showToast('Patient supprimé avec succès');
+      showToast('Patient supprim avec succs');
     } catch (err) {
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un patient.', 'error');
+        showToast('? Seul un administrateur peut supprimer un patient.', 'error');
       } else {
         showToast('Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
@@ -156,7 +156,7 @@ const PatientsList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  // Styles inline (inchangés)
+  // Styles inline (inchangs)
   const containerStyle = {
     minHeight: '100vh',
     background: 'linear-gradient(135deg, #1e3a8a 0%, #312e81 100%)',
@@ -324,7 +324,7 @@ const PatientsList = () => {
             </div>
           </div>
           <h1 style={titleStyle}>Dossier Patient Unique (DPI)</h1>
-          <p style={subtitleStyle}>📋 Gestion complète des dossiers médicaux �FC� {filteredPatients.length} patients</p>
+          <p style={subtitleStyle}>?? Gestion complte des dossiers mdicaux ?FC? {filteredPatients.length} patients</p>
           <div style={statsRowStyle}>
             <div style={statCardStyle}>
               <FaCalendarDay style={{ fontSize: '24px', color: '#93c5fd', marginBottom: '8px' }} />
@@ -353,9 +353,9 @@ const PatientsList = () => {
         <div style={searchContainerStyle}>
           <div style={{ position: 'relative', flex: 1 }}>
             <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input type="text" placeholder="Rechercher par nom, prénom ou IPP..." value={search} onChange={e=>setSearch(e.target.value)} style={{ ...searchInputStyle, paddingLeft: '40px' }} />
+            <input type="text" placeholder="Rechercher par nom, prnom ou IPP..." value={search} onChange={e=>setSearch(e.target.value)} style={{ ...searchInputStyle, paddingLeft: '40px' }} />
           </div>
-          <div style={resultBadgeStyle}>📊 Résultats : {filteredPatients.length}</div>
+          <div style={resultBadgeStyle}>?? Rsultats : {filteredPatients.length}</div>
         </div>
 
         <div style={tableContainerStyle}>
@@ -364,7 +364,7 @@ const PatientsList = () => {
               <tr>
                 {['ipp','nom','prenom','telephone','email','adresse','personne_a_prevenir_nom1','personne_a_prevenir_nom2','antecedents','allergies','traitements','consentements','actions'].map(field => (
                   <th key={field} style={thStyle} onClick={() => field !== 'actions' && (setSortField(field), setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'))}>
-                    {field === 'ipp' ? 'IPP' : field === 'nom' ? 'Nom' : field === 'prenom' ? 'Prénom' : field === 'telephone' ? 'Téléphone' : field === 'email' ? 'Email' : field === 'adresse' ? 'Adresse' : field === 'personne_a_prevenir_nom1' ? 'Personne 1' : field === 'personne_a_prevenir_nom2' ? 'Personne 2' : field === 'antecedents' ? 'Antécédents' : field === 'allergies' ? 'Allergies' : field === 'traitements' ? 'Traitements' : field === 'consentements' ? 'Consent.' : 'Actions'}
+                    {field === 'ipp' ? 'IPP' : field === 'nom' ? 'Nom' : field === 'prenom' ? 'Prnom' : field === 'telephone' ? 'Tlphone' : field === 'email' ? 'Email' : field === 'adresse' ? 'Adresse' : field === 'personne_a_prevenir_nom1' ? 'Personne 1' : field === 'personne_a_prevenir_nom2' ? 'Personne 2' : field === 'antecedents' ? 'Antcdents' : field === 'allergies' ? 'Allergies' : field === 'traitements' ? 'Traitements' : field === 'consentements' ? 'Consent.' : 'Actions'}
                     {field !== 'actions' && <SortIcon field={field} />}
                   </th>
                 ))}
@@ -372,7 +372,7 @@ const PatientsList = () => {
             </thead>
             <tbody>
               {paginated.length === 0 ? (
-                <tr><td colSpan="13" style={{ textAlign: 'center', padding: '48px', color: '#64748b' }}>📭 Aucun patient enregistré</td></tr>
+                <tr><td colSpan="13" style={{ textAlign: 'center', padding: '48px', color: '#64748b' }}>?? Aucun patient enregistr</td></tr>
               ) : (
                 paginated.map((p, idx) => (
                   <tr key={p.id} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
@@ -387,16 +387,16 @@ const PatientsList = () => {
                     <td style={tdStyle}>{p.antecedents || '-'}</td>
                     <td style={tdStyle}>{p.allergies || '-'}</td>
                     <td style={tdStyle}>{p.traitements || '-'}</td>
-                    <td style={{...tdStyle, textAlign: 'center'}}>{p.consentements ? '✅' : '❌'}</td>
+                    <td style={{...tdStyle, textAlign: 'center'}}>{p.consentements ? '?' : '?'}</td>
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <Link to={`/patients/${p.id}`} style={{ color: '#3b82f6' }} title="Voir"><FaEye /></Link>
                         <Link to={`/patients/edit/${p.id}`} style={{ color: '#22c55e' }} title="Modifier"><FaEdit /></Link>
-                        {/* ✅ Le bouton supprimer est conditionné par le rôle admin */}
+                        {/* ? Le bouton supprimer est conditionn par le rle admin */}
                         {isAdmin ? (
                           <button onClick={() => handleDelete(p.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }} title="Supprimer (admin)"><FaTrash /></button>
                         ) : (
-                          <span style={{ color: '#94a3b8', fontSize: '12px' }} title="Réservé aux administrateurs">🔒</span>
+                          <span style={{ color: '#94a3b8', fontSize: '12px' }} title="Rserv aux administrateurs">??</span>
                         )}
                       </div>
                     </td>
@@ -409,8 +409,8 @@ const PatientsList = () => {
             <div style={paginationStyle}>
               <span>Page {currentPage} / {totalPages} ({filteredPatients.length} lignes)</span>
               <div>
-                <button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} style={{ padding: '4px 12px', marginRight: '8px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>�FC Précédent</button>
-                <button onClick={()=>setCurrentPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} style={{ padding: '4px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>Suivant ▶</button>
+                <button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} style={{ padding: '4px 12px', marginRight: '8px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>?FC Prcdent</button>
+                <button onClick={()=>setCurrentPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} style={{ padding: '4px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>Suivant ?</button>
               </div>
             </div>
           )}

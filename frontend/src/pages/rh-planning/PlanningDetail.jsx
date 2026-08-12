@@ -15,8 +15,8 @@ const PlanningDetail = () => {
       .catch(err => { console.error(err); setLoading(false); });
   }, [id]);
 
-  if (loading) return <div style={{textAlign:'center', padding:60}}>⏳ Chargement...</div>;
-  if (!planning) return <div style={{textAlign:'center', padding:60}}>Planning non trouvé</div>;
+  if (loading) return <div style={{textAlign:'center', padding:60}}>? Chargement...</div>;
+  if (!planning) return <div style={{textAlign:'center', padding:60}}>Planning non trouv</div>;
 
   return (
     <div>
@@ -29,7 +29,7 @@ const PlanningDetail = () => {
           </Link>
         </div>
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginTop:24}}>
-          <div><FaUser style={{marginRight:8}} /> <strong>Employé :</strong> {planning.employe_nom} {planning.employe_prenom}</div>
+          <div><FaUser style={{marginRight:8}} /> <strong>Employ :</strong> {planning.employe_nom} {planning.employe_prenom}</div>
           <div><FaCalendar style={{marginRight:8}} /> <strong>Date :</strong> {new Date(planning.date).toLocaleDateString('fr-FR')}</div>
           <div><FaClock style={{marginRight:8}} /> <strong>Horaire :</strong> {planning.heure_debut} - {planning.heure_fin}</div>
           <div><strong>Type :</strong> {planning.type}</div>

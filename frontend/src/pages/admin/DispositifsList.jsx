@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaBoxes } from 'react-icons/fa';
-import api from '../../axios'; // ✅ Utilisation de l'instance partagée
+import api from '../../axios'; // ? Utilisation de l'instance partagïe
 
 const DispositifsList = () => {
   const [dispositifs, setDispositifs] = useState([]);
@@ -21,9 +21,9 @@ const DispositifsList = () => {
   const [showLotsModal, setShowLotsModal] = useState(false);
   const [lots, setLots] = useState([]);
   const [selectedDispositif, setSelectedDispositif] = useState(null);
-  const [userRole, setUserRole] = useState(null); // ✅ État pour le rôle
+  const [userRole, setUserRole] = useState(null); // ? ïtat pour le rïle
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rïcupïrer le rïle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -31,7 +31,7 @@ const DispositifsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dïcodage token', e);
       }
     }
   }, []);
@@ -44,7 +44,7 @@ const DispositifsList = () => {
 
   const fetchDispositifs = async () => {
     try {
-      const res = await api.get('/pharmacy/dispositifs'); // ✅ chemin sans /api
+      const res = await api.get('/pharmacy/dispositifs'); // ? chemin sans /api
       setDispositifs(res.data);
       setLoading(false);
     } catch (err) {
@@ -72,10 +72,10 @@ const DispositifsList = () => {
     try {
       if (editId) {
         await api.put(`/pharmacy/dispositifs/${editId}`, form);
-        showToast('Dispositif modifié');
+        showToast('Dispositif modifiï');
       } else {
         await api.post('/pharmacy/dispositifs', form);
-        showToast('Dispositif ajouté');
+        showToast('Dispositif ajoutï');
       }
       setShowForm(false);
       setEditId(null);
@@ -87,16 +87,16 @@ const DispositifsList = () => {
     }
   };
 
-  // ✅ handleDelete modifié avec gestion 403
+  // ? handleDelete modifiï avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement ce dispositif ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dïfinitivement ce dispositif ? Cette action est irrïversible.')) return;
     try {
       await api.delete(`/pharmacy/dispositifs/${id}`);
       fetchDispositifs();
-      showToast('Dispositif supprimé');
+      showToast('Dispositif supprimï');
     } catch (err) {
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un dispositif.', 'error');
+        showToast('? Seul un administrateur peut supprimer un dispositif.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -118,7 +118,7 @@ const DispositifsList = () => {
           {toast}
         </div>
       )}
-      <h2 style={{ marginBottom: '20px' }}>🩺 Gestion des Dispositifs Médicaux</h2>
+      <h2 style={{ marginBottom: '20px' }}>?? Gestion des Dispositifs Mïdicaux</h2>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div></div>
         <button
@@ -137,7 +137,7 @@ const DispositifsList = () => {
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Stock</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Seuil</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Prix (FC)</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Catégorie</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Catïgorie</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Actions</th>
             </tr>
           </thead>
@@ -157,7 +157,7 @@ const DispositifsList = () => {
                   >
                     <FaEdit />
                   </button>
-                  {/* ✅ Bouton supprimer : visible uniquement pour admin */}
+                  {/* ? Bouton supprimer : visible uniquement pour admin */}
                   {isAdmin ? (
                     <button
                       onClick={() => handleDelete(d.id)}
@@ -166,7 +166,7 @@ const DispositifsList = () => {
                       <FaTrash />
                     </button>
                   ) : (
-                    <span style={{ marginRight: '8px', color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ marginRight: '8px', color: '#94a3b8', fontSize: '14px' }} title="Rïservï aux administrateurs">??</span>
                   )}
                   <button
                     onClick={() => { setSelectedDispositif(d); fetchLots(d.id); }}
@@ -181,16 +181,16 @@ const DispositifsList = () => {
         </table>
       </div>
 
-      {/* Modal Formulaire (inchangé) */}
+      {/* Modal Formulaire (inchangï) */}
       {showForm && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '500px', maxWidth: '90%' }}>
-            <h2 style={{ marginBottom: '16px' }}>{editId ? 'Modifier' : 'Ajouter'} un dispositif médical</h2>
+            <h2 style={{ marginBottom: '16px' }}>{editId ? 'Modifier' : 'Ajouter'} un dispositif mïdical</h2>
             <form onSubmit={handleSubmit}>
               <input type="text" placeholder="Code *" value={form.code} onChange={e => setForm({...form, code: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <input type="text" placeholder="Nom *" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <textarea placeholder="Description" value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows="2" style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
-              <input type="text" placeholder="Catégorie" value={form.categorie} onChange={e => setForm({...form, categorie: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
+              <input type="text" placeholder="Catïgorie" value={form.categorie} onChange={e => setForm({...form, categorie: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input type="number" placeholder="Stock" value={form.stock} onChange={e => setForm({...form, stock: parseInt(e.target.value)})} style={{ width: '50%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
                 <input type="number" placeholder="Seuil alerte" value={form.seuil_alerte} onChange={e => setForm({...form, seuil_alerte: parseInt(e.target.value)})} style={{ width: '50%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
@@ -205,13 +205,13 @@ const DispositifsList = () => {
         </div>
       )}
 
-      {/* Modal Lots (inchangé) */}
+      {/* Modal Lots (inchangï) */}
       {showLotsModal && selectedDispositif && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '700px', maxWidth: '90%', maxHeight: '80vh', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2>Lots du dispositif : {selectedDispositif.nom}</h2>
-              <button onClick={() => setShowLotsModal(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>×</button>
+              <button onClick={() => setShowLotsModal(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>ï</button>
             </div>
             {lots.length === 0 ? (
               <p>Aucun lot pour ce dispositif.</p>
@@ -220,7 +220,7 @@ const DispositifsList = () => {
                 <thead>
                   <tr>
                     <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Lot</th>
-                    <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Péremption</th>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Pïremption</th>
                     <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Stock actuel</th>
                     <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Prix achat</th>
                   </tr>

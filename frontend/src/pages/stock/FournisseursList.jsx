@@ -12,7 +12,7 @@ const FournisseursList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rcuprer le rle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const FournisseursList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dcodage token', e);
       }
     }
   }, []);
@@ -49,17 +49,17 @@ const FournisseursList = () => {
     fetchFournisseurs();
   }, []);
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id, nom) => {
-    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer le fournisseur "${nom}" ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`?? Voulez-vous vraiment supprimer le fournisseur "${nom}" ? Cette action est irrversible.`)) return;
     try {
       await api.delete(`/fournisseurs/${id}`);
       setFournisseurs(fournisseurs.filter(f => f.id !== id));
-      showToast('Fournisseur supprimé avec succès');
+      showToast('Fournisseur supprim avec succs');
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        showToast('❌ Seul un administrateur peut supprimer un fournisseur.', 'error');
+        showToast('? Seul un administrateur peut supprimer un fournisseur.', 'error');
       } else {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -73,7 +73,7 @@ const FournisseursList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
 
   return (
     <div>
@@ -108,7 +108,7 @@ const FournisseursList = () => {
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
-            <tr><th>Nom</th><th>Contact</th><th>Téléphone</th><th>Email</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
+            <tr><th>Nom</th><th>Contact</th><th>Tlphone</th><th>Email</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
           </thead>
           <tbody>
             {filtered.map((f, i) => (
@@ -122,7 +122,7 @@ const FournisseursList = () => {
                   {isAdmin ? (
                     <button onClick={() => handleDelete(f.id, f.nom)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
                   )}
                 </td>
               </tr>

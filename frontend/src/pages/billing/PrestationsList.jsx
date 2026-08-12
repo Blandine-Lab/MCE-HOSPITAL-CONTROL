@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from 'react';
-import api from '../../axios'; // ✅ Instance avec intercepteur
+import { useEffect, useState } from 'react';
+import api from '../../axios'; // ? Instance avec intercepteur
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes } from 'react-icons/fa';
 
 const PrestationsList = () => {
@@ -9,9 +9,9 @@ const PrestationsList = () => {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ code: '', libelle: '', prix_unitaire: '', categorie: '' });
   const [toast, setToast] = useState(null);
-  const [userRole, setUserRole] = useState(null); // ✅ Rôle de l'utilisateur
+  const [userRole, setUserRole] = useState(null); // ? Rïle de l'utilisateur
 
-  // ✅ Récupérer le rôle depuis le token JWT
+  // ? Rïcupïrer le rïle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,7 +19,7 @@ const PrestationsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur décodage token', e);
+        console.error('Erreur dïcodage token', e);
       }
     }
   }, []);
@@ -34,8 +34,8 @@ const PrestationsList = () => {
       setPrestations(res.data);
       setLoading(false);
     } catch (err) {
-      console.error('❌ Erreur chargement prestations:', err);
-      setToast('❌ Erreur chargement');
+      console.error('? Erreur chargement prestations:', err);
+      setToast('? Erreur chargement');
       setTimeout(() => setToast(null), 3000);
     }
   };
@@ -45,10 +45,10 @@ const PrestationsList = () => {
     try {
       if (editingId) {
         await api.put(`/billing/prestations/${editingId}`, form);
-        setToast('✅ Prestation modifiée');
+        setToast('? Prestation modifiïe');
       } else {
         await api.post('/billing/prestations', form);
-        setToast('✅ Prestation ajoutée');
+        setToast('? Prestation ajoutïe');
       }
       setShowForm(false);
       setEditingId(null);
@@ -56,26 +56,26 @@ const PrestationsList = () => {
       fetchPrestations();
       setTimeout(() => setToast(null), 2000);
     } catch (err) {
-      console.error('❌ Erreur:', err);
-      setToast('❌ Erreur lors de l\'enregistrement');
+      console.error('? Erreur:', err);
+      setToast('? Erreur lors de l\'enregistrement');
       setTimeout(() => setToast(null), 3000);
     }
   };
 
-  // ✅ handleDelete avec gestion 403
+  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('⚠️ Supprimer définitivement cette prestation ? Cette action est irréversible.')) return;
+    if (!window.confirm('?? Supprimer dïfinitivement cette prestation ? Cette action est irrïversible.')) return;
     try {
       await api.delete(`/billing/prestations/${id}`);
       fetchPrestations();
-      setToast('✅ Prestation supprimée');
+      setToast('? Prestation supprimïe');
       setTimeout(() => setToast(null), 2000);
     } catch (err) {
-      console.error('❌ Erreur suppression:', err);
+      console.error('? Erreur suppression:', err);
       if (err.response?.status === 403) {
-        setToast('❌ Seul un administrateur peut supprimer une prestation.');
+        setToast('? Seul un administrateur peut supprimer une prestation.');
       } else {
-        setToast('❌ Erreur (peut-être utilisée dans des factures)');
+        setToast('? Erreur (peut-ïtre utilisïe dans des factures)');
       }
       setTimeout(() => setToast(null), 3000);
     }
@@ -147,7 +147,7 @@ const PrestationsList = () => {
     maxWidth: '90%'
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
 
   return (
     <div style={containerStyle}>
@@ -156,7 +156,7 @@ const PrestationsList = () => {
           position: 'fixed',
           top: '20px',
           right: '20px',
-          backgroundColor: toast.includes('✅') ? '#10b981' : '#ef4444',
+          backgroundColor: toast.includes('?') ? '#10b981' : '#ef4444',
           color: 'white',
           padding: '10px 20px',
           borderRadius: '8px',
@@ -175,9 +175,9 @@ const PrestationsList = () => {
             <thead>
               <tr>
                 <th style={thStyle}>Code</th>
-                <th style={thStyle}>Libellé</th>
+                <th style={thStyle}>Libellï</th>
                 <th style={thStyle}>Prix (FC)</th>
-                <th style={thStyle}>Catégorie</th>
+                <th style={thStyle}>Catïgorie</th>
                 <th style={thStyle}>Actions</th>
               </tr>
             </thead>
@@ -195,7 +195,7 @@ const PrestationsList = () => {
                     >
                       <FaEdit />
                     </button>
-                    {/* ✅ Bouton supprimer visible uniquement pour admin */}
+                    {/* ? Bouton supprimer visible uniquement pour admin */}
                     {isAdmin ? (
                       <button
                         onClick={() => handleDelete(p.id)}
@@ -204,7 +204,7 @@ const PrestationsList = () => {
                         <FaTrash />
                       </button>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
+                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rïservï aux administrateurs">??</span>
                     )}
                   </td>
                 </tr>
@@ -230,7 +230,7 @@ const PrestationsList = () => {
                 />
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Libellé *</label>
+                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Libellï *</label>
                 <input
                   type="text"
                   value={form.libelle}
@@ -251,12 +251,12 @@ const PrestationsList = () => {
                 />
               </div>
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Catégorie</label>
+                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Catïgorie</label>
                 <input
                   type="text"
                   value={form.categorie}
                   onChange={e => setForm({...form, categorie: e.target.value})}
-                  placeholder="ex: consultation, examen, séjour..."
+                  placeholder="ex: consultation, examen, sïjour..."
                   style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }}
                 />
               </div>
