@@ -139,7 +139,7 @@ const Badge = () => {
                 <strong>Nom :</strong> {employe.prenom} {employe.nom}
               </p>
               <p style={{ fontSize: '11px', color: '#6b7280', margin: '2px 0' }}>
-                <strong>Matricule :</strong> {employe.id}
+                <strong>Matricule :</strong> {employe.matricule || employe.id}  {/* ← correction ici */}
               </p>
               <p style={{ fontSize: '11px', color: '#6b7280', margin: '2px 0' }}>
                 <strong>Service :</strong> {employe.service_nom || employe.service || 'Non défini'}
