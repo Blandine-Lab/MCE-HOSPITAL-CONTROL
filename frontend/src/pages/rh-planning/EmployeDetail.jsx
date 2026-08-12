@@ -1,4 +1,4 @@
-// src/pages/rh-planning/EmployeDetail.jsx
+﻿// src/pages/rh-planning/EmployeDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../axios';
@@ -14,7 +14,7 @@ const EmployeDetail = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-  // États pour l’éditeur de contrat
+  // États pour lFCéditeur de contrat
   const [showEditor, setShowEditor] = useState(false);
   const [articles, setArticles] = useState([]);
   const [salaire, setSalaire] = useState('');
@@ -30,7 +30,7 @@ const EmployeDetail = () => {
   const getDefaultArticles = (salaireValue) => [
     { id: 1, texte: 'Le présent contrat est régi par le Code du travail.' },
     { id: 2, texte: 'La période d\'essai est de 2 mois renouvelable une fois.' },
-    { id: 3, texte: `Le salaire mensuel brut est de ${salaireValue || '2500'} €.` },
+    { id: 3, texte: `Le salaire mensuel brut est de ${salaireValue || '2500'} FC.` },
     { id: 4, texte: 'Les horaires de travail sont de 35 heures par semaine.' },
     { id: 5, texte: 'Le lieu de travail est fixé à l\'établissement de l\'employeur.' },
     { id: 6, texte: 'Le salarié bénéficie de 5 semaines de congés payés par an.' },
@@ -175,7 +175,7 @@ const EmployeDetail = () => {
                 </select>
               </div>
               <div>
-                <label style={{fontWeight:500, display:'block', marginBottom:4}}>Salaire mensuel brut (€)</label>
+                <label style={{fontWeight:500, display:'block', marginBottom:4}}>Salaire mensuel brut (FC)</label>
                 <input type="number" value={salaire} onChange={e => setSalaire(e.target.value)} style={{width:'100%', padding:8, border:'1px solid #e2e8f0', borderRadius:6}} />
               </div>
             </div>

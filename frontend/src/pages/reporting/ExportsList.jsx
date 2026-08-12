@@ -176,7 +176,7 @@ const ExportsList = () => {
   };
 
   const formatTaille = (octets) => {
-    if (!octets) return 'â€”';
+    if (!octets) return 'âFC”';
     if (octets < 1024) return `${octets} o`;
     if (octets < 1048576) return `${(octets / 1024).toFixed(1)} Ko`;
     return `${(octets / 1048576).toFixed(1)} Mo`;

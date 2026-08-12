@@ -177,7 +177,7 @@ const PharmacistPrescriptionList = () => {
                       {p.patient_prenom} {p.patient_nom}
                     </p>
                     <p style={{ fontSize: '15px', color: '#cbd5e1', margin: '4px 0' }}>
-                      👨‍⚕️ Médecin : {p.doctor_prenom} {p.doctor_nom}
+                      👨�FC�⚕️ Médecin : {p.doctor_prenom} {p.doctor_nom}
                     </p>
                     <p style={{ fontSize: '15px', color: '#94a3b8', margin: '4px 0' }}>
                       📅 {new Date(p.date_creation).toLocaleString('fr-FR')}

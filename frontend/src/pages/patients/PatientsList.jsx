@@ -324,7 +324,7 @@ const PatientsList = () => {
             </div>
           </div>
           <h1 style={titleStyle}>Dossier Patient Unique (DPI)</h1>
-          <p style={subtitleStyle}>📋 Gestion complète des dossiers médicaux • {filteredPatients.length} patients</p>
+          <p style={subtitleStyle}>📋 Gestion complète des dossiers médicaux �FC� {filteredPatients.length} patients</p>
           <div style={statsRowStyle}>
             <div style={statCardStyle}>
               <FaCalendarDay style={{ fontSize: '24px', color: '#93c5fd', marginBottom: '8px' }} />
@@ -409,7 +409,7 @@ const PatientsList = () => {
             <div style={paginationStyle}>
               <span>Page {currentPage} / {totalPages} ({filteredPatients.length} lignes)</span>
               <div>
-                <button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} style={{ padding: '4px 12px', marginRight: '8px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>◀ Précédent</button>
+                <button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} style={{ padding: '4px 12px', marginRight: '8px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>�FC Précédent</button>
                 <button onClick={()=>setCurrentPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} style={{ padding: '4px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>Suivant ▶</button>
               </div>
             </div>

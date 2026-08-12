@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import api from '../../axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaPlus, FaEdit, FaTrash, FaExclamationTriangle, FaBoxes, FaChartPie, FaPrescriptionBottle, FaEye, FaSearch } from 'react-icons/fa';
@@ -351,7 +351,7 @@ const MedicamentsList = () => {
                         <td style={tdStyle}>{m.nom}</td>
                         <td style={tdStyle}>{m.stock} {m.unite}</td>
                         <td style={tdStyle}>{m.seuil_alerte}</td>
-                        <td style={tdStyle}>{parseFloat(m.prix_vente || 0).toFixed(2)} €</td>
+                        <td style={tdStyle}>{parseFloat(m.prix_vente || 0).toFixed(2)} FC</td>
                         <td style={tdStyle}>{badgeStock(m.stock, m.seuil_alerte)}</td>
                         <td style={tdStyle}>
                           <button onClick={() => { setEditId(m.id); setForm({ ...m, categorie_id: 1 }); setSelectedProduitId(''); setShowForm(true); }} style={{ marginRight: '8px', background: '#eab308', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}><FaEdit /></button>
@@ -399,8 +399,8 @@ const MedicamentsList = () => {
               <input type="text" placeholder="Nom *" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} required style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <textarea placeholder="Description" value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows="2" style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <input type="text" placeholder="Unité (ex: boîte, comprimé...)" value={form.unite} onChange={e => setForm({...form, unite: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
-              <input type="number" step="0.01" placeholder="Prix d'achat (€)" value={form.prix_achat} onChange={e => setForm({...form, prix_achat: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
-              <input type="number" step="0.01" placeholder="Prix de vente (€)" value={form.prix_vente} onChange={e => setForm({...form, prix_vente: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
+              <input type="number" step="0.01" placeholder="Prix d'achat (FC)" value={form.prix_achat} onChange={e => setForm({...form, prix_achat: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
+              <input type="number" step="0.01" placeholder="Prix de vente (FC)" value={form.prix_vente} onChange={e => setForm({...form, prix_vente: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <input type="number" placeholder="Seuil d'alerte" value={form.seuil_alerte} onChange={e => setForm({...form, seuil_alerte: parseInt(e.target.value) || 10})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               {!editId && !selectedProduitId && (
                 <input type="number" placeholder="Quantité initiale" value={form.quantite_initiale} onChange={e => setForm({...form, quantite_initiale: parseInt(e.target.value) || 0})} style={{ width: '100%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />

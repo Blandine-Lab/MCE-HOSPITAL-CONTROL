@@ -222,7 +222,7 @@ const DashboardBI = () => {
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textAlign: 'center' }}>
           <FaMoneyBillWave style={{ fontSize: '24px', color: '#8b5cf6' }} />
           <h2 style={{ margin: '8px 0 0', fontSize: '24px' }}>{stats?.factures?.montant?.toLocaleString() || 0} FCFA</h2>
-          <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Chiffre dâ€™affaires</p>
+          <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Chiffre dâFC™affaires</p>
         </div>
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textAlign: 'center' }}>
           <FaBed style={{ fontSize: '24px', color: '#3b82f6' }} />
@@ -256,7 +256,7 @@ const DashboardBI = () => {
         </div>
 
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>ðŸ’° Chiffre dâ€™affaires (12 mois)</h3>
+          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>ðŸ’° Chiffre dâFC™affaires (12 mois)</h3>
           <Line data={facturesChartData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
         </div>
 
@@ -273,7 +273,7 @@ const DashboardBI = () => {
         </div>
 
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>ðŸ¥§ Motifs dâ€™admission</h3>
+          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>ðŸ¥§ Motifs dâFC™admission</h3>
           <div style={{ maxWidth: '280px', margin: '0 auto' }}>
             <Doughnut data={motifChartData} options={{ plugins: { legend: { position: 'right' } } }} />
           </div>

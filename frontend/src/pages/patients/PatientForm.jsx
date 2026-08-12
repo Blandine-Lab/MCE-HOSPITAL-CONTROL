@@ -55,7 +55,7 @@ const PatientForm = () => {
       navigate('/patients');
     } catch (err) {
       console.error(err);
-      alert('Erreur lors de lâ€™enregistrement');
+      alert('Erreur lors de lâFC™enregistrement');
     }
   };
 

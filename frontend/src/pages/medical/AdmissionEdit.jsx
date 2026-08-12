@@ -107,7 +107,7 @@ const AdmissionEdit = () => {
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ marginTop: 0, color: '#0f172a' }}>Modifier lâ€™admission #{id}</h2>
+        <h2 style={{ marginTop: 0, color: '#0f172a' }}>Modifier lâFC™admission #{id}</h2>
         {error && <div style={{ color: '#ef4444', marginBottom: '16px', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px' }}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
@@ -164,7 +164,7 @@ const AdmissionEdit = () => {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Date dâ€™admission *</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Date dâFC™admission *</label>
               <input
                 type="date"
                 name="date_admission"
@@ -242,7 +242,7 @@ const AdmissionEdit = () => {
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Motif de lâ€™admission *</label>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Motif de lâFC™admission *</label>
             <textarea
               name="motif"
               value={formData.motif}

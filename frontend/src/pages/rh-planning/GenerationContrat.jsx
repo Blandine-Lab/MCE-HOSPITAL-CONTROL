@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../axios';
 import { FaArrowLeft, FaSave, FaPrint, FaFileAlt } from 'react-icons/fa';
@@ -111,7 +111,7 @@ const GenerationContrat = () => {
             <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Salaire (€)</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Salaire (FC)</label>
             <input type="number" step="0.01" value={salaire} onChange={e => setSalaire(e.target.value)} placeholder="ex: 2500.00" style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
@@ -125,7 +125,7 @@ const GenerationContrat = () => {
       {contratGenere && (
         <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, marginTop: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h3 style={{ margin: 0 }}>Contrat généré – {contratGenere.reference}</h3>
+            <h3 style={{ margin: 0 }}>Contrat généré FC {contratGenere.reference}</h3>
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={handleSave} style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 16px', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
                 <FaSave /> Sauvegarder

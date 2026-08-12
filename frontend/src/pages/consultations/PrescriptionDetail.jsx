@@ -115,7 +115,7 @@ const PrescriptionDetail = () => {
         </div>
       )}
 
-      {/* ===== ENâ€‘TÃŠTE DE Lâ€™HÃ”PITAL ===== */}
+      {/* ===== ENâFC‘TÃŠTE DE LâFC™HÃ”PITAL ===== */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -134,7 +134,7 @@ const PrescriptionDetail = () => {
             Medical Center Elizabeth MCE
           </h1>
           <p style={{ color: '#475569', margin: 0, fontSize: '14px' }}>
-            Service de pharmacie â€“ Prescription mÃ©dicale
+            Service de pharmacie âFC“ Prescription mÃ©dicale
           </p>
         </div>
       </div>
@@ -203,7 +203,7 @@ const PrescriptionDetail = () => {
               border: '1px solid #e5e7eb'
             }}>
               <strong>{item.medicament}</strong>
-              {item.posologie && ` â€“ ${item.posologie}`}
+              {item.posologie && ` âFC“ ${item.posologie}`}
               {item.duree && ` (${item.duree})`}
               <span style={{ marginLeft: '12px', color: '#6b7280', fontSize: '14px' }}>
                 QtÃ©: {item.quantite}
@@ -338,7 +338,7 @@ const PrescriptionDetail = () => {
               {prescription.historique.map((evt, idx) => (
                 <li key={idx} style={{ padding: '4px 0', fontSize: '14px', color: '#4b5563' }}>
                   <strong>{evt.action === 'creation' ? 'ğŸ“ CrÃ©Ã©e par' : 'ğŸ’Š DÃ©livrÃ©e par'}</strong> {evt.utilisateur}
-                  â€“ {new Date(evt.date).toLocaleString()}
+                  âFC“ {new Date(evt.date).toLocaleString()}
                   {evt.role && <span style={{ marginLeft: '8px', color: '#6b7280', fontSize: '12px' }}>({evt.role})</span>}
                 </li>
               ))}

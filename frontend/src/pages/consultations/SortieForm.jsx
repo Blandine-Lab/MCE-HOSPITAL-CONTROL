@@ -49,7 +49,7 @@ const SortieForm = () => {
       setTimeout(() => setToast(null), 3000);
       setTimeout(() => navigate('/patients'), 1500);
     } catch (err) {
-      setToast('Erreur lors de lâ€™enregistrement');
+      setToast('Erreur lors de lâFC™enregistrement');
       setTimeout(() => setToast(null), 3000);
     }
   };

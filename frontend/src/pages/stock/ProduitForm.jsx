@@ -1,4 +1,4 @@
-// src/pages/stock/ProduitForm.jsx
+﻿// src/pages/stock/ProduitForm.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import api from '../../axios';
@@ -168,12 +168,12 @@ const ProduitForm = () => {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Prix d'achat (€)</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Prix d'achat (FC)</label>
             <input type="number" step="0.01" name="prix_achat" value={formData.prix_achat} onChange={handleChange} style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Prix de vente (€)</label>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Prix de vente (FC)</label>
             <input type="number" step="0.01" name="prix_vente" value={formData.prix_vente} onChange={handleChange} style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }} />
           </div>
 

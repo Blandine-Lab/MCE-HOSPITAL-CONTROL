@@ -1,4 +1,4 @@
-// src/pages/ui/UIShowcase.jsx â€“ Sections colorÃ©es distinctes
+// src/pages/ui/UIShowcase.jsx âFC“ Sections colorÃ©es distinctes
 import React, { useState } from 'react';
 
 const UIShowcase = () => {
@@ -93,8 +93,8 @@ const UIShowcase = () => {
                 <input
                   type="password"
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white/80 focus:bg-white focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all duration-200 placeholder:text-gray-400"
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
-                  defaultValue="â€¢â€¢â€¢"
+                  placeholder="âFC¢âFC¢âFC¢âFC¢âFC¢âFC¢âFC¢âFC¢"
+                  defaultValue="âFC¢âFC¢âFC¢"
                 />
               </div>
               <div>
@@ -255,7 +255,7 @@ const UIShowcase = () => {
 
         {/* Footer */}
         <footer className="text-center text-sm text-gray-400 mt-12 pt-6 border-t border-gray-200/60">
-          <p>Â© 2026 HÃ´pital Â· Interface Utilisateur (UI/UX) v2.0 â€” Tous droits rÃ©servÃ©s</p>
+          <p>Â© 2026 HÃ´pital Â· Interface Utilisateur (UI/UX) v2.0 âFC” Tous droits rÃ©servÃ©s</p>
           <p className="mt-1 text-xs text-gray-300">ConÃ§u avec â¤ï¸ et Tailwind CSS</p>
         </footer>
 

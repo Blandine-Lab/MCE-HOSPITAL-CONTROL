@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import api from '../../axios'; // ✅ Instance avec intercepteur
 import { FaPrint, FaSearch, FaFileInvoice } from 'react-icons/fa';
 
@@ -159,7 +159,7 @@ const TarifSheet = () => {
                 <tr>
                   <th style={thStyle}>Code</th>
                   <th style={thStyle}>Libellé</th>
-                  <th style={thStyle}>Prix unitaire (€)</th>
+                  <th style={thStyle}>Prix unitaire (FC)</th>
                 </tr>
               </thead>
               <tbody>

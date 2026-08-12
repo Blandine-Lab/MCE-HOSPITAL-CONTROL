@@ -115,7 +115,7 @@ const ConsultationsHome = () => {
           <Link to="/rendezvous" style={cardStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <div className="overlay" style={overlayStyle}>
               <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
-              <h2 style={titleStyle}>Rendezâ€‘vous</h2>
+              <h2 style={titleStyle}>RendezâFC‘vous</h2>
               <p style={descStyle}>Planification et rappels SMS/Email</p>
             </div>
           </Link>

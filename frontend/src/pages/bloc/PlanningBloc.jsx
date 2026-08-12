@@ -184,7 +184,7 @@ const PlanningBloc = () => {
                             </span>
                           </div>
                         ) : (
-                          <span style={{ color: '#d1d5db', fontSize: '12px' }}>â€”</span>
+                          <span style={{ color: '#d1d5db', fontSize: '12px' }}>âFC”</span>
                         )}
                       </td>
                     );

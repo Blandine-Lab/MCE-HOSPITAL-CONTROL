@@ -1,4 +1,4 @@
-// src/pages/billing/FactureForm.jsx
+﻿// src/pages/billing/FactureForm.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../axios';
@@ -170,7 +170,7 @@ const FactureForm = () => {
     }
   }, [patient]);
 
-  // ✅ Charger les médicaments du patient (non facturés) – auto-sélection
+  // ✅ Charger les médicaments du patient (non facturés) FC auto-sélection
   useEffect(() => {
     console.log('🔄 useEffect medicaments - patient =', patient);
     if (patient && patient.id) {
@@ -529,7 +529,7 @@ const FactureForm = () => {
                           />
                         </td>
                         <td style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>
-                          {item.total.toFixed(2)} €
+                          {item.total.toFixed(2)} FC
                         </td>
                         <td style={{ padding: '8px', textAlign: 'center' }}>
                           <button type="button" onClick={() => deleteLine(index)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -561,7 +561,7 @@ const FactureForm = () => {
                           onChange={() => toggleExamenSelection(ex.id)}
                         />
                         <span>{ex.type_examen} <span style={{ fontSize: '12px', color: '#6b7280' }}>({ex.categorie})</span></span>
-                        <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 'bold' }}>{ex.prix} €</span>
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 'bold' }}>{ex.prix} FC</span>
                       </label>
                     ))}
                   </div>
@@ -596,7 +596,7 @@ const FactureForm = () => {
                           </span>
                         </span>
                         <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 'bold' }}>
-                          {c.prix ? parseFloat(c.prix).toFixed(2) : '50.00'} €
+                          {c.prix ? parseFloat(c.prix).toFixed(2) : '50.00'} FC
                         </span>
                       </label>
                     ))}
@@ -632,7 +632,7 @@ const FactureForm = () => {
                           </span>
                         </span>
                         <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 'bold' }}>
-                          {med.prix_unitaire ? parseFloat(med.prix_unitaire).toFixed(2) : '0.00'} €
+                          {med.prix_unitaire ? parseFloat(med.prix_unitaire).toFixed(2) : '0.00'} FC
                         </span>
                       </label>
                     ))}
@@ -686,13 +686,13 @@ const FactureForm = () => {
           {/* Récapitulatif */}
           <div style={{ borderTop: '2px solid #e5e7eb', paddingTop: '20px', marginBottom: '20px', textAlign: 'right' }}>
             <div style={{ fontSize: '18px' }}>
-              <span style={{ fontWeight: 'bold' }}>Total HT :</span> {totalGeneral.toFixed(2)} €
+              <span style={{ fontWeight: 'bold' }}>Total HT :</span> {totalGeneral.toFixed(2)} FC
             </div>
             <div style={{ fontSize: '18px', color: '#ef4444' }}>
-              <span style={{ fontWeight: 'bold' }}>Remise ({remise}%) :</span> -{remiseAmount.toFixed(2)} €
+              <span style={{ fontWeight: 'bold' }}>Remise ({remise}%) :</span> -{remiseAmount.toFixed(2)} FC
             </div>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#16a34a' }}>
-              <span style={{ fontWeight: 'bold' }}>Total TTC :</span> {totalApresRemise.toFixed(2)} €
+              <span style={{ fontWeight: 'bold' }}>Total TTC :</span> {totalApresRemise.toFixed(2)} FC
             </div>
           </div>
 

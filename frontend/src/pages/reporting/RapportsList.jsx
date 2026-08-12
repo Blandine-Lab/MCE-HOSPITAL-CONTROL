@@ -254,7 +254,7 @@ const RapportsList = () => {
   });
 
   const formatDate = (date) => {
-    if (!date) return 'â€”';
+    if (!date) return 'âFC”';
     return new Date(date).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',

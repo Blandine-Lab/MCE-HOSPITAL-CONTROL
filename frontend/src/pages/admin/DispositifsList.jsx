@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaBoxes } from 'react-icons/fa';
 import api from '../../axios'; // ✅ Utilisation de l'instance partagée
 
@@ -136,7 +136,7 @@ const DispositifsList = () => {
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Nom</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Stock</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Seuil</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Prix (€)</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Prix (FC)</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Catégorie</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Actions</th>
             </tr>
@@ -195,7 +195,7 @@ const DispositifsList = () => {
                 <input type="number" placeholder="Stock" value={form.stock} onChange={e => setForm({...form, stock: parseInt(e.target.value)})} style={{ width: '50%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
                 <input type="number" placeholder="Seuil alerte" value={form.seuil_alerte} onChange={e => setForm({...form, seuil_alerte: parseInt(e.target.value)})} style={{ width: '50%', padding: '8px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '6px' }} />
               </div>
-              <input type="number" step="0.01" placeholder="Prix unitaire (€)" value={form.prix_unitaire} onChange={e => setForm({...form, prix_unitaire: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', marginBottom: '20px', border: '1px solid #ccc', borderRadius: '6px' }} />
+              <input type="number" step="0.01" placeholder="Prix unitaire (FC)" value={form.prix_unitaire} onChange={e => setForm({...form, prix_unitaire: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', marginBottom: '20px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                 <button type="button" onClick={() => setShowForm(false)} style={{ backgroundColor: '#e5e7eb', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><FaTimes /> Annuler</button>
                 <button type="submit" style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><FaSave /> Enregistrer</button>
@@ -231,7 +231,7 @@ const DispositifsList = () => {
                       <td style={{ border: '1px solid #ddd', padding: '8px' }}>{l.numero_lot}</td>
                       <td style={{ border: '1px solid #ddd', padding: '8px' }}>{l.date_peremption}</td>
                       <td style={{ border: '1px solid #ddd', padding: '8px' }}>{l.stock_actuel}</td>
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>{parseFloat(l.prix_achat).toFixed(2)} €</td>
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>{parseFloat(l.prix_achat).toFixed(2)} FC</td>
                     </tr>
                   ))}
                 </tbody>

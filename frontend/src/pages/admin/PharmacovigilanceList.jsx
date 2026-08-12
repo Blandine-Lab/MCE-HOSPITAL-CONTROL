@@ -105,7 +105,7 @@ const PharmacovigilanceList = () => {
           {toast}
         </div>
       )}
-      <h2 style={{ marginBottom: '20px' }}>⚠️ Pharmacovigilance – Effets indésirables</h2>
+      <h2 style={{ marginBottom: '20px' }}>⚠️ Pharmacovigilance �FC� Effets indésirables</h2>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div></div>
         <button
