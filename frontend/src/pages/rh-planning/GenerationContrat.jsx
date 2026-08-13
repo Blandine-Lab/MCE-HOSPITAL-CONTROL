@@ -1,8 +1,7 @@
-// src/pages/rh-planning/GenerationContrat.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../axios';
-import { FaArrowLeft, FaSave, FaPrint, FaFileAlt } from 'react-icons/fa';
+import { FaArrowLeft, FaSave, FaPrint, FaFileAlt, FaPlus, FaTrash } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
 const GenerationContrat = () => {
@@ -20,28 +19,16 @@ const GenerationContrat = () => {
   const [articles, setArticles] = useState([]);
 
   useEffect(() => {
-    // Charger les employés
-    api.get('/employes')
-      .then(res => setEmployes(res.data))
-      .catch(console.error);
-
-    // Charger les modèles - avec fallback en cas d'erreur 404
-    api.get('/modeles-contrats')
-      .then(res => setModeles(res.data))
-      .catch(err => {
-        if (err.response?.status === 404) {
-          // Modèles fictifs si l'API n'existe pas
-          setModeles([
-            { id: 1, nom: 'Contrat CDI standard' },
-            { id: 2, nom: 'Contrat CDD standard' },
-            { id: 3, nom: 'Contrat d\'intérim' },
-            { id: 4, nom: 'Contrat de stage' }
-          ]);
-          console.warn('⚠️ Utilisation de modèles fictifs (API /modeles-contrats introuvable)');
-        } else {
-          console.error('Erreur chargement modèles:', err);
-        }
-      });
+    Promise.all([
+      api.get('/employes'),
+      api.get('/modeles-contrats')
+    ]).then(([empRes, modRes]) => {
+      setEmployes(empRes.data);
+      setModeles(modRes.data);
+    }).catch(err => {
+      console.error('Erreur chargement des données :', err);
+      setError('Impossible de charger les données');
+    });
   }, []);
 
   const handleGenerer = async (e) => {
@@ -54,8 +41,8 @@ const GenerationContrat = () => {
     setError('');
     try {
       const res = await api.post('/contrats/generer', {
-        employe_id: parseInt(selectedEmploye, 10),
-        modele_id: parseInt(selectedModele, 10),
+        employe_id: selectedEmploye,
+        modele_id: selectedModele,
         date_debut: dateDebut,
         date_fin: dateFin,
         salaire: salaire
@@ -71,19 +58,45 @@ const GenerationContrat = () => {
     }
   };
 
-  const handleUpdateArticle = (index, newContenu) => {
+  // Mettre à jour un article existant
+  const handleUpdateArticle = (index, field, value) => {
     const updated = [...articles];
-    updated[index].contenu = newContenu;
+    updated[index][field] = value;
     setArticles(updated);
   };
 
+  // Ajouter un nouvel article vide
+  const handleAddArticle = () => {
+    const newArticle = {
+      id: null, // pas encore en base
+      titre: `Article ${articles.length + 1}`,
+      contenu: '',
+      ordre: articles.length + 1
+    };
+    setArticles([...articles, newArticle]);
+  };
+
+  // Supprimer un article
+  const handleRemoveArticle = (index) => {
+    const updated = articles.filter((_, i) => i !== index);
+    // Réorganiser les ordres
+    updated.forEach((art, i) => art.ordre = i + 1);
+    setArticles(updated);
+  };
+
+  // Sauvegarder les articles (et rediriger vers l'impression)
   const handleSave = async () => {
     if (!contratGenere) return;
     try {
-      await api.put(`/contrats/${contratGenere.id}/articles`, { articles });
+      // Nettoyer les articles avant envoi (supprimer les champs temporaires)
+      const articlesToSend = articles.map(({ id, titre, contenu, ordre }) => ({
+        id, titre, contenu, ordre
+      }));
+      await api.put(`/contrats/${contratGenere.id}/articles`, { articles: articlesToSend });
       navigate(`/rh/contrats/print/${contratGenere.id}`);
     } catch (err) {
-      setError('Erreur lors de la sauvegarde');
+      setError('Erreur lors de la sauvegarde des articles');
+      console.error(err);
     }
   };
 
@@ -141,7 +154,7 @@ const GenerationContrat = () => {
       {contratGenere && (
         <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, marginTop: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h3 style={{ margin: 0 }}>Contrat généré : {contratGenere.reference || 'N/A'}</h3>
+            <h3 style={{ margin: 0 }}>Contrat généré – {contratGenere.reference}</h3>
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={handleSave} style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 16px', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
                 <FaSave /> Sauvegarder
@@ -156,27 +169,59 @@ const GenerationContrat = () => {
             <h2 style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: 16 }}>
               CONTRAT DE TRAVAIL
             </h2>
-            {articles && articles.length > 0 ? (
-              articles.map((art, idx) => (
-                <div key={art.id || idx} style={{ marginBottom: 16 }}>
-                  <h4 style={{ margin: '8px 0 4px 0', color: '#0f172a' }}>{art.titre || `Article ${idx+1}`}</h4>
+            
+            {/* Articles éditables */}
+            <div style={{ marginTop: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h4 style={{ margin: 0 }}>Articles / Clauses</h4>
+                <button 
+                  onClick={handleAddArticle}
+                  style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '6px 12px', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <FaPlus /> Ajouter un article
+                </button>
+              </div>
+              
+              {articles.map((art, idx) => (
+                <div key={idx} style={{ marginBottom: 16, border: '1px solid #e2e8f0', padding: 12, borderRadius: 6, position: 'relative' }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+                    <input
+                      type="text"
+                      value={art.titre || `Article ${idx + 1}`}
+                      onChange={e => handleUpdateArticle(idx, 'titre', e.target.value)}
+                      style={{ flex: 1, padding: 8, border: '1px solid #e2e8f0', borderRadius: 4, fontWeight: 'bold' }}
+                      placeholder="Titre de l'article"
+                    />
+                    <button 
+                      onClick={() => handleRemoveArticle(idx)}
+                      style={{ backgroundColor: '#ef4444', color: 'white', padding: '6px 10px', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
                   <textarea
-                    value={art.contenu || ''}
-                    onChange={e => handleUpdateArticle(idx, e.target.value)}
+                    value={art.contenu}
+                    onChange={e => handleUpdateArticle(idx, 'contenu', e.target.value)}
                     rows={3}
-                    style={{ width: '100%', padding: 8, border: '1px solid #e2e8f0', borderRadius: 6, fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: 8, border: '1px solid #e2e8f0', borderRadius: 4, fontFamily: 'inherit' }}
+                    placeholder="Contenu de l'article..."
                   />
                 </div>
-              ))
-            ) : (
-              <p>Aucun article disponible pour ce contrat.</p>
-            )}
+              ))}
+              
+              {articles.length === 0 && (
+                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>
+                  Aucun article. Cliquez sur « Ajouter un article » pour commencer.
+                </p>
+              )}
+            </div>
           </div>
 
           <style>{`
             @media print {
               .no-print { display: none !important; }
-              #contrat-print textarea { border: none; resize: none; }
+              #contrat-print textarea { border: none; resize: none; background: transparent; }
+              #contrat-print button, #contrat-print .no-print { display: none !important; }
             }
           `}</style>
         </div>
