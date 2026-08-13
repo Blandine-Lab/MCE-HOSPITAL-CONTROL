@@ -129,19 +129,33 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
 // ========== NOUVELLES ROUTES POUR MODÈLES ET GÉNÉRATION =====
 // ============================================================
 
-// GET /modeles-contrats - Liste des modèles de contrat
+// GET /modeles-contrats - Liste des modèles de contrat (CORRIGÉ)
 router.get('/modeles-contrats', authenticate, async (req, res) => {
   try {
+    console.log('🔍 Récupération des modèles de contrat...');
+
+    // Vérifier que la table existe en testant une requête simple
+    const test = await pool.query('SELECT EXISTS (SELECT 1 FROM modeles_contrats LIMIT 1)');
+    console.log('✅ Table modeles_contrats accessible');
+
+    // Requête principale : on sélectionne toutes les colonnes pour éviter les erreurs
     const { rows } = await pool.query(`
-      SELECT id, nom, description, actif, created_at
+      SELECT *
       FROM modeles_contrats
       WHERE actif = true
       ORDER BY nom
     `);
+
+    console.log(`✅ ${rows.length} modèles trouvés`);
     res.json(rows);
   } catch (err) {
-    console.error('Erreur GET /modeles-contrats :', err);
-    res.status(500).json({ error: err.message });
+    console.error('❌ Erreur GET /modeles-contrats :', err);
+    // Renvoyer un message clair pour le frontend
+    res.status(500).json({
+      error: 'Erreur lors de la récupération des modèles',
+      detail: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 });
 
