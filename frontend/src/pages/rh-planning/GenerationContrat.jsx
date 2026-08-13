@@ -21,7 +21,7 @@ const GenerationContrat = () => {
   useEffect(() => {
     Promise.all([
       api.get('/employes'),
-      api.get('/modeles-contrats')
+      api.get('/contrats/modeles-contrats')   // ← CORRECTION ICI
     ]).then(([empRes, modRes]) => {
       setEmployes(empRes.data);
       setModeles(modRes.data);
