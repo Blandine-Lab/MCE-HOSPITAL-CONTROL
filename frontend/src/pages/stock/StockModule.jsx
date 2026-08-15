@@ -24,7 +24,7 @@ const StockModule = () => (
       <ul style={{ listStyle: 'none', padding: 0 }}>
         <li><NavLink to="/stock" end style={linkStyle}><FaChartBar /> Tableau de bord</NavLink></li>
         <li><NavLink to="/stock/produits" style={linkStyle}><FaBoxes /> Produits</NavLink></li>
-        <li><NavLink to="/stock/stocks" style={linkStyle}><FaClipboardList /> tat des stocks</NavLink></li>
+        <li><NavLink to="/stock/stocks" style={linkStyle}><FaClipboardList /> État des stocks</NavLink></li>
         <li><NavLink to="/stock/mouvements" style={linkStyle}><FaHistory /> Mouvements</NavLink></li>
         <li><NavLink to="/stock/fournisseurs" style={linkStyle}><FaTruck /> Fournisseurs</NavLink></li>
         <li><NavLink to="/stock/commandes" style={linkStyle}><FaShoppingCart /> Commandes</NavLink></li>

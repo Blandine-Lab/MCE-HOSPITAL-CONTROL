@@ -77,7 +77,7 @@ const ActeForm = () => {
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ marginTop: 0, color: '#0f172a' }}>{isEdit ? 'Modifier l\'acte' : 'Nouvel acte paramdical'}</h2>
+        <h2 style={{ marginTop: 0, color: '#0f172a' }}>{isEdit ? 'Modifier l\'acte' : 'Nouvel acte paramédical'}</h2>
         {error && <div style={{ color: '#ef4444', marginBottom: '16px' }}>{error}</div>}
         
         <form onSubmit={handleSubmit}>
@@ -90,7 +90,7 @@ const ActeForm = () => {
               required
               style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '16px' }}
             >
-              <option value="">Slectionner un patient</option>
+              <option value="">Sélectionner un patient</option>
               {patients.map(p => (
                 <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>
               ))}
@@ -110,7 +110,7 @@ const ActeForm = () => {
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Date de ralisation</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Date de réalisation</label>
               <input
                 type="date"
                 name="date_realisation"
@@ -172,7 +172,7 @@ const ActeForm = () => {
               gap: '8px'
             }}
           >
-            <FaSave /> {loading ? 'Enregistrement...' : (isEdit ? 'Mettre  jour' : 'Crer')}
+            <FaSave /> {loading ? 'Enregistrement...' : (isEdit ? 'Mettre à jour' : 'Créer')}
           </button>
         </form>
       </div>

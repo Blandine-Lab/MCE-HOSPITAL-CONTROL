@@ -9,6 +9,7 @@ const Badge = () => {
   const [employe, setEmploye] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [photoError, setPhotoError] = useState(false);
   const badgeRef = useRef();
 
   useEffect(() => {
@@ -32,8 +33,12 @@ const Badge = () => {
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>{error}</div>;
   if (!employe) return null;
 
-  const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
-  const photoUrl = employe.photo ? `${baseUrl}${employe.photo}` : null;
+  // Construction robuste de l'URL de la photo
+  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const baseUrl = apiBase.replace(/\/api$/, ''); // enlève le /api final
+  const photoPath = employe.photo ? employe.photo.replace(/^\/+/, '') : ''; // enlève les slashs au début
+  const photoUrl = photoPath ? `${baseUrl}/${photoPath}` : null;
+
   const logoUrl = '/logo.jpeg';
 
   return (
@@ -71,42 +76,55 @@ const Badge = () => {
             </div>
           </div>
 
-          {/* Corps */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            {photoUrl ? (
-              <img src={photoUrl} alt="Photo" style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #2563eb', marginBottom: '8px' }} onError={(e) => e.target.style.display = 'none'} />
-            ) : (
-              <div style={{ width: '90px', height: '90px', borderRadius: '50%', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', color: '#6b7280', marginBottom: '8px' }}>
-                {employe.prenom?.[0]}{employe.nom?.[0]}
-              </div>
-            )}
-            <h3 style={{ fontSize: '16px', fontWeight: '600', margin: '2px 0', color: '#1f2937' }}>{employe.prenom} {employe.nom}</h3>
-            <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Poste :</strong> {employe.poste || 'Non défini'}</p>
-            <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Service :</strong> {employe.service_nom || employe.service || 'Non défini'}</p>
-            <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Matricule :</strong> {employe.matricule || employe.id}</p>
-            <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Email :</strong> {employe.email || '?FC?'}</p>
-            <p style={{ fontSize: '12px', color: '#4b5563', margin: '1px 0' }}><strong>Tél :</strong> {employe.telephone || '?FC?'}</p>
+          {/* Corps : photo à gauche, infos à droite */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+            {/* Photo (à gauche) */}
+            <div style={{ flexShrink: 0 }}>
+              {photoUrl && !photoError ? (
+                <img
+                  src={photoUrl}
+                  alt="Photo"
+                  style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #2563eb' }}
+                  onError={() => setPhotoError(true)}
+                />
+              ) : (
+                <div style={{ width: '70px', height: '70px', borderRadius: '50%', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px', color: '#6b7280', border: '3px solid #2563eb' }}>
+                  {employe.prenom?.[0]}{employe.nom?.[0]}
+                </div>
+              )}
+            </div>
+
+            {/* Informations (à droite) */}
+            <div style={{ flex: 1, textAlign: 'left', fontSize: '12px', lineHeight: '1.5' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 2px 0', color: '#1f2937' }}>{employe.prenom} {employe.nom}</h3>
+              <p style={{ margin: '0' }}><strong>Poste :</strong> {employe.poste || 'Non défini'}</p>
+              <p style={{ margin: '0' }}><strong>Service :</strong> {employe.service_nom || employe.service || 'Non défini'}</p>
+              <p style={{ margin: '0' }}><strong>Matricule :</strong> {employe.matricule || employe.id}</p>
+              <p style={{ margin: '0' }}><strong>Email :</strong> {employe.email || '—'}</p>
+              <p style={{ margin: '0' }}><strong>Tél :</strong> {employe.telephone || '—'}</p>
+            </div>
           </div>
 
           {/* Zone info avec adresse complète */}
           <div style={{
-            marginTop: '12px',
+            marginTop: '8px',
             backgroundColor: '#e8f0fe',
             borderRadius: '10px',
-            padding: '10px 12px',
+            padding: '8px 12px',
             textAlign: 'center',
             border: '1px solid #b6d4fe',
+            fontSize: '11px',
           }}>
-            <p style={{ fontSize: '12px', color: '#1e3a8a', margin: '0', fontWeight: '600' }}>
+            <p style={{ margin: '0', fontWeight: '600', color: '#1e3a8a' }}>
               🏥 MCE Localisation : Bukavu RDC
             </p>
-            <p style={{ fontSize: '10px', color: '#1e40af', margin: '4px 0 0' }}>
+            <p style={{ margin: '0', color: '#1e40af' }}>
               avenue BOBZO, Quartier NDENDERE, Commune d'IBANDA, SUD-KIVU/RDC.
             </p>
-            <p style={{ fontSize: '10px', color: '#1e40af', margin: '2px 0 0' }}>
+            <p style={{ margin: '0', color: '#1e40af' }}>
               contact@medicalcenterelizabeth.org | www.medicalcenterelizabeth.org
             </p>
-            <p style={{ fontSize: '9px', color: '#1e3a8a', margin: '6px 0 0', opacity: 0.8 }}>
+            <p style={{ margin: '4px 0 0 0', color: '#1e3a8a', opacity: 0.8, fontSize: '10px' }}>
               En cas de perte, contactez les RH
             </p>
           </div>
@@ -124,12 +142,10 @@ const Badge = () => {
           fontFamily: 'system-ui, -apple-system, sans-serif',
           textAlign: 'center',
         }}>
-          {/* En-tête simplifié */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', borderBottom: '2px solid #2563eb', paddingBottom: '10px', marginBottom: '16px' }}>
             <img src={logoUrl} alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
             <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '1px' }}>LAISSEZ-PASSER</h2>
           </div>
-
           <div style={{ padding: '8px 12px' }}>
             <p style={{ fontSize: '14px', color: '#1f2937', fontWeight: '500', margin: '0 0 12px 0' }}>
               Les autorités tant civiles, policières que militaires sont priées d'apporter assistance au porteur de la présente en cas de nécessité.
@@ -139,7 +155,7 @@ const Badge = () => {
                 <strong>Nom :</strong> {employe.prenom} {employe.nom}
               </p>
               <p style={{ fontSize: '11px', color: '#6b7280', margin: '2px 0' }}>
-                <strong>Matricule :</strong> {employe.matricule || employe.id}  {/* ← correction ici */}
+                <strong>Matricule :</strong> {employe.matricule || employe.id}
               </p>
               <p style={{ fontSize: '11px', color: '#6b7280', margin: '2px 0' }}>
                 <strong>Service :</strong> {employe.service_nom || employe.service || 'Non défini'}
@@ -153,14 +169,12 @@ const Badge = () => {
       </div>
 
       <style>{`
-        /* Masquer les éléments non imprimables */
         .no-print { display: block; }
 
         @media print {
           body * { visibility: hidden; }
           .badge-container, .badge-container * { visibility: visible; }
 
-          /* Forcer les pages séparées pour recto/verso */
           .badge-face {
             page-break-after: always;
             page-break-inside: avoid;
@@ -189,22 +203,25 @@ const Badge = () => {
             overflow: hidden;
           }
 
-          /* Ajustements typographiques pour l'impression */
           .badge-face img[alt="Photo"] {
-            width: 45px !important;
-            height: 45px !important;
-            margin-bottom: 2px !important;
+            width: 35px !important;
+            height: 35px !important;
+          }
+          .badge-face div[style*="borderRadius: 50%"] {
+            width: 35px !important;
+            height: 35px !important;
+            font-size: 16px !important;
           }
           .badge-face h2 {
-            font-size: 11px !important;
-            letter-spacing: 0.5px !important;
+            font-size: 10px !important;
+            letter-spacing: 0.3px !important;
           }
           .badge-face h3 {
-            font-size: 10px !important;
+            font-size: 9px !important;
             margin: 0 !important;
           }
           .badge-face p {
-            font-size: 7.5px !important;
+            font-size: 6.5px !important;
             margin: 0 !important;
             line-height: 1.2;
           }
@@ -213,14 +230,14 @@ const Badge = () => {
             margin-bottom: 2px !important;
           }
           .badge-face div[style*="borderBottom: 2px solid #2563eb"] img {
-            height: 22px !important;
+            height: 18px !important;
           }
           .badge-face div[style*="backgroundColor: #e8f0fe"] {
             padding: 2px 6px !important;
             margin-top: 2px !important;
           }
           .badge-face div[style*="backgroundColor: #e8f0fe"] p {
-            font-size: 6.5px !important;
+            font-size: 6px !important;
             margin: 0 !important;
           }
           .badge-face > div:last-child {
@@ -229,7 +246,6 @@ const Badge = () => {
 
           .no-print { display: none !important; }
 
-          /* Supprimer les marges de page pour que chaque face tienne exactement */
           @page {
             size: A4;
             margin: 15mm 10mm;

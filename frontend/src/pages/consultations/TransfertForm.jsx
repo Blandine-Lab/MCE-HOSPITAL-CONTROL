@@ -1,51 +1,64 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaExchangeAlt, FaBed, FaStethoscope, FaClipboardList, FaSave } from 'react-icons/fa';
-import api from '../../axios'; // ? Utilisation de l'instance partage
+import api from '../../axios';
 
 const TransfertForm = () => {
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [litsDispo, setLitsDispo] = useState([]);
   const [services, setServices] = useState([]);
-  const [form, setForm] = useState({ patient_id: '', nouveau_lit_id: '', nouveau_service_id: '', motif: '' });
+  const [form, setForm] = useState({
+    patient_id: '',
+    nouveau_lit_id: '',
+    nouveau_service_id: '',
+    motif: ''
+  });
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
+  const [toastType, setToastType] = useState('success');
+
+  const showToast = (msg, type = 'success') => {
+    setToast(msg);
+    setToastType(type);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     Promise.all([
       api.get('/consultations/patients/hospitalises'),
       api.get('/consultations/lits/disponibles'),
       api.get('/consultations/services')
-    ]).then(([patRes, litRes, servRes]) => {
-      setPatients(patRes.data);
-      setLitsDispo(litRes.data);
-      setServices(servRes.data);
-      setLoading(false);
-      setLoaded(true);
-    }).catch(err => {
-      console.error(err);
-      setLoading(false);
-      setToast('Erreur chargement des donnes');
-      setTimeout(() => setToast(null), 3000);
-    });
+    ])
+      .then(([patRes, litRes, servRes]) => {
+        setPatients(patRes.data);
+        setLitsDispo(litRes.data);
+        setServices(servRes.data);
+        setLoading(false);
+        setLoaded(true);
+      })
+      .catch(err => {
+        console.error('Erreur chargement :', err);
+        setLoading(false);
+        showToast('Erreur de chargement des données', 'error');
+      });
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await api.post('/consultations/transferts', form);
-      setToast('Transfert effectu avec succs');
-      setTimeout(() => setToast(null), 3000);
+      showToast('✅ Transfert effectué avec succès', 'success');
       setTimeout(() => navigate('/patients'), 1500);
     } catch (err) {
-      setToast('Erreur lors du transfert');
-      setTimeout(() => setToast(null), 3000);
+      console.error('Erreur transfert :', err);
+      const msg = err.response?.data?.error || 'Erreur lors du transfert';
+      showToast('❌ ' + msg, 'error');
     }
   };
 
-  // Styles (inchangs)
+  // Styles
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#f0f9ff',
@@ -120,41 +133,50 @@ const TransfertForm = () => {
     transition: 'background-color 0.2s',
   };
 
-  if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #3b82f6', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }}></div>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #3b82f6', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }}></div>
+      </div>
+    );
+  }
 
   return (
     <div style={containerStyle}>
       {toast && (
         <div style={{
-          position: 'fixed', top: '20px', right: '20px', backgroundColor: '#10b981', color: 'white',
-          padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          zIndex: 1000, animation: 'slideIn 0.3s ease-out'
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: toastType === 'success' ? '#10b981' : '#ef4444',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          zIndex: 1000,
+          animation: 'slideIn 0.3s ease-out'
         }}>
           {toast}
         </div>
       )}
       <div style={innerStyle}>
-        <h1 style={titleStyle}>?? Transfert de patient</h1>
+        <h1 style={titleStyle}>🔄 Transfert de patient</h1>
         <div style={cardStyle}>
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Patient hospitalis *</label>
+              <label style={labelStyle}>Patient hospitalisé *</label>
               <select
                 value={form.patient_id}
-                onChange={e => setForm({...form, patient_id: e.target.value})}
+                onChange={e => setForm({ ...form, patient_id: e.target.value })}
                 style={inputStyle}
                 required
                 onFocus={e => e.target.style.borderColor = '#3b82f6'}
                 onBlur={e => e.target.style.borderColor = '#cbd5e1'}
               >
-                <option value="">-- Slectionner un patient --</option>
+                <option value="">-- Sélectionner un patient --</option>
                 {patients.map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.nom} {p.prenom} (Lit {p.lit_numero} - {p.chambre_nom || 'Sans chambre'})
+                    {p.nom} {p.prenom} (Lit {p.lit_numero || p.lit_id || 'N/A'} - {p.chambre_nom || 'Sans chambre'})
                   </option>
                 ))}
               </select>
@@ -164,14 +186,14 @@ const TransfertForm = () => {
               <label style={labelStyle}>Nouveau lit *</label>
               <select
                 value={form.nouveau_lit_id}
-                onChange={e => setForm({...form, nouveau_lit_id: e.target.value})}
+                onChange={e => setForm({ ...form, nouveau_lit_id: e.target.value })}
                 style={inputStyle}
                 required
               >
                 <option value="">-- Choisir un lit disponible --</option>
                 {litsDispo.map(l => (
                   <option key={l.id} value={l.id}>
-                    Lit {l.numero} - Chambre {l.chambre_nom} (Service {l.service_nom})
+                    Lit {l.numero} - Chambre {l.chambre_nom || l.chambre} (Service {l.service_nom})
                   </option>
                 ))}
               </select>
@@ -181,7 +203,7 @@ const TransfertForm = () => {
               <label style={labelStyle}>Nouveau service *</label>
               <select
                 value={form.nouveau_service_id}
-                onChange={e => setForm({...form, nouveau_service_id: e.target.value})}
+                onChange={e => setForm({ ...form, nouveau_service_id: e.target.value })}
                 style={inputStyle}
                 required
               >
@@ -196,7 +218,7 @@ const TransfertForm = () => {
               <label style={labelStyle}>Motif du transfert</label>
               <textarea
                 value={form.motif}
-                onChange={e => setForm({...form, motif: e.target.value})}
+                onChange={e => setForm({ ...form, motif: e.target.value })}
                 rows="3"
                 style={textareaStyle}
                 placeholder="Raison du changement de lit/service..."
@@ -219,7 +241,7 @@ const TransfertForm = () => {
                 onMouseEnter={e => e.target.style.backgroundColor = '#2563eb'}
                 onMouseLeave={e => e.target.style.backgroundColor = '#3b82f6'}
               >
-                <FaExchangeAlt /> Transfrer
+                <FaExchangeAlt /> Transférer
               </button>
             </div>
           </form>

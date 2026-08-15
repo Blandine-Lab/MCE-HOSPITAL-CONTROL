@@ -25,7 +25,10 @@ const JournalForm = () => {
       if (isEdit) await api.put(`/journaux/${id}`, formData);
       else await api.post('/journaux', formData);
       navigate('/finance/journaux');
-    } catch (err) { setError('Erreur'); setLoading(false); }
+    } catch (err) { 
+      setError(err.response?.data?.error || 'Erreur lors de l\'enregistrement du journal'); 
+      setLoading(false); 
+    }
   };
 
   return (

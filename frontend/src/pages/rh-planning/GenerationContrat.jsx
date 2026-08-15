@@ -17,11 +17,12 @@ const GenerationContrat = () => {
   const [error, setError] = useState('');
   const [contratGenere, setContratGenere] = useState(null);
   const [articles, setArticles] = useState([]);
+  const [employeDetail, setEmployeDetail] = useState(null);
 
   useEffect(() => {
     Promise.all([
       api.get('/employes'),
-      api.get('/contrats/modeles-contrats')   // ← CORRECTION ICI
+      api.get('/contrats/modeles-contrats')
     ]).then(([empRes, modRes]) => {
       setEmployes(empRes.data);
       setModeles(modRes.data);
@@ -30,6 +31,15 @@ const GenerationContrat = () => {
       setError('Impossible de charger les données');
     });
   }, []);
+
+  useEffect(() => {
+    if (selectedEmploye) {
+      const emp = employes.find(e => e.id === parseInt(selectedEmploye));
+      setEmployeDetail(emp || null);
+    } else {
+      setEmployeDetail(null);
+    }
+  }, [selectedEmploye, employes]);
 
   const handleGenerer = async (e) => {
     e.preventDefault();
@@ -48,9 +58,19 @@ const GenerationContrat = () => {
         salaire: salaire
       });
       setContratGenere(res.data.contrat);
-      // Récupérer les articles du contrat généré
       const detailRes = await api.get(`/contrats/${res.data.contrat.id}`);
-      setArticles(detailRes.data.articles || []);
+      let articlesData = detailRes.data.articles || [];
+      // Remplacer les placeholders dans le contenu des articles
+      if (employeDetail) {
+        articlesData = articlesData.map(art => {
+          let contenu = art.contenu;
+          contenu = contenu.replace(/\[poste\]/g, employeDetail.poste || 'Non défini');
+          contenu = contenu.replace(/\[nom du service\]/g, employeDetail.service_nom || employeDetail.service || 'Non défini');
+          contenu = contenu.replace(/\[montant\]/g, salaire || '0');
+          return { ...art, contenu };
+        });
+      }
+      setArticles(articlesData);
       setLoading(false);
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur lors de la génération');
@@ -58,17 +78,15 @@ const GenerationContrat = () => {
     }
   };
 
-  // Mettre à jour un article existant
   const handleUpdateArticle = (index, field, value) => {
     const updated = [...articles];
     updated[index][field] = value;
     setArticles(updated);
   };
 
-  // Ajouter un nouvel article vide
   const handleAddArticle = () => {
     const newArticle = {
-      id: null, // pas encore en base
+      id: null,
       titre: `Article ${articles.length + 1}`,
       contenu: '',
       ordre: articles.length + 1
@@ -76,19 +94,15 @@ const GenerationContrat = () => {
     setArticles([...articles, newArticle]);
   };
 
-  // Supprimer un article
   const handleRemoveArticle = (index) => {
     const updated = articles.filter((_, i) => i !== index);
-    // Réorganiser les ordres
     updated.forEach((art, i) => art.ordre = i + 1);
     setArticles(updated);
   };
 
-  // Sauvegarder les articles (et rediriger vers l'impression)
   const handleSave = async () => {
     if (!contratGenere) return;
     try {
-      // Nettoyer les articles avant envoi (supprimer les champs temporaires)
       const articlesToSend = articles.map(({ id, titre, contenu, ordre }) => ({
         id, titre, contenu, ordre
       }));
@@ -104,18 +118,19 @@ const GenerationContrat = () => {
     window.print();
   };
 
+  const logoUrl = '/logo.jpeg';
+
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 24 }} className="no-print">
         <Link to="/rh/contrats" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#3b82f6', textDecoration: 'none' }}>
           <FaArrowLeft /> Retour
         </Link>
       </div>
 
-      <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} className="no-print">
         <h2 style={{ marginTop: 0 }}>Générer un contrat</h2>
         {error && <div style={{ color: '#ef4444', padding: 12, backgroundColor: '#fee2e2', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
-        
         <form onSubmit={handleGenerer} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div>
             <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Employé *</label>
@@ -151,9 +166,9 @@ const GenerationContrat = () => {
         </form>
       </div>
 
-      {contratGenere && (
+      {contratGenere && employeDetail && (
         <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, marginTop: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }} className="no-print">
             <h3 style={{ margin: 0 }}>Contrat généré – {contratGenere.reference}</h3>
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={handleSave} style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 16px', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
@@ -165,63 +180,178 @@ const GenerationContrat = () => {
             </div>
           </div>
 
-          <div id="contrat-print">
-            <h2 style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: 16 }}>
-              CONTRAT DE TRAVAIL
-            </h2>
-            
-            {/* Articles éditables */}
+          <div id="contrat-print" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+            {/* En-tête avec logo */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', borderBottom: '3px solid #2563eb', paddingBottom: '16px', marginBottom: '24px' }}>
+              <img
+                src={logoUrl}
+                alt="Logo MCE"
+                style={{ height: '60px', width: 'auto', objectFit: 'contain' }}
+                onError={(e) => e.target.style.display = 'none'}
+              />
+              <div>
+                <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '2px' }}>HÔPITAL MCE</h1>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Medical Center Elizabeth – Bukavu</p>
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                  Avenue BOBZO, Quartier NDENDERE, Commune d'IBANDA, SUD-KIVU/RDC
+                </p>
+              </div>
+            </div>
+
+            <h2 style={{ textAlign: 'center', color: '#1e3a8a', marginBottom: '24px' }}>CONTRAT DE TRAVAIL</h2>
+
+            {/* Informations générales */}
+            <div style={{
+              marginBottom: '20px',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '8px 20px',
+              backgroundColor: '#f8fafc',
+              padding: '16px',
+              borderRadius: '8px'
+            }}>
+              <p><strong>Référence :</strong> {contratGenere.reference || 'N/A'}</p>
+              <p><strong>Employé :</strong> {employeDetail.prenom} {employeDetail.nom}</p>
+              <p><strong>Poste :</strong> {employeDetail.poste || 'Non défini'}</p>
+              <p><strong>Service :</strong> {employeDetail.service_nom || employeDetail.service || 'Non défini'}</p>
+              <p><strong>Type :</strong> {contratGenere.type || 'CDI'}</p>
+              <p><strong>Statut :</strong> {contratGenere.statut || 'actif'}</p>
+              <p><strong>Date début :</strong> {contratGenere.date_debut ? new Date(contratGenere.date_debut).toLocaleDateString('fr-FR') : 'Non définie'}</p>
+              <p><strong>Date fin :</strong> {contratGenere.date_fin ? new Date(contratGenere.date_fin).toLocaleDateString('fr-FR') : 'Non définie'}</p>
+              <p><strong>Salaire :</strong> {contratGenere.salaire ? `${parseFloat(contratGenere.salaire).toFixed(2)} FC` : 'Non défini'}</p>
+            </div>
+
+            <hr style={{ margin: '20px 0' }} />
+
+            {/* Articles éditables avec numérotation */}
             <div style={{ marginTop: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }} className="no-print">
                 <h4 style={{ margin: 0 }}>Articles / Clauses</h4>
-                <button 
+                <button
                   onClick={handleAddArticle}
                   style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '6px 12px', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <FaPlus /> Ajouter un article
                 </button>
               </div>
-              
-              {articles.map((art, idx) => (
-                <div key={idx} style={{ marginBottom: 16, border: '1px solid #e2e8f0', padding: 12, borderRadius: 6, position: 'relative' }}>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
-                    <input
-                      type="text"
-                      value={art.titre || `Article ${idx + 1}`}
-                      onChange={e => handleUpdateArticle(idx, 'titre', e.target.value)}
-                      style={{ flex: 1, padding: 8, border: '1px solid #e2e8f0', borderRadius: 4, fontWeight: 'bold' }}
-                      placeholder="Titre de l'article"
+
+              {articles.map((art, idx) => {
+                // Numéro d'article basé sur l'ordre (ou l'index + 1)
+                const numArticle = art.ordre || idx + 1;
+                const titre = art.titre || `Article ${numArticle}`;
+                return (
+                  <div key={idx} style={{ marginBottom: 16, border: '1px solid #e2e8f0', padding: 12, borderRadius: 6, position: 'relative' }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }} className="no-print">
+                      <input
+                        type="text"
+                        value={titre}
+                        onChange={e => handleUpdateArticle(idx, 'titre', e.target.value)}
+                        style={{ flex: 1, padding: 8, border: '1px solid #e2e8f0', borderRadius: 4, fontWeight: 'bold' }}
+                        placeholder="Titre de l'article"
+                      />
+                      <button
+                        onClick={() => handleRemoveArticle(idx)}
+                        style={{ backgroundColor: '#ef4444', color: 'white', padding: '6px 10px', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                    <div className="article-content" style={{ marginBottom: '4px' }}>
+                      <strong style={{ fontSize: '15px', display: 'block', marginBottom: '4px' }}>Article {numArticle} – {titre.replace(/^Article \d+ –\s*/, '')}</strong>
+                    </div>
+                    <textarea
+                      value={art.contenu}
+                      onChange={e => handleUpdateArticle(idx, 'contenu', e.target.value)}
+                      rows={3}
+                      style={{ width: '100%', padding: 8, border: '1px solid #e2e8f0', borderRadius: 4, fontFamily: 'inherit' }}
+                      placeholder="Contenu de l'article..."
                     />
-                    <button 
-                      onClick={() => handleRemoveArticle(idx)}
-                      style={{ backgroundColor: '#ef4444', color: 'white', padding: '6px 10px', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      <FaTrash />
-                    </button>
                   </div>
-                  <textarea
-                    value={art.contenu}
-                    onChange={e => handleUpdateArticle(idx, 'contenu', e.target.value)}
-                    rows={3}
-                    style={{ width: '100%', padding: 8, border: '1px solid #e2e8f0', borderRadius: 4, fontFamily: 'inherit' }}
-                    placeholder="Contenu de l'article..."
-                  />
-                </div>
-              ))}
-              
+                );
+              })}
+
               {articles.length === 0 && (
                 <p style={{ color: '#6b7280', fontStyle: 'italic' }}>
                   Aucun article. Cliquez sur « Ajouter un article » pour commencer.
                 </p>
               )}
             </div>
+
+            {/* Pied de page avec zone de signature */}
+            <div style={{ marginTop: '40px', borderTop: '2px solid #e2e8f0', paddingTop: '20px' }}>
+              <p style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280', marginBottom: '24px' }}>
+                Fait à Bukavu, le {new Date().toLocaleDateString('fr-FR')}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '40px' }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontWeight: 'bold', marginBottom: '30px', textAlign: 'center' }}>Signature de l'employeur</p>
+                  <div style={{ borderTop: '1px solid #000', paddingTop: '4px', textAlign: 'center', minHeight: '40px' }}>
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>(Cachet et signature)</span>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontWeight: 'bold', marginBottom: '30px', textAlign: 'center' }}>Signature du salarié</p>
+                  <div style={{ borderTop: '1px solid #000', paddingTop: '4px', textAlign: 'center', minHeight: '40px' }}>
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>(Signature précédée de la mention « Lu et approuvé »)</span>
+                  </div>
+                </div>
+              </div>
+              <p style={{ marginTop: '20px', fontSize: '10px', color: '#94a3b8', textAlign: 'center' }}>
+                Document généré par le système MCE
+              </p>
+            </div>
           </div>
 
           <style>{`
             @media print {
-              .no-print { display: none !important; }
-              #contrat-print textarea { border: none; resize: none; background: transparent; }
-              #contrat-print button, #contrat-print .no-print { display: none !important; }
+              body * {
+                visibility: hidden;
+              }
+              #contrat-print,
+              #contrat-print * {
+                visibility: visible;
+              }
+              #contrat-print {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 20mm !important;
+                background: white !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+              #contrat-print textarea {
+                border: none !important;
+                resize: none !important;
+                background: transparent !important;
+                box-shadow: none !important;
+              }
+              #contrat-print button,
+              #contrat-print .no-print {
+                display: none !important;
+              }
+              #contrat-print div[style*="border: 1px solid #e2e8f0"] {
+                border: none !important;
+                padding: 0 !important;
+              }
+              #contrat-print .article-content {
+                margin-bottom: 8px !important;
+              }
+              #contrat-print h1 { font-size: 20px !important; }
+              #contrat-print h2 { font-size: 18px !important; }
+              #contrat-print h3 { font-size: 16px !important; }
+              #contrat-print p, #contrat-print div { font-size: 12px !important; }
+              /* Zone de signature en bas de page */
+              #contrat-print .signature-line {
+                border-top: 1px solid #000 !important;
+                padding-top: 4px !important;
+                text-align: center !important;
+                min-height: 30px !important;
+              }
             }
           `}</style>
         </div>

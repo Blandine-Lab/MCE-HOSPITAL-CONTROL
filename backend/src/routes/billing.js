@@ -34,24 +34,33 @@ router.get('/patients/search', authenticate, requirePermission('view_finance'), 
 });
 
 // ================================================================
-// ========== LISTE DES MÉDICAMENTS FACTURABLES (PRESCRIPTIONS SERVIES + STOCK) =====
+// ========== LISTE DES MÉDICAMENTS FACTURABLES (ORDONNANCES SERVIES + STOCK) =====
 // ================================================================
 router.get('/medicaments/patient/:patientId', authenticate, requirePermission('view_finance'), async (req, res) => {
   const { patientId } = req.params;
   try {
+    console.log(`🔍 Récupération des médicaments facturables pour patient ${patientId}`);
+
+    const patientCheck = await pool.query('SELECT id FROM patients WHERE id = $1', [patientId]);
+    if (patientCheck.rows.length === 0) {
+      console.log(`❌ Patient ${patientId} introuvable`);
+      return res.status(404).json({ error: 'Patient non trouvé' });
+    }
+
     const { rows } = await pool.query(`
       SELECT 
-        pi.id AS mouvement_id,
-        pi.medicament AS libelle,
-        pi.quantite,
-        pi.prix_unitaire,
-        p.date_served AS date_mouvement,
-        'prescription' AS source
-      FROM prescription_items pi
-      JOIN prescriptions p ON pi.prescription_id = p.id
-      WHERE p.patient_id = $1
-        AND p.status = 'served'
-        AND (pi.facture_id IS NULL OR pi.facture_id = 0)
+        lo.id AS mouvement_id,
+        m.nom AS libelle,
+        lo.quantite_prescrit AS quantite,
+        m.prix_unitaire AS prix_unitaire,
+        o.date_creation AS date_mouvement,
+        'ordonnance' AS source
+      FROM ligne_ordonnances lo
+      JOIN ordonnances o ON lo.ordonnance_id = o.id
+      JOIN medicaments m ON lo.medicament_id = m.id
+      WHERE o.patient_id = $1
+        AND o.statut IN ('delivree', 'partiellement_delivree')
+        AND (lo.facture_id IS NULL OR lo.facture_id = 0)
       UNION ALL
       SELECT 
         ms.id AS mouvement_id,
@@ -67,6 +76,8 @@ router.get('/medicaments/patient/:patientId', authenticate, requirePermission('v
         AND (ms.facture_id IS NULL OR ms.facture_id = 0)
       ORDER BY date_mouvement DESC
     `, [patientId]);
+
+    console.log(`✅ ${rows.length} médicaments trouvés :`, rows);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /medicaments/patient/:patientId :', err);
@@ -96,7 +107,6 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
 
     const prestations = [];
 
-    // Nuitées
     const nbJours = Math.max(1, Math.ceil((new Date(dateFin) - new Date(dateDebut)) / (1000 * 60 * 60 * 24)));
     prestations.push({
       reference_id: ad.id,
@@ -108,7 +118,6 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       total: nbJours * 150.00,
     });
 
-    // Jour de sortie (si sortie effective)
     if (ad.date_sortie_reelle) {
       prestations.push({
         reference_id: ad.id,
@@ -121,7 +130,6 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       });
     }
 
-    // Examens
     const examens = await client.query(`
       SELECT e.id, e.date_demande, e.type_examen, e.categorie
       FROM examens e
@@ -142,7 +150,6 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       });
     });
 
-    // Soins
     try {
       const soins = await client.query(`
         SELECT s.id, s.type_soin, s.date_soin, s.prix, s.quantite
@@ -168,7 +175,6 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       console.warn('⚠️ Table soins absente ou colonnes différentes :', err.message);
     }
 
-    // Médicaments délivrés (mouvements stock sorties)
     const meds = await client.query(`
       SELECT ms.id, ms.medicament_id, m.nom, ms.quantite, ms.date_mouvement, m.prix_unitaire
       FROM mouvements_stock ms
@@ -192,7 +198,6 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       });
     });
 
-    // Consultations
     const consultations = await client.query(`
       SELECT r.id, r.date_rdv, r.motif
       FROM rendez_vous r
@@ -212,7 +217,6 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       });
     });
 
-    // Interventions
     try {
       const interventions = await client.query(`
         SELECT i.id, i.date_intervention, i.nom, i.prix
@@ -430,16 +434,17 @@ router.post('/assurances', authenticate, requirePermission('manage_finance'), as
 });
 
 // ================================================================
-// ========== FACTURES (CRUD enrichi) ============================
+// ========== FACTURES (CRUD enrichi) - CORRIGÉ ==================
 // ================================================================
+
+// ✅ GET /factures – Liste des factures (sans assurances, avec date_facture)
 router.get('/factures', authenticate, requirePermission('view_finance'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT f.*, p.nom AS patient_nom, p.prenom AS patient_prenom, p.ipp, a.nom AS assurance_nom
+      SELECT f.*, p.nom AS patient_nom, p.prenom AS patient_prenom, p.ipp
       FROM factures f
       LEFT JOIN patients p ON f.patient_id = p.id
-      LEFT JOIN assurances a ON f.assurance_id = a.id
-      ORDER BY f.date_emission DESC
+      ORDER BY f.date_facture DESC
     `);
     res.json(rows);
   } catch (err) {
@@ -447,13 +452,13 @@ router.get('/factures', authenticate, requirePermission('view_finance'), async (
   }
 });
 
+// ✅ GET /factures/:id – Détail d'une facture (corrigé)
 router.get('/factures/:id', authenticate, requirePermission('view_finance'), async (req, res) => {
   try {
     const facture = await pool.query(`
-      SELECT f.*, p.nom AS patient_nom, p.prenom AS patient_prenom, a.nom AS assurance_nom
+      SELECT f.*, p.nom AS patient_nom, p.prenom AS patient_prenom
       FROM factures f
       LEFT JOIN patients p ON f.patient_id = p.id
-      LEFT JOIN assurances a ON f.assurance_id = a.id
       WHERE f.id = $1
     `, [req.params.id]);
     if (facture.rows.length === 0) return res.status(404).json({ error: 'Facture non trouvée' });
@@ -491,6 +496,7 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
     consultation_id,
     notes,
     tiers_payant,
+    type_facture, // NOUVEAU : récupération du type
   } = req.body;
 
   if (!patient_id || (!lignes?.length && !examens_ids?.length && !consultations_ids?.length && !medicament_ids?.length)) {
@@ -642,9 +648,10 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
       INSERT INTO factures (
         patient_id, assurance_id, date_emission, date_echeance,
         remise, montant_total, statut, numero_facture,
-        notes, tiers_payant, mode, sejour_id, consultation_id
+        notes, tiers_payant, mode, sejour_id, consultation_id,
+        type_facture
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [
       patient_id,
@@ -660,6 +667,7 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
       mode || 'hospitalisation',
       sejour_id || null,
       consultation_id || null,
+      type_facture || 'mixte',
     ]);
 
     const factureId = rows[0].id;
@@ -674,12 +682,10 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
 
     // ✅ Mettre à jour facture_id dans les deux tables pour éviter la double facturation
     if (medicament_ids && medicament_ids.length > 0) {
-      // Pour prescription_items
       await client.query(
         `UPDATE prescription_items SET facture_id = $1 WHERE id = ANY($2::int[])`,
         [factureId, medicament_ids]
       );
-      // Pour mouvements_stock
       await client.query(
         `UPDATE mouvements_stock SET facture_id = $1 WHERE id = ANY($2::int[])`,
         [factureId, medicament_ids]
@@ -745,6 +751,89 @@ router.get('/relances/facture/:factureId', authenticate, requirePermission('view
     const { rows } = await pool.query('SELECT * FROM relances WHERE facture_id = $1 ORDER BY date_relance DESC', [req.params.factureId]);
     res.json(rows);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ================================================================
+// ========== RÉCAPITULATIF DE FACTURES (GÉNÉRAL) ===============
+// ================================================================
+router.get('/recap', authenticate, requirePermission('view_finance'), async (req, res) => {
+  try {
+    const { facture_ids, patient_id } = req.query;
+    let ids = [];
+    if (facture_ids) {
+      ids = facture_ids.split(',').map(Number);
+    } else if (patient_id) {
+      const result = await pool.query('SELECT id FROM factures WHERE patient_id = $1', [patient_id]);
+      ids = result.rows.map(r => r.id);
+    } else {
+      return res.status(400).json({ error: 'Fournissez facture_ids ou patient_id' });
+    }
+
+    if (ids.length === 0) {
+      return res.status(404).json({ error: 'Aucune facture trouvée' });
+    }
+
+    // Récupération des factures et de leurs lignes
+    const factures = await pool.query(`
+      SELECT f.*, p.nom AS patient_nom, p.prenom AS patient_prenom
+      FROM factures f
+      JOIN patients p ON f.patient_id = p.id
+      WHERE f.id = ANY($1::int[])
+      ORDER BY f.date_facture DESC
+    `, [ids]);
+
+    if (factures.rows.length === 0) {
+      return res.status(404).json({ error: 'Factures non trouvées' });
+    }
+
+    // Récupérer toutes les lignes pour ces factures
+    const lignes = await pool.query(`
+      SELECT fl.*, f.id AS facture_id, f.type_facture
+      FROM facture_lignes fl
+      JOIN factures f ON fl.facture_id = f.id
+      WHERE f.id = ANY($1::int[])
+      ORDER BY f.date_facture DESC, fl.id
+    `, [ids]);
+
+    // Regrouper les lignes par type de facture
+    const grouped = {};
+    for (const ligne of lignes.rows) {
+      const type = ligne.type_facture || 'mixte';
+      if (!grouped[type]) grouped[type] = { total: 0, lignes: [] };
+      grouped[type].total += parseFloat(ligne.total_ligne) || 0;
+      grouped[type].lignes.push(ligne);
+    }
+
+    // Calcul du total général
+    let totalGeneral = 0;
+    for (const key in grouped) {
+      totalGeneral += grouped[key].total;
+    }
+
+    // Structure de la réponse
+    const recap = {
+      patient: {
+        id: factures.rows[0].patient_id,
+        nom: factures.rows[0].patient_nom,
+        prenom: factures.rows[0].patient_prenom,
+      },
+      factures: factures.rows.map(f => ({
+        id: f.id,
+        numero: f.numero_facture,
+        date: f.date_facture || f.date_emission,
+        total: f.montant_total,
+        type_facture: f.type_facture || 'mixte'
+      })),
+      par_type: grouped,
+      total_general: totalGeneral,
+      nombre_factures: factures.rows.length,
+    };
+
+    res.json(recap);
+  } catch (err) {
+    console.error('❌ Erreur GET /billing/recap :', err);
     res.status(500).json({ error: err.message });
   }
 });

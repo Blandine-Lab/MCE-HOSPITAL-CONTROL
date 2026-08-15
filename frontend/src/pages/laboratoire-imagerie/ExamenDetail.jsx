@@ -22,7 +22,8 @@ import {
   FaHospital,
   FaMicroscope,
   FaFileMedical,
-  FaDownload
+  FaDownload,
+  FaUserMd
 } from 'react-icons/fa';
 
 const ExamenDetail = () => {
@@ -37,11 +38,11 @@ const ExamenDetail = () => {
   const [loadingHistorique, setLoadingHistorique] = useState(false);
 
   const permissions = user?.permissions || [];
-  // ? Le laborantin peut grer (saisir, annuler) mme sans permission explicite
   const canManage = permissions.includes('manage_laboratory') || user?.role === 'laborantin';
-  const canValidate = permissions.includes('validate_laboratory') || user?.role === 'biologiste';
+  // ✅ Permettre à l'administrateur de valider également
+  const canValidate = permissions.includes('validate_laboratory') || user?.role === 'biologiste' || user?.role === 'admin';
 
-  // Chargement des donnes
+  // Chargement des données
   useEffect(() => {
     const fetchExamen = async () => {
       setLoading(true);
@@ -50,7 +51,7 @@ const ExamenDetail = () => {
         setExamen(res.data);
         setError('');
       } catch (err) {
-        console.error('Erreur chargement dtail :', err);
+        console.error('Erreur chargement détail :', err);
         setError('Impossible de charger l\'examen');
       } finally {
         setLoading(false);
@@ -59,7 +60,7 @@ const ExamenDetail = () => {
     fetchExamen();
   }, [id]);
 
-  // Chargement de l'historique (optionnel)
+  // Chargement de l'historique
   const handleLoadHistorique = async () => {
     if (showHistorique) {
       setShowHistorique(false);
@@ -77,22 +78,20 @@ const ExamenDetail = () => {
     }
   };
 
-  // ? Impression PDF avec fetch + token dans le header
+  // Impression PDF
   const handleImprimer = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('Vous devez tre connect pour imprimer le PDF.');
+      alert('Vous devez être connecté pour imprimer le PDF.');
       return;
     }
     try {
       const response = await fetch(`/api/examens/${id}/pdf`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!response.ok) {
         const errorData = await response.json();
-        alert('Erreur : ' + (errorData.error || 'Impossible de gnrer le PDF'));
+        alert('Erreur : ' + (errorData.error || 'Impossible de générer le PDF'));
         return;
       }
       const blob = await response.blob();
@@ -123,57 +122,57 @@ const ExamenDetail = () => {
     }
   };
 
-  // Timeline des tapes
+  // Timeline adaptée aux statuts réels
   const getTimeline = useMemo(() => {
     if (!examen) return [];
     const events = [];
     events.push({
       date: examen.date_demande,
       label: 'Demande',
-      description: `Par ${examen.medecin_prescripteur || 'mdecin'}`,
+      description: `Par ${examen.medecin_prescripteur || 'médecin'}`,
       icon: <FaClock />,
       color: '#3b82f6'
     });
     if (examen.date_prelevement) {
       events.push({
         date: examen.date_prelevement,
-        label: 'Prlvement',
-        description: `Type: ${examen.type_prelevement || 'non spcifi'}`,
+        label: 'Prélèvement',
+        description: `Type: ${examen.type_prelevement || 'non spécifié'}`,
         icon: <FaMicroscope />,
         color: '#8b5cf6'
       });
     }
-    if (examen.statut === 'en_cours' || examen.statut === 'termin' || examen.statut === 'valide') {
+    if (examen.statut === 'en_cours') {
       events.push({
         date: examen.date_debut_analyse || examen.date_demande,
         label: 'Analyse en cours',
-        description: 'Technicien affect',
+        description: 'Technicien affecté',
         icon: <FaFlask />,
         color: '#f59e0b'
       });
     }
-    if (examen.statut === 'termin' || examen.statut === 'valide') {
+    if (examen.statut === 'realise' && examen.date_resultats) {
       events.push({
         date: examen.date_resultats,
-        label: 'Rsultats saisis',
-        description: 'En attente de validation',
+        label: 'Résultats saisis',
+        description: 'Examen réalisé',
         icon: <FaFileMedical />,
         color: '#10b981'
       });
     }
-    if (examen.statut === 'valide') {
+    if (examen.statut === 'realise' && examen.date_validation) {
       events.push({
         date: examen.date_validation,
-        label: 'Valid',
+        label: 'Validé',
         description: `Par ${examen.biologiste_nom || 'biologiste'}`,
         icon: <FaCheckCircle />,
         color: '#10b981'
       });
     }
-    if (examen.statut === 'annul') {
+    if (examen.statut === 'annule') {
       events.push({
         date: examen.date_annulation,
-        label: 'Annul',
+        label: 'Annulé',
         description: examen.motif_annulation || '',
         icon: <FaTimesCircle />,
         color: '#ef4444'
@@ -182,16 +181,15 @@ const ExamenDetail = () => {
     return events.sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [examen]);
 
-  // Rendu du statut avec icne
+  // Badge de statut (avec les valeurs réelles)
   const getStatusBadge = (statut) => {
     const configs = {
-      'demand': { bg: '#dbeafe', color: '#1e40af', icon: <FaClock />, label: 'Demand' },
+      'en_attente': { bg: '#dbeafe', color: '#1e40af', icon: <FaClock />, label: 'En attente' },
       'en_cours': { bg: '#fef3c7', color: '#92400e', icon: <FaClock />, label: 'En cours' },
-      'termin': { bg: '#d1fae5', color: '#065f46', icon: <FaCheckCircle />, label: 'Termin' },
-      'valide': { bg: '#ede9fe', color: '#5b21b6', icon: <FaCheckCircle />, label: 'Valid' },
-      'annul': { bg: '#fee2e2', color: '#991b1b', icon: <FaTimesCircle />, label: 'Annul' },
+      'realise': { bg: '#d1fae5', color: '#065f46', icon: <FaCheckCircle />, label: 'Réalisé' },
+      'annule': { bg: '#fee2e2', color: '#991b1b', icon: <FaTimesCircle />, label: 'Annulé' },
     };
-    const config = configs[statut] || configs['demand'];
+    const config = configs[statut] || configs['en_attente'];
     return (
       <span style={{
         padding: '6px 16px',
@@ -209,10 +207,23 @@ const ExamenDetail = () => {
     );
   };
 
+  // Affichage du patient avec fallback
+  const getPatientName = () => {
+    if (examen.patient_prenom && examen.patient_nom) {
+      return `${examen.patient_prenom} ${examen.patient_nom}`;
+    }
+    return 'Patient non renseigné';
+  };
+
+  // Affichage du médecin prescripteur
+  const getPrescripteur = () => {
+    return examen.medecin_prescripteur || 'Non renseigné';
+  };
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>? Chargement...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement...</div>
       </div>
     );
   }
@@ -220,7 +231,7 @@ const ExamenDetail = () => {
   if (error || !examen) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: '#ef4444' }}>
-        <div style={{ fontSize: '20px' }}>{error || 'Examen non trouv'}</div>
+        <div style={{ fontSize: '20px' }}>{error || 'Examen non trouvé'}</div>
       </div>
     );
   }
@@ -237,48 +248,27 @@ const ExamenDetail = () => {
           textDecoration: 'none',
           fontWeight: '500'
         }}>
-          <FaArrowLeft /> Retour  la liste
+          <FaArrowLeft /> Retour à la liste
         </Link>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={handleImprimer}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#3b82f6',
-              fontSize: '18px',
-              cursor: 'pointer',
-              padding: '8px'
-            }}
+            style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '18px', cursor: 'pointer', padding: '8px' }}
             title="Imprimer PDF"
           >
             <FaPrint />
           </button>
           <button
             onClick={handleLoadHistorique}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#8b5cf6',
-              fontSize: '18px',
-              cursor: 'pointer',
-              padding: '8px'
-            }}
+            style={{ background: 'none', border: 'none', color: '#8b5cf6', fontSize: '18px', cursor: 'pointer', padding: '8px' }}
             title="Historique"
           >
             <FaHistory />
           </button>
-          {examen.statut !== 'annul' && canManage && (
+          {examen.statut !== 'annule' && canManage && (
             <button
               onClick={handleAnnuler}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#ef4444',
-                fontSize: '18px',
-                cursor: 'pointer',
-                padding: '8px'
-              }}
+              style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '18px', cursor: 'pointer', padding: '8px' }}
               title="Annuler"
             >
               <FaTrash />
@@ -287,7 +277,7 @@ const ExamenDetail = () => {
         </div>
       </div>
 
-      {/* En-tte */}
+      {/* En-tête */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
@@ -305,11 +295,11 @@ const ExamenDetail = () => {
         }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '28px', color: '#0f172a' }}>
-              {examen.type_examen}
+              {examen.type_examen || 'Examen'}
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
               <span style={{ color: '#64748b' }}>
-                Examen #{examen.id} - {examen.categorie === 'laboratoire' ? '?? Laboratoire' : '?? Imagerie'}
+                Examen #{examen.id} - {examen.categorie === 'laboratoire' ? '🧪 Laboratoire' : '🖥️ Imagerie'}
               </span>
               {examen.priorite === 'urgent' && (
                 <span style={{ color: '#dc2626', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -320,7 +310,7 @@ const ExamenDetail = () => {
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             {getStatusBadge(examen.statut)}
-            {(examen.statut === 'demand' || examen.statut === 'en_cours') && canManage && (
+            {(examen.statut === 'en_attente' || examen.statut === 'en_cours') && canManage && (
               <Link
                 to={`/laboratoire/resultats/${examen.id}`}
                 style={{
@@ -335,10 +325,10 @@ const ExamenDetail = () => {
                   fontWeight: '500'
                 }}
               >
-                <FaEdit /> Saisir rsultats
+                <FaEdit /> Saisir résultats
               </Link>
             )}
-            {examen.statut === 'termin' && canValidate && (
+            {examen.statut === 'realise' && canValidate && !examen.date_validation && (
               <Link
                 to={`/laboratoire/validation/${examen.id}`}
                 style={{
@@ -361,19 +351,32 @@ const ExamenDetail = () => {
 
         {/* Informations principales */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
-          <InfoBlock icon={<FaUser />} label="Patient" value={`${examen.patient_prenom} ${examen.patient_nom}`} />
-          <InfoBlock icon={<FaStethoscope />} label="Mdecin" value={examen.medecin_prescripteur || 'Non renseign'} />
-          <InfoBlock icon={<FaHospital />} label="Service" value={examen.service_nom || 'Non spcifi'} />
+          <InfoBlock icon={<FaUser />} label="Patient" value={getPatientName()} />
+          <InfoBlock icon={<FaStethoscope />} label="Médecin prescripteur" value={getPrescripteur()} />
+          <InfoBlock icon={<FaHospital />} label="Service" value={examen.service_nom || 'Non spécifié'} />
           <InfoBlock icon={<FaCalendar />} label="Date demande" value={new Date(examen.date_demande).toLocaleDateString('fr-FR')} />
-          <InfoBlock icon={<FaCalendar />} label="Date prvue" value={examen.date_prevue ? new Date(examen.date_prevue).toLocaleDateString('fr-FR') : 'Non spcifie'} />
+          <InfoBlock icon={<FaCalendar />} label="Date prévue" value={examen.date_prevue ? new Date(examen.date_prevue).toLocaleDateString('fr-FR') : 'Non spécifiée'} />
           {examen.type_prelevement && (
-            <InfoBlock icon={<FaMicroscope />} label="Type prlvement" value={examen.type_prelevement} />
+            <InfoBlock icon={<FaMicroscope />} label="Type prélèvement" value={examen.type_prelevement} />
           )}
           {examen.date_prelevement && (
-            <InfoBlock icon={<FaCalendar />} label="Date prlvement" value={new Date(examen.date_prelevement).toLocaleDateString('fr-FR')} />
+            <InfoBlock icon={<FaCalendar />} label="Date prélèvement" value={new Date(examen.date_prelevement).toLocaleDateString('fr-FR')} />
           )}
           {examen.instructions_preparation && (
             <InfoBlock icon={<FaFileMedical />} label="Instructions" value={examen.instructions_preparation} />
+          )}
+          {/* Affichage du technicien et de la date de saisie */}
+          {examen.technicien_nom && (
+            <InfoBlock icon={<FaUserMd />} label="Saisi par" value={`${examen.technicien_prenom || ''} ${examen.technicien_nom}`} />
+          )}
+          {examen.date_saisie && (
+            <InfoBlock icon={<FaCalendar />} label="Date saisie" value={new Date(examen.date_saisie).toLocaleString('fr-FR')} />
+          )}
+          {examen.date_resultats && (
+            <InfoBlock icon={<FaCalendar />} label="Date résultat" value={new Date(examen.date_resultats).toLocaleDateString('fr-FR')} />
+          )}
+          {examen.date_validation && (
+            <InfoBlock icon={<FaCalendar />} label="Date validation" value={new Date(examen.date_validation).toLocaleDateString('fr-FR')} />
           )}
         </div>
 
@@ -385,8 +388,8 @@ const ExamenDetail = () => {
         )}
       </div>
 
-      {/* Rsultats (s'il y en a) */}
-      {examen.resultats && (
+      {/* Résultats (s'il y en a) */}
+      {examen.parametres && examen.parametres.length > 0 && (
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
@@ -395,51 +398,47 @@ const ExamenDetail = () => {
           marginBottom: '24px'
         }}>
           <h3 style={{ marginTop: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FaClipboardCheck style={{ color: '#10b981' }} /> Rsultats
+            <FaClipboardCheck style={{ color: '#10b981' }} /> Résultats
           </h3>
-          {examen.parametres && examen.parametres.length > 0 ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ backgroundColor: '#f1f5f9' }}>
-                <tr>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Paramtre</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Valeur</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Unit</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Rfrence</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Interprtation</th>
-                </tr>
-              </thead>
-              <tbody>
-                {examen.parametres.map((p, idx) => {
-                  const isNormal = p.interpretation === 'normal';
-                  const isAbnormal = p.interpretation === 'haut' || p.interpretation === 'bas';
-                  return (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '8px', fontWeight: '500' }}>{p.nom}</td>
-                      <td style={{ padding: '8px' }}>{p.valeur}</td>
-                      <td style={{ padding: '8px' }}>{p.unite}</td>
-                      <td style={{ padding: '8px' }}>{p.ref_min} - {p.ref_max}</td>
-                      <td style={{ padding: '8px' }}>
-                        {p.interpretation && (
-                          <span style={{
-                            color: isNormal ? '#10b981' : isAbnormal ? '#ef4444' : '#f59e0b',
-                            fontWeight: 'bold'
-                          }}>
-                            {isNormal ? '? Normal' : isAbnormal ? (p.interpretation === 'haut' ? '? Haut' : '? Bas') : ''}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <p style={{ color: '#64748b' }}>{examen.resultats}</p>
-          )}
-          {examen.compte_rendu && (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead style={{ backgroundColor: '#f1f5f9' }}>
+              <tr>
+                <th style={{ padding: '10px', textAlign: 'left' }}>Paramètre</th>
+                <th style={{ padding: '10px', textAlign: 'left' }}>Valeur</th>
+                <th style={{ padding: '10px', textAlign: 'left' }}>Unité</th>
+                <th style={{ padding: '10px', textAlign: 'left' }}>Référence</th>
+                <th style={{ padding: '10px', textAlign: 'left' }}>Interprétation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {examen.parametres.map((p, idx) => {
+                const isNormal = p.interpretation === 'normal';
+                const isAbnormal = p.interpretation === 'haut' || p.interpretation === 'bas';
+                return (
+                  <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px', fontWeight: '500' }}>{p.parametre_nom || p.nom}</td>
+                    <td style={{ padding: '8px' }}>{p.valeur}</td>
+                    <td style={{ padding: '8px' }}>{p.unite}</td>
+                    <td style={{ padding: '8px' }}>{p.ref_min} - {p.ref_max}</td>
+                    <td style={{ padding: '8px' }}>
+                      {p.interpretation && (
+                        <span style={{
+                          color: isNormal ? '#10b981' : isAbnormal ? '#ef4444' : '#f59e0b',
+                          fontWeight: 'bold'
+                        }}>
+                          {isNormal ? '✅ Normal' : isAbnormal ? (p.interpretation === 'haut' ? '⬆ Haut' : '⬇ Bas') : ''}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {examen.commentaire_global && (
             <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#ede9fe', borderRadius: '8px', border: '1px solid #8b5cf6' }}>
-              <p style={{ color: '#5b21b6', margin: 0, fontSize: '14px', fontWeight: 'bold' }}>? Compte-rendu mdical</p>
-              <p style={{ margin: '8px 0 0 0', color: '#0f172a' }}>{examen.compte_rendu}</p>
+              <p style={{ color: '#5b21b6', margin: 0, fontSize: '14px', fontWeight: 'bold' }}>📋 Commentaire</p>
+              <p style={{ margin: '8px 0 0 0', color: '#0f172a' }}>{examen.commentaire_global}</p>
             </div>
           )}
           {examen.notes && (
@@ -506,7 +505,7 @@ const ExamenDetail = () => {
           {loadingHistorique ? (
             <p>Chargement...</p>
           ) : historique.length === 0 ? (
-            <p style={{ color: '#64748b' }}>Aucune modification enregistre</p>
+            <p style={{ color: '#64748b' }}>Aucune modification enregistrée</p>
           ) : (
             <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
               {historique.map((h, idx) => (
@@ -516,7 +515,7 @@ const ExamenDetail = () => {
                   padding: '8px 0',
                   borderBottom: '1px solid #f1f5f9'
                 }}>
-                  <span>{h.champ} : {h.ancienne_valeur} ? {h.nouvelle_valeur}</span>
+                  <span>{h.champ} : {h.ancienne_valeur} → {h.nouvelle_valeur}</span>
                   <span style={{ color: '#94a3b8', fontSize: '14px' }}>
                     {new Date(h.date_modification).toLocaleString()} par {h.utilisateur}
                   </span>
@@ -530,7 +529,7 @@ const ExamenDetail = () => {
   );
 };
 
-// Composant InfoBlock rutilisable
+// Composant InfoBlock réutilisable
 const InfoBlock = ({ icon, label, value }) => (
   <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
     <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>

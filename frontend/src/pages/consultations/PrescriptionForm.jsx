@@ -1,209 +1,289 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../axios'; // ? Utilisation de l'instance partage
+import api from '../../axios';
 
 const PrescriptionForm = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState([
-    { medicament: '', posologie: '', duree: '', quantite: 1 }
+  const [medicaments, setMedicaments] = useState([]);
+  const [lignes, setLignes] = useState([
+    { medicament_id: '', quantite_prescrit: 1, posologie: '' }
   ]);
-  const [notes, setNotes] = useState('');
-  const [medecins, setMedecins] = useState([]);
-  const [selectedMedecinId, setSelectedMedecinId] = useState('');
+  const [observations, setObservations] = useState('');
+  const [toast, setToast] = useState(null);
+  const [toastType, setToastType] = useState('success');
+
+  const showToast = (msg, type = 'success') => {
+    setToast(msg);
+    setToastType(type);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
-    // Charger le patient
-    if (patientId) {
-      api.get(`/patients/${patientId}`)
-        .then(res => {
-          setPatient(res.data);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error('Erreur patient:', err);
-          setLoading(false);
-        });
-    } else {
-      setLoading(false);
-    }
+    const fetchData = async () => {
+      try {
+        // Charger le patient
+        let patientData = null;
+        if (patientId) {
+          const patientRes = await api.get(`/patients/${patientId}`);
+          patientData = patientRes.data;
+        }
 
-    // Charger la liste des mdecins
-    api.get('/consultations/medecins/all')
-      .then(res => {
-        console.log('? Mdecins reus :', res.data);
-        setMedecins(res.data);
-      })
-      .catch(err => {
-        console.error('? Erreur chargement mdecins :', err);
-        alert('Erreur chargement des mdecins : ' + (err.response?.data?.error || err.message));
-      });
+        // Charger les médicaments (depuis la pharmacie)
+        const medsRes = await api.get('/pharmacy/medicaments');
+        setMedicaments(medsRes.data || []);
+
+        setPatient(patientData);
+        setLoading(false);
+      } catch (err) {
+        console.error('Erreur chargement :', err);
+        showToast('Erreur de chargement des données', 'error');
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, [patientId]);
 
-  // Fonctions addItem, removeItem, handleItemChange, handleSubmit
-  const addItem = () => {
-    setItems([...items, { medicament: '', posologie: '', duree: '', quantite: 1 }]);
+  const addLigne = () => {
+    setLignes([...lignes, { medicament_id: '', quantite_prescrit: 1, posologie: '' }]);
   };
 
-  const removeItem = (index) => {
-    if (items.length === 1) return;
-    const newItems = items.filter((_, i) => i !== index);
-    setItems(newItems);
+  const removeLigne = (index) => {
+    if (lignes.length === 1) return;
+    setLignes(lignes.filter((_, i) => i !== index));
   };
 
-  const handleItemChange = (index, field, value) => {
-    const newItems = [...items];
-    newItems[index][field] = value;
-    setItems(newItems);
+  const handleLigneChange = (index, field, value) => {
+    const newLignes = [...lignes];
+    newLignes[index][field] = value;
+    setLignes(newLignes);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedMedecinId) {
-      alert('Veuillez slectionner un mdecin prescripteur.');
+
+    // Vérifier qu'au moins une ligne a un médicament sélectionné
+    const validLignes = lignes.filter(l => l.medicament_id && parseInt(l.quantite_prescrit) > 0);
+    if (validLignes.length === 0) {
+      showToast('Ajoutez au moins un médicament valide.', 'error');
       return;
     }
-    const hasValid = items.some(item => item.medicament.trim() !== '');
-    if (!hasValid) {
-      alert('Veuillez saisir au moins un mdicament.');
-      return;
-    }
+
     try {
-      await api.post('/prescriptions', {
-        patient_id: patientId,
-        medecin_id: selectedMedecinId,
-        items: items,
-        notes
-      });
-      alert('? Prescription cre avec succs !');
-      navigate('/doctor/prescriptions');
+      const payload = {
+        patient_id: parseInt(patientId, 10),
+        lignes: validLignes.map(l => ({
+          medicament_id: parseInt(l.medicament_id, 10),
+          quantite_prescrit: parseInt(l.quantite_prescrit, 10),
+          posologie: l.posologie || null
+        })),
+        observations: observations || null
+      };
+
+      await api.post('/consultations/ordonnances', payload);
+      showToast('✅ Prescription créée avec succès !', 'success');
+      setTimeout(() => navigate('/doctor/prescriptions'), 1500);
     } catch (err) {
-      alert('? Erreur : ' + (err.response?.data?.error || err.message));
+      console.error('Erreur création prescription:', err);
+      const msg = err.response?.data?.error || 'Erreur lors de la création.';
+      showToast('❌ ' + msg, 'error');
     }
   };
 
-  // RENDU
-  if (loading) return <div>Chargement du patient...</div>;
-  if (!patient && patientId) return <div>Patient non trouv</div>;
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+        ⏳ Chargement des données...
+      </div>
+    );
+  }
+
+  if (!patient && patientId) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '50px', color: '#dc2626' }}>
+        ❌ Patient non trouvé.
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
-      <h1>?? Nouvelle prescription</h1>
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: toastType === 'success' ? '#10b981' : '#ef4444',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          zIndex: 1000,
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          {toast}
+        </div>
+      )}
+
+      <h1 style={{ fontSize: '28px', marginBottom: '16px' }}>📝 Nouvelle prescription</h1>
       {patient && (
-        <div style={{ background: '#f0f4ff', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
+        <div style={{
+          background: '#f0f4ff',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          borderLeft: '4px solid #2563eb'
+        }}>
           <strong>Patient :</strong> {patient.prenom} {patient.nom} (IPP: {patient.ipp || 'N/A'})
         </div>
       )}
-      <form onSubmit={handleSubmit}>
-        {/* Mdecin prescripteur */}
-        <div style={{ marginBottom: '16px' }}>
-          <label>Mdecin prescripteur *</label>
-          <select
-            value={selectedMedecinId}
-            onChange={(e) => setSelectedMedecinId(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
-          >
-            <option value="">-- Choisir un mdecin --</option>
-            {medecins.length === 0 ? (
-              <option value="" disabled>Aucun mdecin disponible</option>
-            ) : (
-              medecins.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.prenom} {m.nom} ({m.specialite || 'Gnraliste'})
-                </option>
-              ))
-            )}
-          </select>
-          {medecins.length === 0 && (
-            <p style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
-              ?? Aucun mdecin trouv. Vrifiez que la table `medecins` contient des donnes.
-            </p>
-          )}
-        </div>
 
-        {/* Liste des mdicaments */}
-        {items.map((item, index) => (
-          <div key={index} style={{ border: '1px solid #ccc', padding: '16px', marginBottom: '16px', borderRadius: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h4>Mdicament #{index + 1}</h4>
-              {items.length > 1 && (
-                <button type="button" onClick={() => removeItem(index)} style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}>
-                  ?
+      <form onSubmit={handleSubmit}>
+        {/* Les médicaments */}
+        {lignes.map((ligne, index) => (
+          <div
+            key={index}
+            style={{
+              border: '1px solid #e2e8f0',
+              padding: '16px',
+              marginBottom: '16px',
+              borderRadius: '8px',
+              backgroundColor: '#f8fafc'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h4 style={{ margin: 0 }}>💊 Médicament #{index + 1}</h4>
+              {lignes.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeLigne(index)}
+                  style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
+                >
+                  ✕
                 </button>
               )}
             </div>
-            <div style={{ marginBottom: '8px' }}>
-              <label>Mdicament *</label>
-              <input
-                type="text"
-                value={item.medicament}
-                onChange={(e) => handleItemChange(index, 'medicament', e.target.value)}
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>
+                Médicament *
+              </label>
+              <select
+                value={ligne.medicament_id}
+                onChange={(e) => handleLigneChange(index, 'medicament_id', e.target.value)}
                 required
-                style={{ width: '100%', padding: '6px', border: '1px solid #ccc', borderRadius: '4px' }}
-              />
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+              >
+                <option value="">Sélectionner un médicament</option>
+                {medicaments.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.nom} (stock: {m.stock})
+                  </option>
+                ))}
+              </select>
             </div>
-            <div style={{ marginBottom: '8px' }}>
-              <label>Posologie / Instructions</label>
-              <textarea
-                value={item.posologie}
-                onChange={(e) => handleItemChange(index, 'posologie', e.target.value)}
-                rows="2"
-                style={{ width: '100%', padding: '6px', border: '1px solid #ccc', borderRadius: '4px' }}
-              />
-            </div>
+
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1 }}>
-                <label>Dure</label>
-                <input
-                  type="text"
-                  value={item.duree}
-                  onChange={(e) => handleItemChange(index, 'duree', e.target.value)}
-                  placeholder="ex: 7 jours"
-                  style={{ width: '100%', padding: '6px', border: '1px solid #ccc', borderRadius: '4px' }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label>Quantit</label>
+                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>
+                  Quantité *
+                </label>
                 <input
                   type="number"
-                  value={item.quantite}
-                  onChange={(e) => handleItemChange(index, 'quantite', parseInt(e.target.value) || 1)}
+                  value={ligne.quantite_prescrit}
+                  onChange={(e) => handleLigneChange(index, 'quantite_prescrit', parseInt(e.target.value) || 1)}
                   min="1"
-                  style={{ width: '100%', padding: '6px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  required
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>
+                  Posologie (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={ligne.posologie}
+                  onChange={(e) => handleLigneChange(index, 'posologie', e.target.value)}
+                  placeholder="ex: 1 comprimé 2x/jour"
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
                 />
               </div>
             </div>
           </div>
         ))}
+
         <button
           type="button"
-          onClick={addItem}
-          style={{ background: '#2563eb', color: 'white', padding: '6px 16px', border: 'none', borderRadius: '4px', marginBottom: '16px', cursor: 'pointer' }}
+          onClick={addLigne}
+          style={{
+            background: '#3b82f6',
+            color: 'white',
+            padding: '8px 16px',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            marginBottom: '16px'
+          }}
         >
-          + Ajouter un mdicament
+          + Ajouter un médicament
         </button>
 
-        <div style={{ marginBottom: '16px' }}>
-          <label>Notes (optionnelles)</label>
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>
+            Observations (optionnel)
+          </label>
           <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows="2"
-            style={{ width: '100%', padding: '6px', border: '1px solid #ccc', borderRadius: '4px' }}
-            placeholder="Observations particulires..."
+            value={observations}
+            onChange={(e) => setObservations(e.target.value)}
+            rows="3"
+            style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+            placeholder="Notes particulières..."
           />
         </div>
 
-        <button
-          type="submit"
-          style={{ background: '#16a34a', color: 'white', padding: '10px 24px', border: 'none', borderRadius: '6px', fontSize: '16px', cursor: 'pointer' }}
-        >
-          ?? Enregistrer la prescription
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            type="submit"
+            style={{
+              backgroundColor: '#16a34a',
+              color: 'white',
+              padding: '10px 28px',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}
+          >
+            💾 Créer la prescription
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/doctor/prescriptions')}
+            style={{
+              backgroundColor: '#e5e7eb',
+              color: '#1e293b',
+              padding: '10px 28px',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}
+          >
+            Annuler
+          </button>
+        </div>
       </form>
+
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };

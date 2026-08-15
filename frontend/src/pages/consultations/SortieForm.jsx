@@ -1,32 +1,44 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaSignOutAlt, FaUser, FaCalendar, FaComment } from 'react-icons/fa';
-import api from '../../axios'; // ? Utilisation de l'instance partage
+import api from '../../axios';
 
 const SortieForm = () => {
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [admissions, setAdmissions] = useState([]);
-  const [form, setForm] = useState({ patient_id: '', admission_id: '', mode_sortie: '', remarques: '' });
+  const [form, setForm] = useState({
+    patient_id: '',
+    admission_id: '',
+    mode_sortie: '',
+    remarques: ''
+  });
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
+  const [toastType, setToastType] = useState('success');
+
+  const showToast = (msg, type = 'success') => {
+    setToast(msg);
+    setToastType(type);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     Promise.all([
-      api.get('/consultations/patients/hospitalises'), // ? Suppression de l'URL absolue
+      api.get('/consultations/patients/hospitalises'),
       api.get('/consultations/admissions/en_cours')
-    ]).then(([patRes, admRes]) => {
-      setPatients(patRes.data);
-      setAdmissions(admRes.data);
-      setLoading(false);
-      setLoaded(true);
-    }).catch(err => {
-      console.error(err);
-      setLoading(false);
-      setToast('Erreur chargement des donnes');
-      setTimeout(() => setToast(null), 3000);
-    });
+    ])
+      .then(([patRes, admRes]) => {
+        setPatients(patRes.data);
+        setAdmissions(admRes.data);
+        setLoading(false);
+        setLoaded(true);
+      })
+      .catch(err => {
+        console.error('Erreur chargement :', err);
+        setLoading(false);
+        showToast('Erreur de chargement des données', 'error');
+      });
   }, []);
 
   const handlePatientChange = async (patientId) => {
@@ -34,6 +46,16 @@ const SortieForm = () => {
     if (patientId) {
       try {
         const res = await api.get(`/consultations/admissions/patient/${patientId}`);
+        setAdmissions(res.data);
+      } catch (err) {
+        console.error('Erreur chargement admissions du patient :', err);
+        setAdmissions([]);
+        showToast('Erreur chargement des admissions', 'error');
+      }
+    } else {
+      // Si aucun patient sélectionné, on recharge la liste complète des admissions en cours
+      try {
+        const res = await api.get('/consultations/admissions/en_cours');
         setAdmissions(res.data);
       } catch (err) {
         console.error(err);
@@ -45,16 +67,16 @@ const SortieForm = () => {
     e.preventDefault();
     try {
       await api.post('/consultations/sorties', form);
-      setToast('Sortie enregistre avec succs');
-      setTimeout(() => setToast(null), 3000);
+      showToast('✅ Sortie enregistrée avec succès', 'success');
       setTimeout(() => navigate('/patients'), 1500);
     } catch (err) {
-      setToast('Erreur lors de l?FC?enregistrement');
-      setTimeout(() => setToast(null), 3000);
+      console.error('Erreur sortie :', err);
+      const msg = err.response?.data?.error || 'Erreur lors de l\'enregistrement';
+      showToast('❌ ' + msg, 'error');
     }
   };
 
-  // Styles (inchangs)
+  // Styles
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#fef2f2',
@@ -123,57 +145,111 @@ const SortieForm = () => {
     transition: 'background-color 0.2s',
   };
 
-  if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #dc2626', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }}></div>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #dc2626', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }}></div>
+      </div>
+    );
+  }
 
   return (
     <div style={containerStyle}>
       {toast && (
         <div style={{
-          position: 'fixed', top: '20px', right: '20px', backgroundColor: toast.includes('succs') ? '#10b981' : '#ef4444', color: 'white',
-          padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 1000, animation: 'slideIn 0.3s ease-out'
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: toastType === 'success' ? '#10b981' : '#ef4444',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          zIndex: 1000,
+          animation: 'slideIn 0.3s ease-out'
         }}>
           {toast}
         </div>
       )}
       <div style={innerStyle}>
-        <h1 style={titleStyle}>?? Sortie de patient</h1>
+        <h1 style={titleStyle}>🚪 Sortie de patient</h1>
         <div style={cardStyle}>
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Patient hospitalis *</label>
-              <select value={form.patient_id} onChange={e => handlePatientChange(e.target.value)} style={selectStyle} required>
-                <option value="">-- Slectionner --</option>
-                {patients.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom} (Lit {p.lit_numero})</option>)}
+              <label style={labelStyle}>Patient hospitalisé *</label>
+              <select
+                value={form.patient_id}
+                onChange={e => handlePatientChange(e.target.value)}
+                style={selectStyle}
+                required
+              >
+                <option value="">-- Sélectionner --</option>
+                {patients.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.nom} {p.prenom} (Lit {p.lit_numero || p.lit_id || 'N/A'})
+                  </option>
+                ))}
               </select>
             </div>
             <div style={{ marginBottom: '20px' }}>
               <label style={labelStyle}>Admission *</label>
-              <select value={form.admission_id} onChange={e => setForm({...form, admission_id: e.target.value})} style={selectStyle} required>
+              <select
+                value={form.admission_id}
+                onChange={e => setForm({ ...form, admission_id: e.target.value })}
+                style={selectStyle}
+                required
+              >
                 <option value="">-- Choisir l'admission --</option>
-                {admissions.map(a => <option key={a.id} value={a.id}>Admission du {new Date(a.date_admission).toLocaleDateString()} ({a.service_nom})</option>)}
+                {admissions.map(a => (
+                  <option key={a.id} value={a.id}>
+                    Admission du {new Date(a.date_admission).toLocaleDateString()} ({a.service_nom || 'Service non spécifié'})
+                  </option>
+                ))}
               </select>
             </div>
             <div style={{ marginBottom: '20px' }}>
               <label style={labelStyle}>Mode de sortie *</label>
-              <select value={form.mode_sortie} onChange={e => setForm({...form, mode_sortie: e.target.value})} style={selectStyle} required>
+              <select
+                value={form.mode_sortie}
+                onChange={e => setForm({ ...form, mode_sortie: e.target.value })}
+                style={selectStyle}
+                required
+              >
                 <option value="">-- Choisir --</option>
-                <option value="gueri">Guri</option>
-                <option value="transfert">Transfr</option>
-                <option value="deces">Dcs</option>
+                <option value="gueri">Guéri</option>
+                <option value="transfert">Transfert</option>
+                <option value="deces">Décès</option>
                 <option value="autre">Autre</option>
               </select>
             </div>
             <div style={{ marginBottom: '24px' }}>
               <label style={labelStyle}>Remarques</label>
-              <textarea value={form.remarques} onChange={e => setForm({...form, remarques: e.target.value})} rows="3" style={textareaStyle} placeholder="Informations complmentaires..."></textarea>
+              <textarea
+                value={form.remarques}
+                onChange={e => setForm({ ...form, remarques: e.target.value })}
+                rows="3"
+                style={textareaStyle}
+                placeholder="Informations complémentaires..."
+              />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" style={cancelButtonStyle} onClick={() => navigate('/consultations')} onMouseEnter={e => e.target.style.backgroundColor = '#d1d5db'} onMouseLeave={e => e.target.style.backgroundColor = '#e5e7eb'}>Annuler</button>
-              <button type="submit" style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = '#b91c1c'} onMouseLeave={e => e.target.style.backgroundColor = '#dc2626'}>Enregistrer la sortie</button>
+              <button
+                type="button"
+                style={cancelButtonStyle}
+                onClick={() => navigate('/consultations')}
+                onMouseEnter={e => e.target.style.backgroundColor = '#d1d5db'}
+                onMouseLeave={e => e.target.style.backgroundColor = '#e5e7eb'}
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                style={buttonStyle}
+                onMouseEnter={e => e.target.style.backgroundColor = '#b91c1c'}
+                onMouseLeave={e => e.target.style.backgroundColor = '#dc2626'}
+              >
+                Enregistrer la sortie
+              </button>
             </div>
           </form>
         </div>

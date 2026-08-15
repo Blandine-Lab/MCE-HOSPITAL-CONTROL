@@ -34,7 +34,7 @@ const RapportsFinanciers = () => {
   };
 
   const loadGrandLivre = () => {
-    if (!compteId) { alert('Veuillez slectionner un compte'); return; }
+    if (!compteId) { alert('Veuillez sélectionner un compte'); return; }
     setLoading(true);
     api.get(`/rapports-financiers/grand-livre?compte_id=${compteId}&date_debut=${dateDebut}&date_fin=${dateFin}`)
       .then(res => { setGrandLivre(res.data); setLoading(false); })
@@ -68,15 +68,15 @@ const RapportsFinanciers = () => {
               color: activeTab === tab ? '#0f172a' : '#64748b'
             }}
           >
-            {tab === 'bilan' && '?? Bilan'}
-            {tab === 'resultat' && '?? Compte de rsultat'}
-            {tab === 'grand-livre' && '?? Grand livre'}
+            {tab === 'bilan' && '📊 Bilan'}
+            {tab === 'resultat' && '📈 Compte de résultat'}
+            {tab === 'grand-livre' && '📖 Grand livre'}
           </button>
         ))}
       </div>
 
       {/* Contenu */}
-      {loading && <div style={{ textAlign: 'center', padding: '40px' }}>? Chargement...</div>}
+      {loading && <div style={{ textAlign: 'center', padding: '40px' }}>⏳ Chargement...</div>}
 
       {activeTab === 'bilan' && !loading && (
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
@@ -89,7 +89,7 @@ const RapportsFinanciers = () => {
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ backgroundColor: '#f1f5f9' }}>
-              <tr><th style={{ padding: '10px', textAlign: 'left' }}>Type</th><th style={{ padding: '10px', textAlign: 'right' }}>Total Dbit</th><th style={{ padding: '10px', textAlign: 'right' }}>Total Crdit</th><th style={{ padding: '10px', textAlign: 'right' }}>Solde</th></tr>
+              <tr><th style={{ padding: '10px', textAlign: 'left' }}>Type</th><th style={{ padding: '10px', textAlign: 'right' }}>Total Débit</th><th style={{ padding: '10px', textAlign: 'right' }}>Total Crédit</th><th style={{ padding: '10px', textAlign: 'right' }}>Solde</th></tr>
             </thead>
             <tbody>
               {bilan.map((b, i) => (
@@ -108,7 +108,7 @@ const RapportsFinanciers = () => {
       {activeTab === 'resultat' && !loading && (
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ margin: 0 }}>Compte de rsultat</h2>
+            <h2 style={{ margin: 0 }}>Compte de résultat</h2>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <label>Du : <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></label>
               <label>Au : <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></label>
@@ -126,12 +126,12 @@ const RapportsFinanciers = () => {
                 <h2>{Number(resultat.total_charges).toLocaleString('fr-FR')} FCFA</h2>
               </div>
               <div style={{ padding: '20px', borderRadius: '8px', textAlign: 'center', backgroundColor: resultat.resultat >= 0 ? '#dbeafe' : '#fef3c7' }}>
-                <p style={{ margin: 0, color: resultat.resultat >= 0 ? '#1e40af' : '#92400e' }}>Rsultat</p>
+                <p style={{ margin: 0, color: resultat.resultat >= 0 ? '#1e40af' : '#92400e' }}>Résultat</p>
                 <h2 style={{ color: resultat.resultat >= 0 ? '#1e40af' : '#991b1b' }}>{Number(resultat.resultat).toLocaleString('fr-FR')} FCFA</h2>
               </div>
             </div>
           ) : (
-            <p>Aucune donne</p>
+            <p>Aucune donnée</p>
           )}
         </div>
       )}
@@ -142,7 +142,7 @@ const RapportsFinanciers = () => {
             <h2 style={{ margin: 0 }}>Grand livre</h2>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <select value={compteId} onChange={e => setCompteId(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', minWidth: '150px' }}>
-                <option value="">Slectionner un compte</option>
+                <option value="">Sélectionner un compte</option>
                 {comptes.map(c => <option key={c.id} value={c.id}>{c.code} - {c.nom}</option>)}
               </select>
               <label>Du : <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></label>
@@ -151,11 +151,11 @@ const RapportsFinanciers = () => {
             </div>
           </div>
           {grandLivre.length === 0 ? (
-            <p style={{ color: '#94a3b8' }}>Aucune criture trouve pour ce compte.</p>
+            <p style={{ color: '#94a3b8' }}>Aucune écriture trouvée pour ce compte.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ backgroundColor: '#f1f5f9' }}>
-                <tr><th>Date</th><th>N Pice</th><th>Libell</th><th style={{ textAlign: 'right' }}>Montant</th><th>Sens</th></tr>
+                <tr><th>Date</th><th>N° Pièce</th><th>Libellé</th><th style={{ textAlign: 'right' }}>Montant</th><th>Sens</th></tr>
               </thead>
               <tbody>
                 {grandLivre.map((l, i) => (
@@ -164,7 +164,7 @@ const RapportsFinanciers = () => {
                     <td style={{ padding: '10px', fontWeight: '500' }}>{l.numero_piece}</td>
                     <td style={{ padding: '10px' }}>{l.libelle}</td>
                     <td style={{ padding: '10px', textAlign: 'right' }}>{Number(l.montant).toLocaleString('fr-FR')} FCFA</td>
-                    <td style={{ padding: '10px' }}>{l.sens === 'debit' ? 'Dbit' : 'Crdit'}</td>
+                    <td style={{ padding: '10px' }}>{l.sens === 'debit' ? 'Débit' : 'Crédit'}</td>
                   </tr>
                 ))}
               </tbody>

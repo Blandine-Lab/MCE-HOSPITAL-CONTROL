@@ -1,28 +1,19 @@
 import { useEffect, useState } from 'react';
-import api from '../../axios'; // ? Instance avec intercepteur
+import api from '../../axios';
 
 const UrgencesList = () => {
   const [urgences, setUrgences] = useState([]);
   const [patients, setPatients] = useState([]);
-  const [newUrgence, setNewUrgence] = useState({ patient_id: '', niveau: 'Jaune', priorite: 3, motif: '' });
+  const [newUrgence, setNewUrgence] = useState({
+    patient_id: '',
+    niveau: 'Jaune',
+    priorite: 3,
+    motif: ''
+  });
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
-  const [userRole, setUserRole] = useState(null); // ? Rle (prt pour l'avenir)
-
-  // ? Rcuprer le rle depuis le token JWT
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUserRole(payload.role);
-      } catch (e) {
-        console.error('Erreur dcodage token', e);
-      }
-    }
-  }, []);
 
   const showToast = (msg, type = 'success') => {
     setToast(msg);
@@ -33,50 +24,72 @@ const UrgencesList = () => {
   const fetchUrgences = async () => {
     try {
       const res = await api.get('/consultations/urgences');
+      console.log('🔍 [fetchUrgences] Données reçues :', res.data);
       setUrgences(res.data);
     } catch (err) {
       console.error('Erreur fetch urgences:', err);
-      showToast('Erreur chargement urgences', 'error');
+      showToast('Erreur chargement des urgences', 'error');
     }
   };
 
   useEffect(() => {
-    Promise.all([
-      api.get('/consultations/urgences'),
-      api.get('/patients')
-    ]).then(([urgRes, patRes]) => {
-      setUrgences(urgRes.data);
-      setPatients(patRes.data);
-      setLoading(false);
-      setLoaded(true);
-    }).catch(err => {
-      console.error(err);
-      showToast('Erreur chargement donnes', 'error');
-      setLoading(false);
-    });
+    const fetchData = async () => {
+      try {
+        const [urgRes, patRes] = await Promise.all([
+          api.get('/consultations/urgences'),
+          api.get('/patients')
+        ]);
+        console.log('🔍 [useEffect] Urgences reçues :', urgRes.data);
+        console.log('🔍 [useEffect] Patients reçus :', patRes.data);
+        setUrgences(urgRes.data);
+        setPatients(patRes.data);
+        setLoading(false);
+        setLoaded(true);
+      } catch (err) {
+        console.error('Erreur chargement données:', err);
+        showToast('Erreur de chargement des données', 'error');
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   const handleAdd = async (e) => {
     e.preventDefault();
+
+    // Vérification côté frontend avant envoi
+    const patientIdNum = Number(newUrgence.patient_id);
+    if (!newUrgence.patient_id || isNaN(patientIdNum) || patientIdNum <= 0) {
+      showToast('Veuillez sélectionner un patient valide.', 'error');
+      return;
+    }
+
+    console.log('📤 Données envoyées :', newUrgence);
+
     try {
-      await api.post('/consultations/urgences', newUrgence);
+      await api.post('/consultations/urgences', {
+        ...newUrgence,
+        patient_id: patientIdNum // on envoie un nombre
+      });
       setNewUrgence({ patient_id: '', niveau: 'Jaune', priorite: 3, motif: '' });
-      fetchUrgences();
-      showToast('Urgence ajoute');
+      await fetchUrgences();
+      showToast('Urgence ajoutée avec succès');
     } catch (err) {
-      console.error(err);
-      showToast('Erreur lors de l\'ajout', 'error');
+      console.error('Erreur ajout urgence:', err);
+      const msg = err.response?.data?.error || 'Erreur lors de l\'ajout';
+      showToast('❌ ' + msg, 'error');
     }
   };
 
   const handleTakeCharge = async (id) => {
     try {
       await api.put(`/consultations/urgences/${id}`, { statut: 'pris_en_charge' });
-      fetchUrgences();
+      await fetchUrgences();
       showToast('Patient pris en charge');
     } catch (err) {
-      console.error(err);
-      showToast('Erreur lors de la prise en charge', 'error');
+      console.error('Erreur prise en charge:', err);
+      const msg = err.response?.data?.error || 'Erreur lors de la prise en charge';
+      showToast('❌ ' + msg, 'error');
     }
   };
 
@@ -87,6 +100,7 @@ const UrgencesList = () => {
     return '#dcfce7';
   };
 
+  // Styles (inchangés)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#fef2f2',
@@ -125,8 +139,9 @@ const UrgencesList = () => {
     fontSize: '14px',
     outline: 'none',
     minWidth: '150px',
+    flex: '1 1 150px',
   };
-  const selectStyle = inputStyle;
+  const selectStyle = { ...inputStyle };
   const buttonStyle = {
     backgroundColor: '#dc2626',
     color: 'white',
@@ -136,6 +151,7 @@ const UrgencesList = () => {
     fontWeight: 'bold',
     cursor: 'pointer',
     transition: 'background-color 0.2s',
+    flex: '0 0 auto',
   };
   const tableStyle = {
     width: '100%',
@@ -177,71 +193,148 @@ const UrgencesList = () => {
     transition: 'opacity 0.2s',
   };
 
-  if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #dc2626', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }}></div>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #dc2626', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }}></div>
+      </div>
+    );
+  }
 
   return (
     <div style={containerStyle}>
       {toast && (
         <div style={{
-          position: 'fixed', top: '20px', right: '20px',
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
           backgroundColor: toastType === 'success' ? '#10b981' : '#ef4444',
           color: 'white',
-          padding: '12px 24px', borderRadius: '8px',
+          padding: '12px 24px',
+          borderRadius: '8px',
           boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          zIndex: 1000, animation: 'slideIn 0.3s ease-out'
+          zIndex: 1000,
+          animation: 'slideIn 0.3s ease-out'
         }}>
           {toast}
         </div>
       )}
       <div style={innerStyle}>
-        <h1 style={titleStyle}>?? Service des urgences</h1>
+        <h1 style={titleStyle}>🚨 Service des urgences</h1>
         <form onSubmit={handleAdd} style={formStyle}>
-          <select value={newUrgence.patient_id} onChange={e => setNewUrgence({...newUrgence, patient_id: e.target.value})} style={selectStyle}>
-            <option value="">Patient inconnu</option>
-            {patients.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
+          <select
+            value={newUrgence.patient_id}
+            onChange={e => setNewUrgence({ ...newUrgence, patient_id: e.target.value })}
+            style={selectStyle}
+            required
+          >
+            <option value="">-- Sélectionner un patient --</option>
+            {patients.map(p => (
+              <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>
+            ))}
           </select>
-          <select value={newUrgence.niveau} onChange={e => {
-            const niveau = e.target.value;
-            const priorite = niveau === 'Rouge' ? 1 : niveau === 'Orange' ? 2 : niveau === 'Jaune' ? 3 : 4;
-            setNewUrgence({...newUrgence, niveau, priorite});
-          }} style={selectStyle}>
-            <option>Rouge</option><option>Orange</option><option>Jaune</option><option>Vert</option>
+          <select
+            value={newUrgence.niveau}
+            onChange={e => {
+              const niveau = e.target.value;
+              const priorite = niveau === 'Rouge' ? 1 : niveau === 'Orange' ? 2 : niveau === 'Jaune' ? 3 : 4;
+              setNewUrgence({ ...newUrgence, niveau, priorite });
+            }}
+            style={selectStyle}
+          >
+            <option>Rouge</option>
+            <option>Orange</option>
+            <option>Jaune</option>
+            <option>Vert</option>
           </select>
-          <input type="text" placeholder="Motif" value={newUrgence.motif} onChange={e => setNewUrgence({...newUrgence, motif: e.target.value})} style={inputStyle} />
-          <button type="submit" style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = '#b91c1c'} onMouseLeave={e => e.target.style.backgroundColor = '#dc2626'}>? Ajouter urgence</button>
+          <input
+            type="text"
+            placeholder="Motif"
+            value={newUrgence.motif}
+            onChange={e => setNewUrgence({ ...newUrgence, motif: e.target.value })}
+            style={inputStyle}
+          />
+          <button
+            type="submit"
+            style={buttonStyle}
+            onMouseEnter={e => e.target.style.backgroundColor = '#b91c1c'}
+            onMouseLeave={e => e.target.style.backgroundColor = '#dc2626'}
+          >
+            ➕ Ajouter urgence
+          </button>
         </form>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Priorit</th><th style={thStyle}>Patient</th><th style={thStyle}>Niveau</th><th style={thStyle}>Heure arrive</th><th style={thStyle}>Motif</th><th style={thStyle}>Statut</th><th style={thStyle}>Action</th>
+                <th style={thStyle}>Priorité</th>
+                <th style={thStyle}>Patient</th>
+                <th style={thStyle}>Niveau</th>
+                <th style={thStyle}>Heure arrivée</th>
+                <th style={thStyle}>Motif</th>
+                <th style={thStyle}>Statut</th>
+                <th style={thStyle}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {urgences.map((u, idx) => (
-                <tr key={u.id} style={{ backgroundColor: idx % 2 === 0 ? getColor(u.priorite) : '#ffffff', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? getColor(u.priorite) : '#ffffff'}>
-                  <td style={tdStyle}>{u.priorite}</td>
-                  <td style={tdStyle}>{u.patient_nom} {u.patient_prenom || 'Inconnu'}</td>
-                  <td style={tdStyle}><span style={badgeStyle(u.niveau)}>{u.niveau}</span></td>
-                  <td style={tdStyle}>{new Date(u.heure_arrivee).toLocaleString()}</td>
-                  <td style={tdStyle}>{u.motif}</td>
-                  <td style={tdStyle}>
-                    <span style={{ padding: '4px 8px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', backgroundColor: u.statut === 'en_attente' ? '#fef9c3' : '#dcfce7', color: u.statut === 'en_attente' ? '#854d0e' : '#166534' }}>
-                      {u.statut === 'en_attente' ? 'En attente' : 'Pris en charge'}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>
-                    {u.statut === 'en_attente' && (
-                      <button onClick={() => handleTakeCharge(u.id)} style={actionButtonStyle} onMouseEnter={e => e.target.style.opacity = 0.8} onMouseLeave={e => e.target.style.opacity = 1}>Prendre en charge</button>
-                    )}
+              {urgences.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                    Aucune urgence enregistrée.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                urgences.map((u, idx) => (
+                  <tr
+                    key={u.id}
+                    style={{
+                      backgroundColor: idx % 2 === 0 ? getColor(u.priorite) : '#ffffff',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? getColor(u.priorite) : '#ffffff'}
+                  >
+                    <td style={tdStyle}>{u.priorite}</td>
+                    <td style={tdStyle}>
+                      {u.patient_nom && u.patient_prenom
+                        ? `${u.patient_nom} ${u.patient_prenom}`
+                        : u.patient_nom || u.patient_prenom || 'Inconnu'}
+                    </td>
+                    <td style={tdStyle}>
+                      <span style={badgeStyle(u.niveau)}>{u.niveau}</span>
+                    </td>
+                    <td style={tdStyle}>
+                      {new Date(u.heure_arrivee).toLocaleString()}
+                    </td>
+                    <td style={tdStyle}>{u.motif || '-'}</td>
+                    <td style={tdStyle}>
+                      <span style={{
+                        padding: '4px 8px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        backgroundColor: u.statut === 'en_attente' ? '#fef9c3' : '#dcfce7',
+                        color: u.statut === 'en_attente' ? '#854d0e' : '#166534'
+                      }}>
+                        {u.statut === 'en_attente' ? 'En attente' : 'Pris en charge'}
+                      </span>
+                    </td>
+                    <td style={tdStyle}>
+                      {u.statut === 'en_attente' && (
+                        <button
+                          onClick={() => handleTakeCharge(u.id)}
+                          style={actionButtonStyle}
+                          onMouseEnter={e => e.target.style.opacity = 0.8}
+                          onMouseLeave={e => e.target.style.opacity = 1}
+                        >
+                          Prendre en charge
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

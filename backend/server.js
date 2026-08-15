@@ -55,6 +55,8 @@ const planningsRoutes = require('./src/routes/planningsRoutes');
 const congesRoutes = require('./src/routes/congesRoutes');
 const absencesRoutes = require('./src/routes/absencesRoutes');
 const contratsRoutes = require('./src/routes/contratsRoutes');
+// NOUVEAU : routes pour les demandes de congé & formation
+const demandesRoutes = require('./src/routes/demandesRoutes');
 
 const comptesRoutes = require('./src/routes/comptesRoutes');
 const ecrituresRoutes = require('./src/routes/ecrituresRoutes');
@@ -150,6 +152,8 @@ app.use('/api/plannings', planningsRoutes);
 app.use('/api/conges', congesRoutes);
 app.use('/api/absences', absencesRoutes);
 app.use('/api/contrats', contratsRoutes);
+// NOUVELLE ROUTE : demandes de congé & formation
+app.use('/api/demandes', demandesRoutes);
 
 app.use('/api/comptes', comptesRoutes);
 app.use('/api/ecritures', ecrituresRoutes);
@@ -179,7 +183,7 @@ app.use('/api/interoperabilite', interoperabiliteRoutes);
 app.use('/api/bloc', blocRoutes);
 
 // ========== 4bis. Route spécifique pour /admin/patients (legacy) ==========
-app.get('/admin/patients', authenticate, requireRole(['admin', 'pharmacien']), async (req, res) => {
+app.get('/api/admin/patients', authenticate, requireRole(['admin', 'pharmacien']), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT id, prenom AS first_name, nom AS last_name, email
@@ -188,7 +192,7 @@ app.get('/admin/patients', authenticate, requireRole(['admin', 'pharmacien']), a
     `);
     res.json(rows);
   } catch (err) {
-    console.error('Erreur /admin/patients:', err);
+    console.error('❌ Erreur /admin/patients :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -213,7 +217,7 @@ app.post('/api/consultations/medecins-avec-compte', authenticate, requireRole(['
 
     const userResult = await client.query(
       `INSERT INTO utilisateurs (login, nom, prenom, email, password_hash, role, actif)
-       VALUES ($1, $2, $3, $4, $5, $6, 1) RETURNING id`,
+       VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING id`,
       [loginFinal, nom, prenom, email, hashedPassword, role]
     );
     const userId = userResult.rows[0].id;
@@ -232,7 +236,7 @@ app.post('/api/consultations/medecins-avec-compte', authenticate, requireRole(['
     });
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Erreur création médecin+compte :', error);
+    console.error('❌ Erreur création médecin+compte :', error);
     res.status(500).json({ error: error.message });
   } finally {
     client.release();
@@ -248,7 +252,7 @@ app.use((req, res) => {
 
 // ========== 6. Gestionnaire d'erreur global (500) ==========
 app.use((err, req, res, next) => {
-  console.error('Erreur serveur :', err.stack);
+  console.error('❌ Erreur serveur :', err.stack);
   res.status(500).json({
     error: 'Erreur interne du serveur',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined

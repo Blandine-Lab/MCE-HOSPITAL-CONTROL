@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../axios'; // ? Instance avec intercepteur
+import api from '../../axios';
 import { FaEuroSign, FaPrint, FaEnvelope, FaFilePdf, FaInfoCircle } from 'react-icons/fa';
 import html2pdf from 'html2pdf.js';
 
@@ -30,9 +30,9 @@ const FactureDetail = () => {
       setLoading(false);
       setLoaded(true);
     } catch (err) {
-      console.error('? Erreur chargement facture:', err);
+      console.error('❌ Erreur chargement facture:', err);
       setLoading(false);
-      setToast('Facture non trouvïe ou erreur serveur');
+      setToast('Facture non trouvée ou erreur serveur');
       setTimeout(() => setToast(null), 3000);
     }
   };
@@ -42,7 +42,7 @@ const FactureDetail = () => {
       const res = await api.get(`/billing/relances/facture/${id}`);
       setRelances(res.data);
     } catch (err) {
-      console.error('? Erreur chargement relances:', err);
+      console.error('❌ Erreur chargement relances:', err);
     }
   };
 
@@ -59,13 +59,13 @@ const FactureDetail = () => {
         mode: paiement.mode,
         reference: paiement.reference
       });
-      setToast('? Paiement enregistrï');
+      setToast('✅ Paiement enregistré');
       setTimeout(() => setToast(null), 3000);
       fetchFacture();
       setPaiement({ montant: '', mode: 'carte', reference: '' });
     } catch (err) {
-      console.error('? Erreur paiement:', err);
-      setToast('? Erreur lors du paiement');
+      console.error('❌ Erreur paiement:', err);
+      setToast('❌ Erreur lors du paiement');
       setTimeout(() => setToast(null), 3000);
     }
   };
@@ -77,13 +77,13 @@ const FactureDetail = () => {
         mode: relanceMode,
         commentaire: relanceComment
       });
-      setToast('? Relance enregistrïe');
+      setToast('✅ Relance enregistrée');
       fetchRelances();
       setRelanceComment('');
       setTimeout(() => setToast(null), 3000);
     } catch (err) {
-      console.error('? Erreur relance:', err);
-      setToast('? Erreur lors de la relance');
+      console.error('❌ Erreur relance:', err);
+      setToast('❌ Erreur lors de la relance');
       setTimeout(() => setToast(null), 3000);
     }
   };
@@ -101,6 +101,17 @@ const FactureDetail = () => {
     html2pdf().set(opt).from(element).save();
   };
 
+  const getTypeLabel = (type) => {
+    const labels = {
+      mixte: 'Mixte',
+      consultation: 'Consultation',
+      laboratoire: 'Laboratoire',
+      sejour: 'Séjour',
+      pharmacie: 'Pharmacie'
+    };
+    return labels[type] || type || 'Mixte';
+  };
+
   const containerStyle = {
     minHeight: '100vh', backgroundColor: '#f3f4f6', padding: '32px', fontFamily: 'system-ui'
   };
@@ -115,8 +126,8 @@ const FactureDetail = () => {
   };
   const resteAPayer = facture ? facture.montant_total - facture.montant_paye : 0;
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
-  if (!facture) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Facture introuvable</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  if (!facture) return <div style={{ textAlign: 'center', marginTop: '50px' }}>❌ Facture introuvable</div>;
 
   return (
     <div style={containerStyle}>
@@ -125,7 +136,7 @@ const FactureDetail = () => {
           position: 'fixed',
           top: '20px',
           right: '20px',
-          backgroundColor: toast.includes('?') ? '#10b981' : '#ef4444',
+          backgroundColor: toast.includes('✅') ? '#10b981' : '#ef4444',
           color: 'white',
           padding: '12px 24px',
           borderRadius: '8px',
@@ -137,7 +148,7 @@ const FactureDetail = () => {
       )}
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
-          <h1 style={titleStyle}>Facture nï{facture.numero_facture || facture.id}</h1>
+          <h1 style={titleStyle}>Facture n° {facture.numero_facture || facture.id}</h1>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button onClick={handlePrint} style={{ padding: '8px 16px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
               <FaPrint /> Imprimer
@@ -151,13 +162,13 @@ const FactureDetail = () => {
           </div>
         </div>
 
-        {/* Partie ï imprimer / PDF (inclut l'en-tïte de l'hïpital) */}
+        {/* Partie à imprimer / PDF */}
         <div id="facture-print">
-          {/* En-tïte de l'hïpital */}
+          {/* En-tête de l'hôpital */}
           <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px' }}>
             <img src="/logo.jpeg" alt="Logo Medical Center Elizabeth MCE" style={{ height: '60px', width: 'auto', marginBottom: '10px' }} />
             <h2 style={{ margin: 0, color: '#1e3a8a' }}>Medical Center Elizabeth MCE</h2>
-            <p style={{ margin: '5px 0 0', color: '#4b5563' }}>Systïme intïgrï de gestion hospitaliïre</p>
+            <p style={{ margin: '5px 0 0', color: '#4b5563' }}>Système intégré de gestion hospitalière</p>
           </div>
 
           {/* Infos facture */}
@@ -166,13 +177,14 @@ const FactureDetail = () => {
               <div><strong>Patient :</strong> {facture.patient_nom} {facture.patient_prenom}</div>
               <div><strong>Date :</strong> {new Date(facture.date_emission).toLocaleDateString()}</div>
               <div><span style={badgeStyle(facture.statut)}>
-                {facture.statut === 'impayee' ? 'Impayïe' : facture.statut === 'partielle' ? 'Partielle' : 'Payïe'}
+                {facture.statut === 'impayee' ? 'Impayée' : facture.statut === 'partielle' ? 'Partielle' : 'Payée'}
               </span></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+              <div><strong>Type :</strong> {getTypeLabel(facture.type_facture)}</div>
               <div><strong>Assurance :</strong> {facture.assurance_nom || 'Aucune'}</div>
               {facture.date_echeance && (
-                <div><strong>ïchïance :</strong> {new Date(facture.date_echeance).toLocaleDateString()}</div>
+                <div><strong>Échéance :</strong> {new Date(facture.date_echeance).toLocaleDateString()}</div>
               )}
               {facture.tiers_payant && (
                 <div><strong>Tiers payant :</strong> {facture.tiers_payant}</div>
@@ -181,7 +193,7 @@ const FactureDetail = () => {
                 <div><strong>Mode :</strong> {facture.mode === 'hospitalisation' ? 'Hospitalisation' : 'Ambulatoire'}</div>
               )}
               {facture.sejour_id && (
-                <div><strong>Sïjour :</strong> #{facture.sejour_id}</div>
+                <div><strong>Séjour :</strong> #{facture.sejour_id}</div>
               )}
               {facture.consultation_id && (
                 <div><strong>Consultation :</strong> #{facture.consultation_id}</div>
@@ -194,15 +206,15 @@ const FactureDetail = () => {
             )}
           </div>
 
-          {/* Dïtail des prestations */}
+          {/* Détail des prestations */}
           <div style={cardStyle}>
-            <h2 style={{ marginBottom: '16px' }}>Dïtail des prestations</h2>
+            <h2 style={{ marginBottom: '16px' }}>Détail des prestations</h2>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#e5e7eb' }}>
                   <th style={{ padding: '8px', textAlign: 'left' }}>Code</th>
-                  <th style={{ padding: '8px', textAlign: 'left' }}>Libellï</th>
-                  <th style={{ textAlign: 'center', padding: '8px' }}>Qtï</th>
+                  <th style={{ padding: '8px', textAlign: 'left' }}>Libellé</th>
+                  <th style={{ textAlign: 'center', padding: '8px' }}>Qté</th>
                   <th style={{ textAlign: 'right', padding: '8px' }}>PU (FC)</th>
                   <th style={{ textAlign: 'right', padding: '8px' }}>Total (FC)</th>
                 </tr>
@@ -223,14 +235,14 @@ const FactureDetail = () => {
               Total : {parseFloat(facture.montant_total).toFixed(2)} FC
             </div>
             <div style={{ textAlign: 'right' }}>
-              Montant payï : {parseFloat(facture.montant_paye).toFixed(2)} FC
+              Montant payé : {parseFloat(facture.montant_paye).toFixed(2)} FC
             </div>
             <div style={{ textAlign: 'right', color: resteAPayer > 0 ? '#dc2626' : '#10b981', fontWeight: 'bold' }}>
-              Reste ï payer : {resteAPayer.toFixed(2)} FC
+              Reste à payer : {resteAPayer.toFixed(2)} FC
             </div>
             {facture.remise > 0 && (
               <div style={{ textAlign: 'right', color: '#6b7280' }}>
-                Remise appliquïe : {facture.remise}%
+                Remise appliquée : {facture.remise}%
               </div>
             )}
           </div>
@@ -239,7 +251,7 @@ const FactureDetail = () => {
         {/* Paiement et relances (non inclus dans le PDF) */}
         {facture.statut !== 'payee' && (
           <div style={cardStyle}>
-            <h2 style={{ marginBottom: '16px' }}>?? Enregistrer un paiement</h2>
+            <h2 style={{ marginBottom: '16px' }}>💳 Enregistrer un paiement</h2>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
               <input
                 type="number"
@@ -255,13 +267,13 @@ const FactureDetail = () => {
                 style={{ padding: '8px', borderRadius: '8px' }}
               >
                 <option value="carte">Carte bancaire</option>
-                <option value="especes">Espïces</option>
+                <option value="especes">Espèces</option>
                 <option value="virement">Virement</option>
-                <option value="cheque">Chïque</option>
+                <option value="cheque">Chèque</option>
               </select>
               <input
                 type="text"
-                placeholder="Rïfïrence"
+                placeholder="Référence"
                 value={paiement.reference}
                 onChange={e => setPaiement({ ...paiement, reference: e.target.value })}
                 style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '8px', width: '200px' }}
@@ -277,7 +289,7 @@ const FactureDetail = () => {
         )}
 
         <div style={cardStyle}>
-          <h2 style={{ marginBottom: '16px' }}>?? Historique des relances</h2>
+          <h2 style={{ marginBottom: '16px' }}>📋 Historique des relances</h2>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
             <select
               value={relanceMode}
@@ -286,7 +298,7 @@ const FactureDetail = () => {
             >
               <option value="email">Email</option>
               <option value="courrier">Courrier</option>
-              <option value="telephone">Tïlïphone</option>
+              <option value="telephone">Téléphone</option>
             </select>
             <input
               type="text"

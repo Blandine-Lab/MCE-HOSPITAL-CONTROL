@@ -65,7 +65,7 @@ const PlanningSoins = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>? Chargement du planning...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement du planning...</div>
       </div>
     );
   }
@@ -200,7 +200,7 @@ const PlanningSoins = () => {
                       <div style={{ fontWeight: '500' }}>{s.type_soin}</div>
                       <div style={{ fontSize: '11px', color: '#64748b' }}>
                         {s.patient_prenom} {s.patient_nom}
-                        {s.heure_soin && ` ?FC? ${s.heure_soin}`}
+                        {s.heure_soin && ` à ${s.heure_soin}`}
                       </div>
                     </Link>
                   ))

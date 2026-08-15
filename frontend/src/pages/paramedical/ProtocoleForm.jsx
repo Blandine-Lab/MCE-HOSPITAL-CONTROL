@@ -115,7 +115,7 @@ const ProtocoleForm = () => {
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Contenu (dtails du protocole)</label>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Contenu (détails du protocole)</label>
             <textarea
               name="contenu"
               value={formData.contenu}
@@ -142,7 +142,7 @@ const ProtocoleForm = () => {
               gap: '8px'
             }}
           >
-            <FaSave /> {loading ? 'Enregistrement...' : (isEdit ? 'Mettre  jour' : 'Crer')}
+            <FaSave /> {loading ? 'Enregistrement...' : (isEdit ? 'Mettre à jour' : 'Créer')}
           </button>
         </form>
       </div>

@@ -19,17 +19,21 @@ router.use(authenticate);
 // ========== MÉDICAMENTS (avec date de péremption la plus proche) ==========
 router.get('/medicaments', async (req, res) => {
   try {
+    console.log('🔍 Récupération des médicaments...');
     const { rows } = await pool.query(`
       SELECT m.*,
              (SELECT MIN(l.date_peremption)
               FROM lots l
-              WHERE l.medicament_id = m.id AND l.stock_actuel > 0) AS date_peremption_proche
+              WHERE l.medicament_id = m.id 
+                AND COALESCE(l.stock_actuel, 0) > 0) AS date_peremption_proche
       FROM medicaments m
       ORDER BY m.nom
     `);
+    console.log(`✅ ${rows.length} médicaments trouvés`);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ Erreur GET /medicaments :', err);
+    res.status(500).json({ error: err.message, detail: err.stack });
   }
 });
 
@@ -47,6 +51,7 @@ router.post('/medicaments', requirePermission('manage_pharmacy'), async (req, re
     res.status(201).json(rows[0]);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur POST /medicaments :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -65,7 +70,7 @@ router.put('/medicaments/:id', requirePermission('manage_pharmacy'), async (req,
     await logAudit(req.user.id, 'UPDATE_MEDICAMENT', 'medicaments', req.params.id, req.body);
     res.sendStatus(200);
   } catch (err) {
-    console.error("Erreur PUT medicament:", err);
+    console.error("❌ Erreur PUT medicament:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -83,6 +88,7 @@ router.delete('/medicaments/:id', requireAdmin, async (req, res) => {
     res.sendStatus(204);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur DELETE /medicaments/:id :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -94,11 +100,12 @@ router.get('/lots/disponibles/:medicamentId', async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT * FROM lots 
-      WHERE medicament_id = $1 AND stock_actuel > 0
+      WHERE medicament_id = $1 AND COALESCE(stock_actuel, 0) > 0
       ORDER BY date_peremption ASC
     `, [req.params.medicamentId]);
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /lots/disponibles :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -115,7 +122,7 @@ router.post('/lots', requirePermission('manage_pharmacy'), async (req, res) => {
     `, [medicament_id, numero_lot, date_peremption, quantite, prix_achat]);
     await client.query('UPDATE medicaments SET stock = stock + $1 WHERE id = $2', [quantite, medicament_id]);
     await client.query(`
-      INSERT INTO mouvements_stock (medicament_id, lot_id, quantite, type, motif, utilisateur_id)
+      INSERT INTO public.mouvements_stock (medicament_id, lot_id, quantite, type, motif, utilisateur_id)
       VALUES ($1, $2, $3, 'entree', 'Ajout lot', $4)
     `, [medicament_id, rows[0].id, quantite, req.user.id]);
     await logAudit(req.user.id, 'ADD_LOT', 'lots', rows[0].id, { numero_lot, quantite });
@@ -123,6 +130,7 @@ router.post('/lots', requirePermission('manage_pharmacy'), async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur POST /lots :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -140,6 +148,7 @@ router.get('/commandes', requirePermission('view_pharmacy'), async (req, res) =>
     `);
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /commandes :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -166,6 +175,7 @@ router.post('/commandes', requirePermission('manage_pharmacy'), async (req, res)
     res.status(201).json({ id: commandeId, numero: numCommande });
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur POST /commandes :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -186,7 +196,7 @@ router.post('/commandes/:id/reception', requirePermission('manage_pharmacy'), as
       `, [lot.medicament_id, lot.numero_lot, lot.date_peremption, lot.quantite, lot.prix_achat]);
       await client.query('UPDATE medicaments SET stock = stock + $1 WHERE id = $2', [lot.quantite, lot.medicament_id]);
       await client.query(`
-        INSERT INTO mouvements_stock (medicament_id, lot_id, quantite, type, motif, utilisateur_id)
+        INSERT INTO public.mouvements_stock (medicament_id, lot_id, quantite, type, motif, utilisateur_id)
         VALUES ($1, $2, $3, 'entree', 'Réception commande', $4)
       `, [lot.medicament_id, rows[0].id, lot.quantite, req.user.id]);
     }
@@ -195,6 +205,7 @@ router.post('/commandes/:id/reception', requirePermission('manage_pharmacy'), as
     res.sendStatus(200);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur POST /commandes/:id/reception :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -225,7 +236,7 @@ router.post('/delivrance', requirePermission('manage_pharmacy'), async (req, res
     await client.query('UPDATE medicaments SET stock = stock - $1 WHERE id = $2', [quantite, medicament_id]);
 
     await client.query(`
-      INSERT INTO mouvements_stock (medicament_id, lot_id, quantite, type, motif, utilisateur_id, patient_id, ligne_ordonnance_id)
+      INSERT INTO public.mouvements_stock (medicament_id, lot_id, quantite, type, motif, utilisateur_id, patient_id, ligne_ordonnance_id)
       VALUES ($1, $2, $3, 'sortie', 'Délivrance patient', $4, $5, $6)
     `, [medicament_id, lot.id, quantite, req.user.id, patient_id, ligne_ordonnance_id || null]);
 
@@ -301,6 +312,7 @@ router.put('/preparations/:id/valider', requirePermission('manage_pharmacy'), as
     res.sendStatus(200);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur PUT /preparations/:id/valider :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -328,7 +340,7 @@ router.post('/destruction', requirePermission('manage_pharmacy'), async (req, re
       VALUES ($1, $2, $3, $4, $5)
     `, [lot_id, quantite, motif, req.user.id, procede]);
     await client.query(`
-      INSERT INTO mouvements_stock (medicament_id, lot_id, quantite, type, motif, utilisateur_id)
+      INSERT INTO public.mouvements_stock (medicament_id, lot_id, quantite, type, motif, utilisateur_id)
       VALUES ($1, $2, $3, 'sortie', 'Destruction', $4)
     `, [lot.rows[0].medicament_id, lot_id, quantite, req.user.id]);
     await logAudit(req.user.id, 'DESTRUCTION', 'destructions', null, { lot_id, quantite, motif });
@@ -336,6 +348,7 @@ router.post('/destruction', requirePermission('manage_pharmacy'), async (req, re
     res.sendStatus(201);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur POST /destruction :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -361,7 +374,7 @@ router.post('/retour-patient', requirePermission('manage_pharmacy'), async (req,
     await client.query('UPDATE medicaments SET stock = stock + $1 WHERE id = $2', [quantite, medicament_id]);
 
     await client.query(`
-      INSERT INTO mouvements_stock (medicament_id, lot_id, quantite, type, motif, utilisateur_id, patient_id)
+      INSERT INTO public.mouvements_stock (medicament_id, lot_id, quantite, type, motif, utilisateur_id, patient_id)
       VALUES ($1, $2, $3, 'entree', $4, $5, $6)
     `, [medicament_id, lot_id, quantite, motif || 'Retour patient', req.user.id, patient_id]);
 
@@ -370,6 +383,7 @@ router.post('/retour-patient', requirePermission('manage_pharmacy'), async (req,
     res.sendStatus(201);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur POST /retour-patient :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -386,7 +400,7 @@ router.get('/alertes', async (req, res) => {
       SELECT l.*, m.nom AS medicament_nom
       FROM lots l
       JOIN medicaments m ON l.medicament_id = m.id
-      WHERE l.date_peremption <= $1 AND l.stock_actuel > 0
+      WHERE l.date_peremption <= $1 AND COALESCE(l.stock_actuel, 0) > 0
     `, [threshold.toISOString().split('T')[0]]);
     const commandesRetard = await pool.query(`
       SELECT * FROM commandes WHERE statut = 'en_cours' AND date_commande < NOW() - INTERVAL '15 days'
@@ -397,6 +411,7 @@ router.get('/alertes', async (req, res) => {
       commandesRetard: commandesRetard.rows
     });
   } catch (err) {
+    console.error('❌ Erreur GET /alertes :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -413,6 +428,7 @@ router.get('/audit', requireRole(['admin']), async (req, res) => {
     `);
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /audit :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -422,9 +438,8 @@ router.get('/audit', requireRole(['admin']), async (req, res) => {
 // ==================================================================
 
 // ---------- Fournisseurs ----------
-// GET /fournisseurs – accessible à tous les utilisateurs authentifiés (pour tests)
 router.get('/fournisseurs', async (req, res) => {
-  console.log('📦 GET /fournisseurs (test sans middleware) - utilisateur:', req.user ? req.user.login : 'non authentifié');
+  console.log('📦 GET /fournisseurs - utilisateur:', req.user ? req.user.login : 'non authentifié');
   try {
     const { rows } = await pool.query('SELECT * FROM fournisseurs ORDER BY nom');
     res.json(rows);
@@ -444,6 +459,7 @@ router.post('/fournisseurs', requireRole(['admin']), async (req, res) => {
     await logAudit(req.user.id, 'CREATE_FOURNISSEUR', 'fournisseurs', rows[0].id, { nom });
     res.status(201).json(rows[0]);
   } catch (err) {
+    console.error('❌ Erreur POST /fournisseurs :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -458,17 +474,18 @@ router.put('/fournisseurs/:id', requireRole(['admin']), async (req, res) => {
     await logAudit(req.user.id, 'UPDATE_FOURNISSEUR', 'fournisseurs', req.params.id, req.body);
     res.sendStatus(200);
   } catch (err) {
+    console.error('❌ Erreur PUT /fournisseurs/:id :', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ DELETE /fournisseurs/:id – réservé aux administrateurs
 router.delete('/fournisseurs/:id', requireAdmin, async (req, res) => {
   try {
     await pool.query('DELETE FROM fournisseurs WHERE id=$1', [req.params.id]);
     await logAudit(req.user.id, 'DELETE_FOURNISSEUR', 'fournisseurs', req.params.id, {});
     res.sendStatus(204);
   } catch (err) {
+    console.error('❌ Erreur DELETE /fournisseurs/:id :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -479,6 +496,7 @@ router.get('/dispositifs', requirePermission('view_pharmacy'), async (req, res) 
     const { rows } = await pool.query('SELECT * FROM dispositifs_medicaux ORDER BY nom');
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /dispositifs :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -497,6 +515,7 @@ router.post('/dispositifs', requirePermission('manage_pharmacy'), async (req, re
     res.status(201).json(rows[0]);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur POST /dispositifs :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -514,11 +533,11 @@ router.put('/dispositifs/:id', requirePermission('manage_pharmacy'), async (req,
     await logAudit(req.user.id, 'UPDATE_DISPOSITIF', 'dispositifs_medicaux', req.params.id, req.body);
     res.sendStatus(200);
   } catch (err) {
+    console.error('❌ Erreur PUT /dispositifs/:id :', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ DELETE /dispositifs/:id – réservé aux administrateurs
 router.delete('/dispositifs/:id', requireAdmin, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -531,6 +550,7 @@ router.delete('/dispositifs/:id', requireAdmin, async (req, res) => {
     res.sendStatus(204);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur DELETE /dispositifs/:id :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -542,11 +562,12 @@ router.get('/dispositifs/:id/lots', async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT * FROM lots_dispositifs
-      WHERE dispositif_id = $1 AND stock_actuel > 0
+      WHERE dispositif_id = $1 AND COALESCE(stock_actuel, 0) > 0
       ORDER BY date_peremption ASC
     `, [req.params.id]);
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /dispositifs/:id/lots :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -571,6 +592,7 @@ router.post('/dispositifs/lots', requirePermission('manage_pharmacy'), async (re
     res.status(201).json(rows[0]);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Erreur POST /dispositifs/lots :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -588,6 +610,7 @@ router.post('/pharmacovigilance/effets-indesirables', requirePermission('manage_
     await logAudit(req.user.id, 'DECLARATION_EFFET_INDESIRABLE', 'pharmacovigilance', rows[0].id, { patient_id, medicament_id });
     res.status(201).json(rows[0]);
   } catch (err) {
+    console.error('❌ Erreur POST /pharmacovigilance/effets-indesirables :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -604,6 +627,7 @@ router.get('/pharmacovigilance/effets-indesirables', requirePermission('view_pha
     `);
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /pharmacovigilance/effets-indesirables :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -614,6 +638,7 @@ router.get('/preparations/recettes', requirePermission('view_pharmacy'), async (
     const { rows } = await pool.query('SELECT * FROM recettes_preparations ORDER BY nom');
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /preparations/recettes :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -628,6 +653,7 @@ router.post('/preparations/recettes', requirePermission('manage_pharmacy'), asyn
     await logAudit(req.user.id, 'CREATE_RECETTE', 'recettes_preparations', rows[0].id, { nom });
     res.status(201).json(rows[0]);
   } catch (err) {
+    console.error('❌ Erreur POST /preparations/recettes :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -642,17 +668,18 @@ router.put('/preparations/recettes/:id', requirePermission('manage_pharmacy'), a
     await logAudit(req.user.id, 'UPDATE_RECETTE', 'recettes_preparations', req.params.id, req.body);
     res.sendStatus(200);
   } catch (err) {
+    console.error('❌ Erreur PUT /preparations/recettes/:id :', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ DELETE /preparations/recettes/:id – réservé aux administrateurs
 router.delete('/preparations/recettes/:id', requireAdmin, async (req, res) => {
   try {
     await pool.query('DELETE FROM recettes_preparations WHERE id=$1', [req.params.id]);
     await logAudit(req.user.id, 'DELETE_RECETTE', 'recettes_preparations', req.params.id, {});
     res.sendStatus(204);
   } catch (err) {
+    console.error('❌ Erreur DELETE /preparations/recettes/:id :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -668,6 +695,7 @@ router.post('/preparations/executer', requirePermission('manage_pharmacy'), asyn
     await logAudit(req.user.id, 'EXECUTER_PREPARATION', 'preparations_executees', rows[0].id, { recette_id, patient_id });
     res.status(201).json(rows[0]);
   } catch (err) {
+    console.error('❌ Erreur POST /preparations/executer :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -683,6 +711,7 @@ router.get('/ruptures', requirePermission('view_pharmacy'), async (req, res) => 
     `);
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /ruptures :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -701,6 +730,7 @@ router.get('/suggestions-commandes', requirePermission('view_pharmacy'), async (
     `);
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /suggestions-commandes :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -717,6 +747,7 @@ router.get('/preparations/executions', requirePermission('view_pharmacy'), async
     `);
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /preparations/executions :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -732,32 +763,95 @@ router.get('/infirmiers', requirePermission('view_pharmacy'), async (req, res) =
     `);
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /infirmiers :', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // ================================================================
-// ✅ ORDONNANCES EN ATTENTE (table prescriptions)
+// ✅ ORDONNANCES : RÉCUPÉRATION COMPLÈTE AVEC FILTRES (HISTORIQUE)
+// ================================================================
+router.get('/ordonnances', requirePermission('view_pharmacy'), async (req, res) => {
+  try {
+    const { statut, patient_id, date_debut, date_fin } = req.query;
+    let conditions = [];
+    let params = [];
+    let paramIndex = 1;
+
+    if (statut) {
+      conditions.push(`o.statut = $${paramIndex}`);
+      params.push(statut);
+      paramIndex++;
+    }
+    if (patient_id) {
+      conditions.push(`o.patient_id = $${paramIndex}`);
+      params.push(patient_id);
+      paramIndex++;
+    }
+    if (date_debut) {
+      conditions.push(`o.date_creation >= $${paramIndex}`);
+      params.push(date_debut);
+      paramIndex++;
+    }
+    if (date_fin) {
+      conditions.push(`o.date_creation <= $${paramIndex}`);
+      params.push(date_fin);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const query = `
+      SELECT o.id,
+             o.patient_id,
+             o.date_creation,
+             o.statut,
+             o.observations,
+             o.numero_ordonnance,
+             o.retrieved_by,
+             pat.nom AS patient_nom,
+             pat.prenom AS patient_prenom,
+             m.nom AS medecin_nom,
+             m.prenom AS medecin_prenom,
+             u.nom AS retrieved_nom,
+             u.prenom AS retrieved_prenom
+      FROM ordonnances o
+      JOIN patients pat ON o.patient_id = pat.id
+      LEFT JOIN medecins m ON o.medecin_id = m.id
+      LEFT JOIN utilisateurs u ON o.retrieved_by = u.id
+      ${whereClause}
+      ORDER BY o.date_creation DESC
+    `;
+
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ Erreur GET /ordonnances :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ================================================================
+// ✅ ORDONNANCES EN ATTENTE (pour le tableau de bord)
 // ================================================================
 router.get('/ordonnances/en-attente', requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT p.id,
-             p.patient_id,
-             p.date_creation,
-             p.status,
-             p.pharmacist_id,
-             p.date_served,
-             p.retrieved_by,
+      SELECT o.id,
+             o.patient_id,
+             o.date_creation,
+             o.statut,
+             o.observations,
+             o.numero_ordonnance,
              pat.nom AS patient_nom,
              pat.prenom AS patient_prenom,
-             u.nom AS medecin_nom,
-             u.prenom AS medecin_prenom
-      FROM prescriptions p
-      JOIN patients pat ON p.patient_id = pat.id
-      JOIN utilisateurs u ON p.doctor_id = u.id
-      WHERE p.status = 'pending'
-      ORDER BY p.date_creation DESC
+             m.nom AS medecin_nom,
+             m.prenom AS medecin_prenom
+      FROM ordonnances o
+      JOIN patients pat ON o.patient_id = pat.id
+      LEFT JOIN medecins m ON o.medecin_id = m.id
+      WHERE o.statut = 'en_attente'
+      ORDER BY o.date_creation DESC
     `);
     res.json(rows);
   } catch (err) {
@@ -777,6 +871,42 @@ router.get('/ordonnances/:id/lignes', requirePermission('view_pharmacy'), async 
     `, [req.params.id]);
     res.json(rows);
   } catch (err) {
+    console.error('❌ Erreur GET /ordonnances/:id/lignes :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ================================================================
+// ✅ DÉTAIL D'UNE ORDONNANCE (pour l'impression)
+// ================================================================
+router.get('/ordonnances/:id', requirePermission('view_pharmacy'), async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT o.id,
+             o.patient_id,
+             o.date_creation,
+             o.statut,
+             o.observations,
+             o.numero_ordonnance,
+             o.retrieved_by,
+             pat.nom AS patient_nom,
+             pat.prenom AS patient_prenom,
+             m.nom AS medecin_nom,
+             m.prenom AS medecin_prenom,
+             u.nom AS retrieved_nom,
+             u.prenom AS retrieved_prenom
+      FROM ordonnances o
+      JOIN patients pat ON o.patient_id = pat.id
+      LEFT JOIN medecins m ON o.medecin_id = m.id
+      LEFT JOIN utilisateurs u ON o.retrieved_by = u.id
+      WHERE o.id = $1
+    `, [req.params.id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Ordonnance non trouvée' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('❌ Erreur GET /ordonnances/:id :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -788,7 +918,43 @@ router.put('/ordonnances/:id/statut', requirePermission('manage_pharmacy'), asyn
     await logAudit(req.user.id, 'UPDATE_ORDONNANCE_STATUT', 'ordonnances', req.params.id, { statut });
     res.sendStatus(200);
   } catch (err) {
+    console.error('❌ Erreur PUT /ordonnances/:id/statut :', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ================================================================
+// ✅ SERVIR UNE ORDONNANCE (mise à jour statut + retrieved_by)
+// ================================================================
+router.put('/ordonnances/:id/serve', requirePermission('manage_pharmacy'), async (req, res) => {
+  const { password, retrieved_by } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // ---- Vérification du mot de passe (skippée pour admins et pharmaciens) ----
+    if (req.user.role !== 'admin' && req.user.role !== 'pharmacien') {
+      const user = await client.query('SELECT password FROM utilisateurs WHERE id = $1', [req.user.id]);
+      if (user.rows.length === 0) throw new Error('Utilisateur non trouvé');
+      const validPassword = await bcrypt.compare(password, user.rows[0].password);
+      if (!validPassword) throw new Error('Mot de passe incorrect');
+    }
+
+    // Mettre à jour l'ordonnance
+    await client.query(
+      'UPDATE ordonnances SET statut = $1, retrieved_by = $2 WHERE id = $3',
+      ['delivree', retrieved_by, req.params.id]
+    );
+
+    await logAudit(req.user.id, 'SERVE_ORDONNANCE', 'ordonnances', req.params.id, { retrieved_by });
+    await client.query('COMMIT');
+    res.sendStatus(200);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('❌ Erreur PUT /ordonnances/:id/serve :', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 

@@ -5,7 +5,7 @@ import { FaHeartbeat, FaCalendar, FaList, FaPlus, FaUserMd, FaClipboardList } fr
 const ParamedicalModule = () => {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Menu latral */}
+      {/* Menu latéral */}
       <nav style={{
         width: '250px',
         backgroundColor: '#0f172a',
@@ -26,7 +26,7 @@ const ParamedicalModule = () => {
           borderBottom: '1px solid #334155',
           paddingBottom: '16px'
         }}>
-          <FaHeartbeat /> Paramdical
+          <FaHeartbeat /> Paramédical
         </h2>
         <ul style={{ listStyle: 'none', padding: 0 }}>
           <li style={{ marginBottom: '8px' }}>
@@ -99,7 +99,7 @@ const ParamedicalModule = () => {
                 transition: 'all 0.2s'
               })}
             >
-              <FaClipboardList /> Actes paramdicaux
+              <FaClipboardList /> Actes paramédicaux
             </NavLink>
           </li>
         </ul>

@@ -28,7 +28,7 @@ const InventaireForm = () => {
     const lignes = [...formData.lignes];
     lignes[index][field] = value;
 
-    // Si le produit change, rcuprer le stock thorique
+    // Si le produit change, récupérer le stock théorique
     if (field === 'produit_id') {
       const produitId = value;
       if (produitId) {
@@ -45,7 +45,7 @@ const InventaireForm = () => {
       }
     }
 
-    // Si la quantit relle change, recalculer l'cart
+    // Si la quantité réelle change, recalculer l'écart
     if (field === 'quantite_reelle') {
       const theorique = lignes[index].quantite_theorique || 0;
       const reelle = parseFloat(value) || 0;
@@ -70,9 +70,9 @@ const InventaireForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Vrifier qu'au moins une ligne est remplie
+    // Vérifier qu'au moins une ligne est remplie
     if (formData.lignes.every(l => !l.produit_id)) {
-      setError('Ajoutez au moins un produit avec une quantit relle.');
+      setError('Ajoutez au moins un produit avec une quantité réelle.');
       return;
     }
     setLoading(true);
@@ -90,7 +90,7 @@ const InventaireForm = () => {
       await api.post('/inventaires', payload);
       navigate('/stock/inventaires');
     } catch (err) {
-      setError(err.response?.data?.error || 'Erreur');
+      setError(err.response?.data?.error || 'Erreur lors de l\'enregistrement de l\'inventaire');
       setLoading(false);
     }
   };
@@ -120,9 +120,9 @@ const InventaireForm = () => {
               <thead style={{ backgroundColor: '#f1f5f9' }}>
                 <tr>
                   <th>Produit</th>
-                  <th style={{ textAlign: 'center' }}>Stock thorique</th>
-                  <th style={{ textAlign: 'center' }}>Quantit relle</th>
-                  <th style={{ textAlign: 'center' }}>cart</th>
+                  <th style={{ textAlign: 'center' }}>Stock théorique</th>
+                  <th style={{ textAlign: 'center' }}>Quantité réelle</th>
+                  <th style={{ textAlign: 'center' }}>Écart</th>
                   <th></th>
                 </tr>
               </thead>
@@ -137,7 +137,7 @@ const InventaireForm = () => {
                           onChange={e => handleLigneChange(index, 'produit_id', e.target.value)}
                           style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                         >
-                          <option value="">Slectionner</option>
+                          <option value="">Sélectionner</option>
                           {produits.map(p => <option key={p.id} value={p.id}>{p.code} - {p.nom}</option>)}
                         </select>
                       </td>

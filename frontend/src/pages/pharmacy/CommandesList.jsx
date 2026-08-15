@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../axios';
-import { FaPlus, FaEye, FaCheck, FaTrash, FaBoxOpen } from 'react-icons/fa';
+import { FaPlus, FaEye, FaCheck, FaTrash } from 'react-icons/fa';
 
 const CommandesList = () => {
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ const CommandesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ? Rcuprer le rle depuis le token JWT
+  // Récupérer le rôle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,13 +20,13 @@ const CommandesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur dcodage token', e);
+        console.error('Erreur décodage token', e);
       }
     }
   }, []);
 
-  const showToast = (msg, type = 'success') => {
-    setToast(msg);
+  const showToast = (message, type = 'success') => {
+    setToast(message);
     setToastType(type);
     setTimeout(() => setToast(null), 3000);
   };
@@ -37,7 +37,7 @@ const CommandesList = () => {
       setCommandes(res.data);
       setLoading(false);
     } catch (err) {
-      console.error('Erreur chargement commandes:', err);
+      console.error('Erreur chargement commandes :', err);
       showToast('Erreur chargement des commandes', 'error');
       setLoading(false);
     }
@@ -47,23 +47,22 @@ const CommandesList = () => {
     fetchCommandes();
   }, []);
 
-  const handleReception = async (commandeId) => {
+  const handleReception = (commandeId) => {
     navigate(`/pharmacy/commandes/${commandeId}/reception`);
   };
 
-  // ? handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('?? Supprimer dfinitivement cette commande ? Cette action est irrversible.')) return;
+    if (!window.confirm('⚠️ Supprimer définitivement cette commande ? Cette action est irréversible.')) return;
     try {
       await api.delete(`/pharmacy/commandes/${id}`);
       setCommandes(commandes.filter(c => c.id !== id));
-      showToast('Commande supprime avec succs');
+      showToast('Commande supprimée avec succès', 'success');
     } catch (err) {
-      console.error('Erreur suppression commande:', err);
+      console.error('Erreur suppression commande :', err);
       if (err.response?.status === 403) {
-        showToast('? Seul un administrateur peut supprimer une commande.', 'error');
+        showToast('❌ Seul un administrateur peut supprimer une commande.', 'error');
       } else {
-        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast(`❌ Erreur lors de la suppression : ${err.response?.data?.error || err.message}`, 'error');
       }
     }
   };
@@ -78,10 +77,10 @@ const CommandesList = () => {
       partielle: '#8b5cf6'
     };
     const labels = {
-      en_cours: '? En cours',
-      recue: '? Reue',
-      annulee: '? Annule',
-      partielle: '?? Partielle'
+      en_cours: '⏳ En cours',
+      recue: '✅ Reçue',
+      annulee: '❌ Annulée',
+      partielle: '🔶 Partielle'
     };
     return (
       <span style={{
@@ -97,25 +96,46 @@ const CommandesList = () => {
     );
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
+  if (loading) {
+    return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f0fdf4', padding: '32px' }}>
       {toast && (
         <div style={{
-          position: 'fixed', top: '20px', right: '20px',
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
           backgroundColor: toastType === 'success' ? '#10b981' : '#ef4444',
-          color: 'white', padding: '12px 24px', borderRadius: '8px', zIndex: 1000
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          zIndex: 1000,
+          animation: 'slideIn 0.3s ease-out'
         }}>
           {toast}
         </div>
       )}
+
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#166534' }}>?? Gestion des commandes</h1>
+          <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#166534' }}>
+            📦 Gestion des commandes
+          </h1>
           <button
             onClick={() => navigate('/pharmacy/commandes/nouveau')}
-            style={{ backgroundColor: '#16a34a', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{
+              backgroundColor: '#16a34a',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
           >
             <FaPlus /> Nouvelle commande
           </button>
@@ -125,7 +145,7 @@ const CommandesList = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f3f4f6' }}>
-                <th style={{ padding: '12px', textAlign: 'left' }}>N Commande</th>
+                <th style={{ padding: '12px', textAlign: 'left' }}>N° Commande</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Fournisseur</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Date</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Statut</th>
@@ -143,7 +163,7 @@ const CommandesList = () => {
                     <button
                       onClick={() => navigate(`/pharmacy/commandes/${cmd.id}`)}
                       style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}
-                      title="Voir dtails"
+                      title="Voir détails"
                     >
                       <FaEye />
                     </button>
@@ -151,12 +171,12 @@ const CommandesList = () => {
                       <button
                         onClick={() => handleReception(cmd.id)}
                         style={{ background: '#10b981', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}
-                        title="Rceptionner"
+                        title="Réceptionner"
                       >
                         <FaCheck />
                       </button>
                     )}
-                    {isAdmin && (
+                    {isAdmin ? (
                       <button
                         onClick={() => handleDelete(cmd.id)}
                         style={{ background: '#ef4444', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
@@ -164,9 +184,8 @@ const CommandesList = () => {
                       >
                         <FaTrash />
                       </button>
-                    )}
-                    {!isAdmin && (
-                      <span style={{ color: '#94a3b8', fontSize: '14px', marginLeft: '4px' }} title="Rserv aux administrateurs">??</span>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '14px', marginLeft: '4px' }} title="Réservé aux administrateurs">🔒</span>
                     )}
                   </td>
                 </tr>
@@ -174,7 +193,7 @@ const CommandesList = () => {
               {commandes.length === 0 && (
                 <tr>
                   <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-                    Aucune commande trouve.
+                    Aucune commande trouvée.
                   </td>
                 </tr>
               )}
@@ -182,6 +201,7 @@ const CommandesList = () => {
           </table>
         </div>
       </div>
+
       <style>{`
         @keyframes slideIn {
           from { transform: translateX(100%); opacity: 0; }

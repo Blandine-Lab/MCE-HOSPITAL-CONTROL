@@ -19,7 +19,7 @@ const PatientProfile = () => {
         setPatient(res.data);
       } catch (err) {
         console.error('Erreur chargement patient:', err);
-        setError('Patient non trouv ou erreur serveur.');
+        setError('Patient non trouvé ou erreur serveur.');
       } finally {
         setLoading(false);
       }
@@ -27,12 +27,11 @@ const PatientProfile = () => {
     fetchPatient();
   }, [id]);
 
-  // ? Redirection vers le NOUVEAU formulaire de cration
   const goToPrescriptionCreation = () => {
     navigate(`/prescription/new/${id}`);
   };
 
-  if (loading) return <div className="text-center p-4">? Chargement...</div>;
+  if (loading) return <div className="text-center p-4">⏳ Chargement...</div>;
   if (error) return <div className="text-red-600 p-4">{error}</div>;
   if (!patient) return <div className="p-4">Patient introuvable.</div>;
 
@@ -47,7 +46,7 @@ const PatientProfile = () => {
             onClick={goToPrescriptionCreation}
             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
           >
-            ?? Prescrire une ordonnance
+            💊 Prescrire une ordonnance
           </button>
           <button
             onClick={() => navigate(`/patients/edit/${patient.id}`)}
@@ -64,32 +63,16 @@ const PatientProfile = () => {
         </div>
       </div>
 
-      {/* Informations patient ?FC? inchang */}
+      {/* Informations patient – uniquement les champs existants */}
       <div className="bg-gray-50 p-4 rounded border mb-6">
-        <p><strong>IPP :</strong> {patient.ipp || 'Non renseign'}</p>
-        <p><strong>Date de naissance :</strong> {patient.date_naissance ? new Date(patient.date_naissance).toLocaleDateString() : 'N/C'}</p>
-        <p><strong>Tlphone :</strong> {patient.telephone || 'N/C'}</p>
-        <p><strong>Email :</strong> {patient.email || 'N/C'}</p>
-        <p><strong>Adresse :</strong> {patient.adresse || 'N/C'}</p>
-        <p><strong>Date d'admission :</strong> {patient.date_admission ? new Date(patient.date_admission).toLocaleDateString() : 'N/C'}</p>
-        <p><strong>Antcdents :</strong> {patient.antecedents || 'Aucun'}</p>
-        <p><strong>Allergies :</strong> {patient.allergies || 'Aucune'}</p>
-        <p><strong>Traitements :</strong> {patient.traitements || 'Aucun'}</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="border p-3 rounded">
-          <h3 className="font-semibold">Contact 1</h3>
-          <p>{patient.personne_a_prevenir_nom1 || 'N/C'}</p>
-          <p>{patient.personne_a_prevenir_tel1 || 'N/C'}</p>
-          <p>{patient.personne_a_prevenir_adresse1 || ''}</p>
-        </div>
-        <div className="border p-3 rounded">
-          <h3 className="font-semibold">Contact 2</h3>
-          <p>{patient.personne_a_prevenir_nom2 || 'N/C'}</p>
-          <p>{patient.personne_a_prevenir_tel2 || 'N/C'}</p>
-          <p>{patient.personne_a_prevenir_adresse2 || ''}</p>
-        </div>
+        {patient.date_naissance && (
+          <p><strong>Date de naissance :</strong> {new Date(patient.date_naissance).toLocaleDateString()}</p>
+        )}
+        <p><strong>Téléphone :</strong> {patient.telephone || 'Non renseigné'}</p>
+        <p><strong>Email :</strong> {patient.email || 'Non renseigné'}</p>
+        <p><strong>Adresse :</strong> {patient.adresse || 'Non renseignée'}</p>
+        {patient.genre && <p><strong>Genre :</strong> {patient.genre}</p>}
+        {/* Ajoutez ici d’autres champs si votre table en contient (ex: date_admission) */}
       </div>
     </div>
   );

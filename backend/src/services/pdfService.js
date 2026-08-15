@@ -99,22 +99,34 @@ const generateExamPDF = async (examen) => {
     drawText(value || 'Non renseigné', col2X + 120, yy, { size: 11, font: font });
   };
 
+  // Ligne 1 : Patient | Médecin prescripteur
   infoLine1('Patient', `${examen.patient_prenom} ${examen.patient_nom}`, y);
   infoLine2('Médecin prescripteur', examen.medecin_prescripteur, y);
   y -= 18;
 
-  infoLine1('Service', examen.service_nom, y);
+  // Ligne 2 : Examen | Date demande
+  const examenNom = examen.type_examen_nom || examen.type_examen || 'Non spécifié';
+  infoLine1('Examen', examenNom, y);
   infoLine2('Date demande', new Date(examen.date_demande).toLocaleDateString('fr-FR'), y);
   y -= 18;
 
-  infoLine1('Date prévue', examen.date_prevue ? new Date(examen.date_prevue).toLocaleDateString('fr-FR') : 'Non spécifiée', y);
-  infoLine2('Type prélèvement', examen.type_prelevement, y);
+  // Ligne 3 : Service | Date prévue
+  infoLine1('Service', examen.service_nom, y);
+  const datePrevue = examen.date_prevue ? new Date(examen.date_prevue).toLocaleDateString('fr-FR') : 'Non spécifiée';
+  infoLine2('Date prévue', datePrevue, y);
   y -= 18;
 
+  // Ligne 4 : Type prélèvement | (on peut laisser vide à droite)
+  infoLine1('Type prélèvement', examen.type_prelevement || 'Non spécifié', y);
+  // infoLine2('', '', y); // pas nécessaire
+  y -= 18;
+
+  // Instructions
   drawText('Instructions :', margin, y, { size: 11, font: fontBold, color: rgb(0.4, 0.4, 0.4) });
   drawText(examen.instructions_preparation || 'Aucune', margin + 90, y, { size: 11, font: font });
   y -= 18;
 
+  // Motif
   drawText('Motif :', margin, y, { size: 11, font: fontBold, color: rgb(0.4, 0.4, 0.4) });
   drawText(examen.description || 'Non renseigné', margin + 55, y, { size: 11, font: font });
   y -= 28;
@@ -154,9 +166,8 @@ const generateExamPDF = async (examen) => {
     xPosRow += colWidths[1];
     drawText(p.unite || '', xPosRow, rowY, { color });
     xPosRow += colWidths[2];
-    drawText(`${p.ref_min} - ${p.ref_max}`, xPosRow, rowY, { color });
+    drawText(`${p.ref_min || ''} - ${p.ref_max || ''}`, xPosRow, rowY, { color });
     xPosRow += colWidths[3];
-
     let interp = '';
     if (p.interpretation === 'normal') interp = 'Normal';
     else if (p.interpretation === 'haut') interp = 'Haut';
@@ -207,7 +218,7 @@ const generateExamPDF = async (examen) => {
 
   y -= 20;
 
-  // ---- BIOLOGISTE (validation) ----
+  // ---- BIOLOGISTE (validation) : affiché uniquement si validé ----
   if (examen.statut === 'valide') {
     const biologiste = examen.biologiste_nom && examen.biologiste_prenom ?
       `${examen.biologiste_prenom} ${examen.biologiste_nom}` :
@@ -218,10 +229,8 @@ const generateExamPDF = async (examen) => {
     const dateValidation = examen.date_validation ? new Date(examen.date_validation).toLocaleDateString('fr-FR') : 'Non renseignée';
     drawText('Date validation :', 300, y, { size: 11, font: fontBold, color: rgb(0.4, 0.4, 0.4) });
     drawText(dateValidation, 400, y, { size: 11, font: font });
-  } else {
-    drawText('Validation :', margin, y, { size: 11, font: fontBold, color: rgb(0.4, 0.4, 0.4) });
-    drawText('Non validé', margin + 85, y, { size: 11, font: font });
   }
+  // Sinon on n'affiche rien du tout (suppression de la mention "Validation : Non validé")
 
   y -= 35;
 

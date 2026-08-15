@@ -33,7 +33,7 @@ const BedManagement = () => {
   const handleAddBed = async (e) => {
     e.preventDefault();
     if (!newBed.chambre_id || !newBed.numero) {
-      setFormError('Veuillez slectionner une chambre et saisir un numro de lit.');
+      setFormError('Veuillez sélectionner une chambre et saisir un numéro de lit.');
       return;
     }
     setFormError('');
@@ -49,20 +49,20 @@ const BedManagement = () => {
       fetchData();
     } catch (err) {
       console.error('Erreur ajout lit :', err);
-      setFormError('Erreur lors de l\'ajout. Vrifiez les donnes.');
+      setFormError('Erreur lors de l\'ajout. Vérifiez les données.');
     }
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '60px 20px' }}>? Chargement des lits...</div>;
+    return <div style={{ textAlign: 'center', padding: '60px 20px' }}>⏳ Chargement des lits...</div>;
   }
 
   const disponibles = beds.filter(b => b.statut === 'disponible' || b.disponible === true).length;
-  const occupes = beds.filter(b => b.statut === 'occup' || b.disponible === false).length;
+  const occupes = beds.filter(b => b.statut === 'occupé' || b.disponible === false).length;
 
   return (
     <div>
-      {/* En-tte */}
+      {/* En-tête */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '28px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <FaHospital style={{ color: '#3b82f6' }} /> Gestion des lits
@@ -96,11 +96,11 @@ const BedManagement = () => {
           <p style={{ fontSize: '28px', fontWeight: 'bold', margin: '4px 0 0 0', color: '#0f172a' }}>{beds.length}</p>
         </div>
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <p style={{ color: '#64748b', margin: 0 }}>?? Disponibles</p>
+          <p style={{ color: '#64748b', margin: 0 }}>✅ Disponibles</p>
           <p style={{ fontSize: '28px', fontWeight: 'bold', margin: '4px 0 0 0', color: '#10b981' }}>{disponibles}</p>
         </div>
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <p style={{ color: '#64748b', margin: 0 }}>?? Occups</p>
+          <p style={{ color: '#64748b', margin: 0 }}>❌ Occupés</p>
           <p style={{ fontSize: '28px', fontWeight: 'bold', margin: '4px 0 0 0', color: '#ef4444' }}>{occupes}</p>
         </div>
       </div>
@@ -119,16 +119,16 @@ const BedManagement = () => {
                 required
                 style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
               >
-                <option value="">Slectionner une chambre</option>
+                <option value="">Sélectionner une chambre</option>
                 {chambres.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.nom} (Bt. {c.batiment_nom || '?'} - tage {c.etage_numero || '?'})
+                    {c.nom} (Bât. {c.batiment_nom || '?'} - étage {c.etage_numero || '?'})
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Numro du lit *</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Numéro du lit *</label>
               <input
                 type="text"
                 placeholder="ex: A1, B2..."
@@ -146,7 +146,7 @@ const BedManagement = () => {
                 style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
               >
                 <option value="libre">Libre</option>
-                <option value="occup">Occup</option>
+                <option value="occupé">Occupé</option>
               </select>
             </div>
             <button
@@ -173,7 +173,7 @@ const BedManagement = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Numro</th>
+              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Numéro</th>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Chambre</th>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Statut</th>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Patient</th>
@@ -198,7 +198,7 @@ const BedManagement = () => {
                       backgroundColor: (b.statut === 'disponible' || b.disponible === true) ? '#d1fae5' : '#fee2e2',
                       color: (b.statut === 'disponible' || b.disponible === true) ? '#065f46' : '#991b1b'
                     }}>
-                      {(b.statut === 'disponible' || b.disponible === true) ? '?? Disponible' : '?? Occup'}
+                      {(b.statut === 'disponible' || b.disponible === true) ? '✅ Disponible' : '❌ Occupé'}
                     </span>
                   </td>
                   <td style={{ padding: '14px 20px', color: '#475569' }}>{b.patient_nom ? `${b.patient_prenom} ${b.patient_nom}` : '-'}</td>

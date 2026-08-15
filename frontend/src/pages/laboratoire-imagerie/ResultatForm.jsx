@@ -28,27 +28,27 @@ const ResultatForm = () => {
   const [success, setSuccess] = useState('');
 
   const permissions = user?.permissions || [];
-  const isBiologiste = permissions.includes('validate_laboratory') || user?.role === 'biologiste';
+  const isBiologiste = permissions.includes('validate_laboratory') || user?.role === 'biologiste' || user?.role === 'admin';
 
-  // Chargement des donnes
+  // Chargement des données
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError('');
       try {
-        // 1. Rcuprer l'examen
+        // 1. Récupérer l'examen (avec les paramètres initiaux ou les résultats déjà saisis)
         const examenRes = await api.get(`/examens/${id}`);
         const examenData = examenRes.data;
         setExamen(examenData);
 
-        // 2. Rcuprer les paramtres
+        // 2. Récupérer les paramètres
         let params = [];
 
-        // Si l'examen a dj des paramtres structurs (array non vide)
+        // Si l'examen a déjà des paramètres structurés (array non vide) – cela peut venir soit des paramètres initiaux du médecin, soit des résultats saisis
         if (examenData.parametres && Array.isArray(examenData.parametres) && examenData.parametres.length > 0) {
           params = examenData.parametres;
         } else if (examenData.type_examen_id) {
-          // Sinon, charger depuis le type d'examen
+          // Sinon, charger depuis le type d'examen (paramètres par défaut)
           try {
             const typeRes = await api.get(`/types-examens/${examenData.type_examen_id}`);
             const defauts = typeRes.data.parametres_defaut;
@@ -60,21 +60,21 @@ const ResultatForm = () => {
                 interpretation: ''
               }));
             } else {
-              console.warn('Le type d\'examen n\'a pas de paramtres dfinis.');
+              console.warn('Le type d\'examen n\'a pas de paramètres définis.');
             }
           } catch (typeErr) {
-            console.warn('Impossible de charger les paramtres du type d\'examen', typeErr);
+            console.warn('Impossible de charger les paramètres du type d\'examen', typeErr);
           }
         } else {
-          console.warn('Aucun type_examen_id dfini pour cet examen.');
+          console.warn('Aucun type_examen_id défini pour cet examen.');
         }
 
         setParametres(params);
         setCommentaireGlobal(examenData.commentaire_global || '');
 
       } catch (err) {
-        console.error('Erreur chargement donnes :', err);
-        setError('Erreur de chargement des donnes');
+        console.error('Erreur chargement données :', err);
+        setError('Erreur de chargement des données');
       } finally {
         setLoading(false);
       }
@@ -87,7 +87,7 @@ const ResultatForm = () => {
     const newParams = [...parametres];
     newParams[index][field] = value;
 
-    // Auto-interprtation si valeur, ref_min et ref_max sont dfinis
+    // Auto-interprétation si valeur, ref_min et ref_max sont définis
     if (field === 'valeur' && newParams[index].ref_min && newParams[index].ref_max) {
       const val = parseFloat(value);
       const min = parseFloat(newParams[index].ref_min);
@@ -114,7 +114,7 @@ const ResultatForm = () => {
         statut: 'en_cours',
         commentaire_global: commentaireGlobal
       });
-      setSuccess('? Brouillon sauvegard');
+      setSuccess('✅ Brouillon sauvegardé');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Erreur sauvegarde brouillon :', err);
@@ -124,18 +124,18 @@ const ResultatForm = () => {
     }
   };
 
-  // ============ FINALISER LA SAISIE (avec logs) ============
+  // Finaliser la saisie
   const handleFinalize = async () => {
-    console.log('?? [handleFinalize] Dclench');
-    console.log('?? Examen ID:', id);
-    console.log('?? Paramtres:', parametres);
-    console.log('?? Commentaire:', commentaireGlobal);
+    console.log('🔍 [handleFinalize] Déclenché');
+    console.log('📋 Examen ID:', id);
+    console.log('📊 Paramètres:', parametres);
+    console.log('📝 Commentaire:', commentaireGlobal);
 
-    if (!window.confirm('Confirmer la finalisation de la saisie ? Les rsultats seront transmis au biologiste pour validation.')) {
-      console.log('?? [handleFinalize] Confirm annul');
+    if (!window.confirm('Confirmer la finalisation de la saisie ? Les résultats seront transmis au biologiste pour validation.')) {
+      console.log('❌ [handleFinalize] Confirm annulé');
       return;
     }
-    console.log('?? [handleFinalize] Confirm accept');
+    console.log('✅ [handleFinalize] Confirm accepté');
 
     setSaving(true);
     setError('');
@@ -144,17 +144,17 @@ const ResultatForm = () => {
     try {
       const response = await api.put(`/examens/${id}/resultats`, {
         parametres,
-        statut: 'termin',
+        statut: 'realise', // Utiliser 'realise' directement pour correspondre à la base
         commentaire_global: commentaireGlobal
       });
-      console.log('? [handleFinalize] Rponse serveur:', response);
-      setSuccess('? Saisie finalise, en attente de validation');
+      console.log('✅ [handleFinalize] Réponse serveur:', response);
+      setSuccess('✅ Saisie finalisée, en attente de validation');
       setTimeout(() => {
         navigate(`/laboratoire/examen/${id}`);
       }, 1500);
     } catch (err) {
-      console.error('? [handleFinalize] Erreur:', err);
-      console.error('? Dtails:', err.response?.data);
+      console.error('❌ [handleFinalize] Erreur:', err);
+      console.error('📌 Détails:', err.response?.data);
       setError(err.response?.data?.error || 'Erreur lors de la finalisation');
     } finally {
       setSaving(false);
@@ -163,7 +163,7 @@ const ResultatForm = () => {
 
   // Valider (biologiste)
   const handleValidate = async () => {
-    if (!window.confirm('Confirmer la validation de ces rsultats ? Cette action est irrversible.')) return;
+    if (!window.confirm('Confirmer la validation de ces résultats ? Cette action est irréversible.')) return;
     setSaving(true);
     setError('');
     setSuccess('');
@@ -171,7 +171,7 @@ const ResultatForm = () => {
       await api.put(`/examens/${id}/validation`, {
         commentaire_validation: commentaireGlobal
       });
-      setSuccess('? Rsultats valids !');
+      setSuccess('✅ Résultats validés !');
       setTimeout(() => {
         navigate(`/laboratoire/examen/${id}`);
       }, 1500);
@@ -183,18 +183,18 @@ const ResultatForm = () => {
     }
   };
 
-  // Impression PDF ?FC? avec token encod dans l'URL
+  // Impression PDF avec token encodé dans l'URL
   const handlePrint = () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('Vous devez tre connect pour imprimer le PDF.');
+      alert('Vous devez être connecté pour imprimer le PDF.');
       return;
     }
     const encodedToken = encodeURIComponent(token);
     window.open(`/api/examens/${id}/pdf?token=${encodedToken}`, '_blank');
   };
 
-  // Vrifier s'il y a des valeurs critiques
+  // Vérifier s'il y a des valeurs critiques
   const hasCritical = useMemo(() => {
     return parametres.some(p => {
       const val = parseFloat(p.valeur);
@@ -207,7 +207,7 @@ const ResultatForm = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>? Chargement...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement...</div>
       </div>
     );
   }
@@ -223,8 +223,9 @@ const ResultatForm = () => {
     );
   }
 
-  const isSaisieTerminee = examen?.statut === 'termin' || examen?.statut === 'valide';
-  const isValide = examen?.statut === 'valide';
+  // ✅ Correction des conditions d'état
+  const isSaisieTerminee = examen?.statut === 'realise' || examen?.statut === 'validé' || examen?.statut === 'terminé';
+  const isValide = examen?.statut === 'realise' && examen?.date_validation;
 
   return (
     <div>
@@ -240,7 +241,7 @@ const ResultatForm = () => {
             fontWeight: '500'
           }}
         >
-          <FaArrowLeft /> Retour  l'examen
+          <FaArrowLeft /> Retour à l'examen
         </Link>
       </div>
 
@@ -252,17 +253,17 @@ const ResultatForm = () => {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}
       >
-        {/* En-tte */}
+        {/* En-tête */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <FaFileMedical style={{ fontSize: '32px', color: '#8b5cf6' }} />
             <div>
-              <h2 style={{ margin: 0, color: '#0f172a' }}>Saisie des rsultats</h2>
+              <h2 style={{ margin: 0, color: '#0f172a' }}>Saisie des résultats</h2>
               <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>
                 {examen.type_examen} - {examen.patient_prenom} {examen.patient_nom}
                 {hasCritical && (
                   <span style={{ color: '#dc2626', marginLeft: '12px' }}>
-                    <FaExclamationTriangle /> Valeurs critiques dtectes
+                    <FaExclamationTriangle /> Valeurs critiques détectées
                   </span>
                 )}
               </p>
@@ -313,26 +314,26 @@ const ResultatForm = () => {
           </div>
         )}
 
-        {/* Tableau des paramtres */}
+        {/* Tableau des paramètres */}
         <form>
           {parametres.length === 0 ? (
             <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>
-              <p style={{ fontSize: '16px', marginBottom: '8px' }}>?? Aucun paramtre structur dfini pour ce type d'examen.</p>
+              <p style={{ fontSize: '16px', marginBottom: '8px' }}>Aucun paramètre structuré défini pour ce type d'examen.</p>
               <p style={{ fontSize: '14px' }}>
-                Vous pouvez saisir les rsultats dans la zone de commentaire ci-dessous.
+                Vous pouvez saisir les résultats dans la zone de commentaire ci-dessous.
                 <br />
-                <small>Si vous souhaitez structurer les paramtres, veuillez les dfinir dans le type d'examen depuis l'administration.</small>
+                <small>Si vous souhaitez structurer les paramètres, veuillez les définir dans le type d'examen depuis l'administration.</small>
               </p>
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
               <thead style={{ backgroundColor: '#f1f5f9' }}>
                 <tr>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Paramtre</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Paramètre</th>
                   <th style={{ padding: '10px', textAlign: 'left' }}>Valeur</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Unit</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Intervalle rfrence</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Interprtation</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Unité</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Intervalle référence</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Interprétation</th>
                   <th style={{ padding: '10px', textAlign: 'left' }}>Commentaire</th>
                 </tr>
               </thead>
@@ -373,7 +374,7 @@ const ResultatForm = () => {
                               fontWeight: 'bold'
                             }}
                           >
-                            {p.interpretation === 'normal' ? '? Normal' : p.interpretation === 'haut' ? '? Haut' : '? Bas'}
+                            {p.interpretation === 'normal' ? '✅ Normal' : p.interpretation === 'haut' ? '⬆ Haut' : '⬇ Bas'}
                           </span>
                         )}
                       </td>
@@ -435,7 +436,7 @@ const ResultatForm = () => {
                     gap: '8px'
                   }}
                 >
-                  <FaSave /> {saving ? 'Sauvegarde...' : 'Sauvegarder brouillon'}
+                  <FaSave /> {saving ? 'Sauvegarde...' : 'Sauvegarder le brouillon'}
                 </button>
                 <button
                   type="button"
@@ -458,7 +459,7 @@ const ResultatForm = () => {
               </>
             )}
 
-            {isBiologiste && examen?.statut === 'termin' && !isValide && (
+            {isBiologiste && examen?.statut === 'realise' && !isValide && (
               <button
                 type="button"
                 onClick={handleValidate}
@@ -475,13 +476,13 @@ const ResultatForm = () => {
                   gap: '8px'
                 }}
               >
-                <FaCheckCircle /> {saving ? 'Validation...' : 'Valider les rsultats'}
+                <FaCheckCircle /> {saving ? 'Validation...' : 'Valider les résultats'}
               </button>
             )}
 
             {isValide && (
               <span style={{ color: '#10b981', fontWeight: 'bold', padding: '10px 0' }}>
-                ? Examen valid le{' '}
+                ✅ Examen validé le{' '}
                 {examen.date_validation
                   ? new Date(examen.date_validation).toLocaleDateString('fr-FR')
                   : 'date inconnue'}
@@ -490,7 +491,7 @@ const ResultatForm = () => {
 
             {isSaisieTerminee && !isValide && (
               <span style={{ color: '#f59e0b', fontWeight: 'bold', padding: '10px 0' }}>
-                ? En attente de validation
+                ⏳ En attente de validation
               </span>
             )}
           </div>
