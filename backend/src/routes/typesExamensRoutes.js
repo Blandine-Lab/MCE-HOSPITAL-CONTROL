@@ -35,15 +35,17 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// POST créer un type
+// POST créer un type (avec parametres_defaut en texte)
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { nom, categorie, description, duree_estimee, prix, preparation } = req.body;
+    const { nom, categorie, description, duree_estimee, prix, preparation, parametres_defaut } = req.body;
+    // On stocke la valeur directement (si vide, on met NULL)
+    const params = (parametres_defaut && parametres_defaut.trim() !== '') ? parametres_defaut : null;
     const { rows } = await pool.query(
-      `INSERT INTO types_examens (nom, categorie, description, duree_estimee, prix, preparation)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO types_examens (nom, categorie, description, duree_estimee, prix, preparation, parametres_defaut)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [nom, categorie, description, duree_estimee, prix, preparation]
+      [nom, categorie, description, duree_estimee, prix, preparation, params]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -52,18 +54,20 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
-// PUT modifier un type
+// PUT modifier un type (avec parametres_defaut en texte)
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom, categorie, description, duree_estimee, prix, preparation } = req.body;
+    const { nom, categorie, description, duree_estimee, prix, preparation, parametres_defaut } = req.body;
+    const params = (parametres_defaut && parametres_defaut.trim() !== '') ? parametres_defaut : null;
     const { rows } = await pool.query(
       `UPDATE types_examens 
        SET nom = $1, categorie = $2, description = $3,
-           duree_estimee = $4, prix = $5, preparation = $6
-       WHERE id = $7
+           duree_estimee = $4, prix = $5, preparation = $6,
+           parametres_defaut = $7
+       WHERE id = $8
        RETURNING *`,
-      [nom, categorie, description, duree_estimee, prix, preparation, id]
+      [nom, categorie, description, duree_estimee, prix, preparation, params, id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Type non trouvé' });
     res.json(rows[0]);

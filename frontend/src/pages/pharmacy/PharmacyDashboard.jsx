@@ -10,6 +10,14 @@ const PharmacyDashboard = () => {
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ enAttente: 0, alertesCount: 0 });
+  const [toast, setToast] = useState(null);
+  const [toastType, setToastType] = useState('success');
+
+  const showToast = (message, type = 'success') => {
+    setToast(message);
+    setToastType(type);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,50 +36,70 @@ const PharmacyDashboard = () => {
         });
         setLoading(false);
       } catch (err) {
-        console.error('Erreur chargement dashboard:', err);
+        console.error('Erreur chargement du tableau de bord :', err);
+        showToast('Erreur chargement des données', 'error');
         setLoading(false);
       }
     };
     fetchData();
   }, []);
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
+  if (loading) {
+    return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f0fdf4', padding: '32px' }}>
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: toastType === 'success' ? '#10b981' : '#ef4444',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          zIndex: 1000,
+          animation: 'slideIn 0.3s ease-out',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+        }}>
+          {toast}
+        </div>
+      )}
+
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#166534', marginBottom: '24px' }}>
-          ?? Tableau de bord ?FC? Pharmacie
+          📊 Tableau de bord - Pharmacie
         </h1>
 
         {/* Widgets */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-          <Widget 
-            icon={<FaPrescriptionBottle />} 
-            label="Ordonnances en attente" 
-            value={stats.enAttente} 
-            color="#3b82f6" 
+          <Widget
+            icon={<FaPrescriptionBottle />}
+            label="Ordonnances en attente"
+            value={stats.enAttente}
+            color="#3b82f6"
             onClick={() => navigate('/pharmacist/prescriptions')}
           />
-          <Widget 
-            icon={<FaExclamationTriangle />} 
-            label="Alertes stock" 
-            value={stats.alertesCount} 
-            color="#ef4444" 
+          <Widget
+            icon={<FaExclamationTriangle />}
+            label="Alertes stock"
+            value={stats.alertesCount}
+            color="#ef4444"
             onClick={() => window.location.href = '/medicaments'}
           />
-          <Widget 
-            icon={<FaShoppingCart />} 
-            label="Commandes en cours" 
-            value={commandes.filter(c => c.statut === 'en_cours').length} 
-            color="#f59e0b" 
+          <Widget
+            icon={<FaShoppingCart />}
+            label="Commandes en cours"
+            value={commandes.filter(c => c.statut === 'en_cours').length}
+            color="#f59e0b"
             onClick={() => navigate('/pharmacy/commandes')}
           />
-          <Widget 
-            icon={<FaBoxes />} 
-            label="Mdicaments en stock" 
-            value="-" 
-            color="#10b981" 
+          <Widget
+            icon={<FaBoxes />}
+            label="Médicaments en stock"
+            value="-"
+            color="#10b981"
             onClick={() => window.location.href = '/medicaments'}
           />
         </div>
@@ -79,7 +107,7 @@ const PharmacyDashboard = () => {
         {/* Ordonnances en attente */}
         <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>
-            ?? Ordonnances en attente
+            📋 Ordonnances en attente
           </h2>
           {ordonnances.length === 0 ? (
             <p style={{ color: '#6b7280' }}>Aucune ordonnance en attente.</p>
@@ -89,7 +117,7 @@ const PharmacyDashboard = () => {
                 <tr style={{ backgroundColor: '#f3f4f6' }}>
                   <th style={{ padding: '10px', textAlign: 'left' }}>Patient</th>
                   <th style={{ padding: '10px', textAlign: 'left' }}>Date</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Mdecin</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Médecin</th>
                   <th style={{ padding: '10px', textAlign: 'left' }}>Actions</th>
                 </tr>
               </thead>
@@ -102,12 +130,21 @@ const PharmacyDashboard = () => {
                     </td>
                     <td style={{ padding: '10px' }}>Dr. {ord.medecin_prenom} {ord.medecin_nom}</td>
                     <td style={{ padding: '10px' }}>
-                      {/* ? CORRECTION : navigate vers /delivrance/ sans le prfixe /pharmacy */}
                       <button
                         onClick={() => navigate(`/delivrance/${ord.id}`)}
-                        style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }}
+                        style={{
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          padding: '6px 12px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
                       >
-                        <FaSyringe /> Dlivrer
+                        <FaSyringe /> Délivrer
                       </button>
                     </td>
                   </tr>
@@ -117,19 +154,25 @@ const PharmacyDashboard = () => {
           )}
         </div>
       </div>
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };
 
-// Composant Widget rutilisable
+// Composant Widget réutilisable
 const Widget = ({ icon, label, value, color, onClick }) => {
   return (
-    <div 
-      onClick={onClick} 
-      style={{ 
-        backgroundColor: 'white', 
-        borderRadius: '12px', 
-        padding: '20px', 
+    <div
+      onClick={onClick}
+      style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
         boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
         cursor: 'pointer',
         transition: 'all 0.2s',

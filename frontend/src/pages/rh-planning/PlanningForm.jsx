@@ -8,55 +8,168 @@ const PlanningForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = !!id;
-  const [formData, setFormData] = useState({ employe_id:'', date:'', heure_debut:'', heure_fin:'', type:'prsentiel', notes:'' });
+  const [formData, setFormData] = useState({
+    employe_id: '',
+    date: '',
+    heure_debut: '',
+    heure_fin: '',
+    type: 'présentiel',
+    notes: ''
+  });
   const [employes, setEmployes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/employes').then(res => setEmployes(res.data)).catch(console.error);
+    // Charger la liste des employés
+    api.get('/employes')
+      .then(res => setEmployes(res.data))
+      .catch(err => console.error('Erreur chargement employés :', err));
+
+    // Si édition, charger les données du planning
     if (isEdit) {
-      api.get(`/plannings/${id}`).then(res => setFormData(res.data)).catch(console.error);
+      setLoading(true);
+      api.get(`/plannings/${id}`)
+        .then(res => {
+          setFormData(res.data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('Erreur chargement planning :', err);
+          setError('Impossible de charger le planning');
+          setLoading(false);
+        });
     }
   }, [id, isEdit]);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-  const handleSubmit = async (e) => {
-    e.preventDefault(); setLoading(true); setError('');
-    try {
-      if (isEdit) await api.put(`/plannings/${id}`, formData);
-      else await api.post('/plannings', formData);
-      navigate('/rh/plannings');
-    } catch (err) { setError('Erreur'); setLoading(false); }
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    // Validation simple
+    if (!formData.employe_id || !formData.date) {
+      setError('Veuillez sélectionner un employé et une date.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      if (isEdit) {
+        await api.put(`/plannings/${id}`, formData);
+      } else {
+        await api.post('/plannings', formData);
+      }
+      navigate('/rh/plannings');
+    } catch (err) {
+      console.error('Erreur enregistrement planning :', err);
+      setError(err.response?.data?.error || 'Erreur lors de l\'enregistrement');
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Chargement...</div>;
 
   return (
     <div>
-      <Link to="/rh/plannings" style={{display:'inline-flex', alignItems:'center', gap:8, color:'#3b82f6', textDecoration:'none'}}><FaArrowLeft /> Retour</Link>
-      <div style={{backgroundColor:'white', borderRadius:12, padding:32, marginTop:16, boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+      <Link to="/rh/plannings" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#3b82f6', textDecoration: 'none' }}>
+        <FaArrowLeft /> Retour
+      </Link>
+      <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, marginTop: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <h2>{isEdit ? 'Modifier' : 'Nouveau'} planning</h2>
-        {error && <div style={{color:'red'}}>{error}</div>}
-        <form onSubmit={handleSubmit} style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
-          <div><label>Employ *</label>
-            <select name="employe_id" value={formData.employe_id} onChange={handleChange} required style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}}>
-              <option value="">Slectionner</option>
-              {employes.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}
+        {error && <div style={{ color: '#ef4444', padding: '8px 12px', backgroundColor: '#fee2e2', borderRadius: 6, marginBottom: 16 }}>{error}</div>}
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Employé *</label>
+            <select
+              name="employe_id"
+              value={formData.employe_id}
+              onChange={handleChange}
+              required
+              style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}
+            >
+              <option value="">Sélectionner</option>
+              {employes.map(e => (
+                <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>
+              ))}
             </select>
           </div>
-          <div><label>Date *</label><input name="date" type="date" value={formData.date} onChange={handleChange} required style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
-          <div><label>Heure dbut</label><input name="heure_debut" type="time" value={formData.heure_debut} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
-          <div><label>Heure fin</label><input name="heure_fin" type="time" value={formData.heure_fin} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
-          <div><label>Type</label>
-            <select name="type" value={formData.type} onChange={handleChange} style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}}>
-              <option value="prsentiel">Prsentiel</option>
-              <option value="tltravail">Tltravail</option>
-              <option value="cong">Cong</option>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date *</label>
+            <input
+              name="date"
+              type="date"
+              value={formData.date}
+              onChange={handleChange}
+              required
+              style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Heure début</label>
+            <input
+              name="heure_debut"
+              type="time"
+              value={formData.heure_debut}
+              onChange={handleChange}
+              style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Heure fin</label>
+            <input
+              name="heure_fin"
+              type="time"
+              value={formData.heure_fin}
+              onChange={handleChange}
+              style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Type</label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}
+            >
+              <option value="présentiel">Présentiel</option>
+              <option value="télétravail">Télétravail</option>
+              <option value="congé">Congé</option>
               <option value="formation">Formation</option>
             </select>
           </div>
-          <div style={{gridColumn:'span 2'}}><label>Notes</label><textarea name="notes" value={formData.notes} onChange={handleChange} rows="2" style={{width:'100%', padding:10, border:'1px solid #e2e8f0', borderRadius:6}} /></div>
-          <div style={{gridColumn:'span 2'}}>
-            <button type="submit" disabled={loading} style={{backgroundColor:'#60a5fa', color:'white', padding:'12px 32px', border:'none', borderRadius:8, display:'inline-flex', alignItems:'center', gap:8}}>
+          <div style={{ gridColumn: 'span 2' }}>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Notes</label>
+            <textarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              rows="2"
+              style={{ width: '100%', padding: 10, border: '1px solid #e2e8f0', borderRadius: 6 }}
+            />
+          </div>
+          <div style={{ gridColumn: 'span 2', display: 'flex', gap: 12 }}>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                backgroundColor: '#60a5fa',
+                color: 'white',
+                padding: '12px 32px',
+                border: 'none',
+                borderRadius: 8,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                opacity: loading ? 0.6 : 1,
+                cursor: loading ? 'default' : 'pointer'
+              }}
+            >
               <FaSave /> {loading ? 'Enregistrement...' : 'Enregistrer'}
             </button>
           </div>

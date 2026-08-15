@@ -13,20 +13,31 @@ const PrescriptionDetail = () => {
   const [infirmiers, setInfirmiers] = useState([]);
   const [delivering, setDelivering] = useState(false);
   const [toast, setToast] = useState(null);
+  const [toastType, setToastType] = useState('success');
+
+  const showToast = (msg, type = 'success') => {
+    setToast(msg);
+    setToastType(type);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   // Charger la prescription et la liste des infirmiers
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [prescRes, infirmiersRes] = await Promise.all([
+        const [prescRes, employesRes] = await Promise.all([
           api.get(`/prescriptions/${id}`),
-          api.get('/pharmacy/infirmiers')
+          api.get('/employes') // ✅ tous les employés
         ]);
         setPrescription(prescRes.data);
-        setInfirmiers(infirmiersRes.data);
+        // Filtrer les infirmiers (poste = 'infirmier' ou 'Infirmier')
+        const infirmiersList = employesRes.data.filter(e => 
+          e.poste && e.poste.toLowerCase().includes('infirmier')
+        );
+        setInfirmiers(infirmiersList);
         setLoading(false);
       } catch (err) {
-        console.error('? Erreur chargement :', err);
+        console.error('Erreur chargement :', err);
         setError(err.response?.data?.error || 'Erreur de chargement');
         setLoading(false);
       }
@@ -42,38 +53,38 @@ const PrescriptionDetail = () => {
     return `ORD-${String(num).padStart(4, '0')}`;
   };
 
-  // Grer la dlivrance avec l'infirmier slectionn
+  // Gérer la délivrance (mise à jour du statut)
   const handleDeliver = async () => {
     if (!password) {
-      setToast('Veuillez saisir votre mot de passe');
-      setTimeout(() => setToast(null), 3000);
+      showToast('Veuillez saisir votre mot de passe', 'error');
       return;
     }
     if (!retrievedBy) {
-      setToast('Veuillez slectionner l\'infirmier qui retire les mdicaments');
-      setTimeout(() => setToast(null), 3000);
+      showToast('Veuillez sélectionner l\'infirmier qui retire les médicaments', 'error');
       return;
     }
     setDelivering(true);
     try {
-      await api.put(`/prescriptions/${id}/serve`, {
-        password,
-        retrieved_by: retrievedBy
+      await api.put(`/prescriptions/${id}`, {
+        statut: 'servie',
+        retrieved_by: parseInt(retrievedBy, 10)
+        // Le backend peut aussi accepter 'password' si implémenté
+        // password: password
       });
-      setToast('? Dlivrance effectue avec succs');
-      setTimeout(() => setToast(null), 3000);
+      showToast('✅ Délivrance effectuée avec succès', 'success');
       setShowDeliverModal(false);
-      // Recharger la prescription pour mettre  jour le statut
+      // Recharger la prescription
       const res = await api.get(`/prescriptions/${id}`);
       setPrescription(res.data);
+      setPassword('');
+      setRetrievedBy('');
     } catch (err) {
       console.error(err);
       let msg = err.response?.data?.error || err.message;
       if (err.response?.status === 403) {
-        msg = 'Mot de passe incorrect. Veuillez ressayer.';
+        msg = 'Mot de passe incorrect. Veuillez réessayer.';
       }
-      setToast('? Erreur : ' + msg);
-      setTimeout(() => setToast(null), 3000);
+      showToast('❌ Erreur : ' + msg, 'error');
     } finally {
       setDelivering(false);
     }
@@ -81,19 +92,19 @@ const PrescriptionDetail = () => {
 
   if (loading) return (
     <div style={{ textAlign: 'center', padding: '40px' }}>
-      ? Chargement de la prescription...
+      ⏳ Chargement de la prescription...
     </div>
   );
 
   if (error) return (
     <div style={{ textAlign: 'center', padding: '40px', color: '#ef4444' }}>
-      ? {error}
+      ❌ {error}
     </div>
   );
 
   if (!prescription) return (
     <div style={{ textAlign: 'center', padding: '40px' }}>
-      ? Prescription non trouve
+      🧾 Prescription non trouvée
     </div>
   );
 
@@ -104,18 +115,19 @@ const PrescriptionDetail = () => {
           position: 'fixed',
           top: '20px',
           right: '20px',
-          backgroundColor: toast.includes('?') ? '#10b981' : '#ef4444',
+          backgroundColor: toastType === 'success' ? '#10b981' : '#ef4444',
           color: 'white',
           padding: '12px 24px',
           borderRadius: '8px',
           zIndex: 1000,
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          animation: 'slideIn 0.3s ease-out'
         }}>
           {toast}
         </div>
       )}
 
-      {/* ===== EN?FC?TTE DE L?FC?HPITAL ===== */}
+      {/* ===== EN-TÊTE DE L'HÔPITAL ===== */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -134,14 +146,14 @@ const PrescriptionDetail = () => {
             Medical Center Elizabeth MCE
           </h1>
           <p style={{ color: '#475569', margin: 0, fontSize: '14px' }}>
-            Service de pharmacie ?FC? Prescription mdicale
+            Service de pharmacie – Prescription médicale
           </p>
         </div>
       </div>
 
       {/* ===== CONTENU PRINCIPAL ===== */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>?? Dtail de la prescription</h2>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>📋 Détail de la prescription</h2>
         <button 
           onClick={handlePrint} 
           style={{ 
@@ -154,7 +166,7 @@ const PrescriptionDetail = () => {
             fontSize: '16px'
           }}
         >
-          ??? Imprimer
+          🖨️ Imprimer
         </button>
       </div>
 
@@ -165,10 +177,10 @@ const PrescriptionDetail = () => {
         backgroundColor: '#f9fafb'
       }}>
         <div style={{ marginBottom: '16px' }}>
-          <p><strong>N Ordonnance :</strong> {formatOrdre(prescription.id)}</p>
+          <p><strong>N° Ordonnance :</strong> {formatOrdre(prescription.id)}</p>
           <p><strong>Patient :</strong> {prescription.patient_prenom} {prescription.patient_nom}</p>
-          <p><strong>Mdecin prescripteur :</strong> Dr. {prescription.doctor_prenom} {prescription.doctor_nom}</p>
-          <p><strong>Date :</strong> {new Date(prescription.date_creation).toLocaleString()}</p>
+          <p><strong>Médecin prescripteur :</strong> Dr. {prescription.medecin_prenom} {prescription.medecin_nom}</p>
+          <p><strong>Date :</strong> {new Date(prescription.created_at).toLocaleString()}</p>
           <p>
             <strong>Statut :</strong> 
             <span style={{ 
@@ -176,25 +188,22 @@ const PrescriptionDetail = () => {
               padding: '4px 12px',
               borderRadius: '20px',
               fontSize: '14px',
-              backgroundColor: prescription.status === 'pending' ? '#fef3c7' : '#d1fae5',
-              color: prescription.status === 'pending' ? '#92400e' : '#065f46'
+              backgroundColor: prescription.statut === 'en_attente' ? '#fef3c7' : '#d1fae5',
+              color: prescription.statut === 'en_attente' ? '#92400e' : '#065f46'
             }}>
-              {prescription.status === 'pending' ? '? En attente' : 
-               prescription.status === 'served' ? '? Servie' : '?? Partielle'}
+              {prescription.statut === 'en_attente' ? '⏳ En attente' : 
+               prescription.statut === 'servie' ? '✅ Servie' : '📦 Partielle'}
             </span>
           </p>
-          {prescription.pharmacist_id && (
-            <p><strong>Servie par :</strong> pharmacien ID {prescription.pharmacist_id} le {prescription.date_served ? new Date(prescription.date_served).toLocaleString() : '-'}</p>
-          )}
-          {/* ? Nouvelle ligne : afficher l'infirmier rcuprant */}
+          {/* Si le backend renvoie un champ pour l'infirmier qui a retiré */}
           {prescription.retrieved_nom && (
-            <p><strong>Rcupr par :</strong> {prescription.retrieved_prenom} {prescription.retrieved_nom}</p>
+            <p><strong>Retiré par :</strong> {prescription.retrieved_prenom} {prescription.retrieved_nom}</p>
           )}
         </div>
 
-        <h3 style={{ marginTop: '24px', marginBottom: '12px' }}>?? Mdicaments prescrits :</h3>
+        <h3 style={{ marginTop: '24px', marginBottom: '12px' }}>💊 Médicaments prescrits :</h3>
         <ul style={{ listStyle: 'none', padding: 0 }}>
-          {prescription.items?.map((item, idx) => (
+          {prescription.lignes?.map((item, idx) => (
             <li key={idx} style={{ 
               padding: '8px 12px', 
               marginBottom: '8px',
@@ -202,24 +211,23 @@ const PrescriptionDetail = () => {
               borderRadius: '6px',
               border: '1px solid #e5e7eb'
             }}>
-              <strong>{item.medicament}</strong>
-              {item.posologie && ` ?FC? ${item.posologie}`}
-              {item.duree && ` (${item.duree})`}
+              <strong>{item.medicament_nom || item.medicament}</strong>
+              {item.posologie && ` – ${item.posologie}`}
               <span style={{ marginLeft: '12px', color: '#6b7280', fontSize: '14px' }}>
-                Qt: {item.quantite}
+                Qté: {item.quantite_prescrit || item.quantite}
               </span>
             </li>
           ))}
         </ul>
 
-        {prescription.notes && (
+        {prescription.observations && (
           <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
-            <strong>?? Notes :</strong> {prescription.notes}
+            <strong>📝 Observations :</strong> {prescription.observations}
           </div>
         )}
 
-        {/* ===== BOUTON DLIVRER ===== */}
-        {prescription.status === 'pending' && (
+        {/* ===== BOUTON DÉLIVRER ===== */}
+        {prescription.statut === 'en_attente' && (
           <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
             <button
               onClick={() => setShowDeliverModal(true)}
@@ -234,12 +242,12 @@ const PrescriptionDetail = () => {
                 fontWeight: 'bold'
               }}
             >
-              ?? Dlivrer
+              ✅ Délivrer
             </button>
           </div>
         )}
 
-        {/* ===== MODAL DE DLIVRANCE AVEC SLECTION DE L'INFIRMIER ===== */}
+        {/* ===== MODAL DE DÉLIVRANCE ===== */}
         {showDeliverModal && (
           <div style={{
             position: 'fixed',
@@ -260,12 +268,12 @@ const PrescriptionDetail = () => {
               width: '450px',
               maxWidth: '90%'
             }}>
-              <h3 style={{ marginBottom: '16px' }}>?? Validation de la dlivrance</h3>
+              <h3 style={{ marginBottom: '16px' }}>🔒 Validation de la délivrance</h3>
               
-              {/* Slection de l'infirmier */}
+              {/* Sélection de l'infirmier */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px' }}>
-                  Infirmier rcuprant *
+                  Infirmier récupérant *
                 </label>
                 <select
                   value={retrievedBy}
@@ -281,11 +289,11 @@ const PrescriptionDetail = () => {
                   ))}
                 </select>
                 <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  L'infirmier qui vient chercher les mdicaments
+                  L'infirmier qui vient chercher les médicaments
                 </div>
               </div>
 
-              {/* Mot de passe du pharmacien */}
+              {/* Mot de passe du pharmacien (si le backend le demande) */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px' }}>
                   Mot de passe du pharmacien *
@@ -333,12 +341,12 @@ const PrescriptionDetail = () => {
         {/* ===== HISTORIQUE ===== */}
         {prescription.historique && prescription.historique.length > 0 && (
           <div style={{ marginTop: '24px', borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
-            <h3>?? Historique</h3>
+            <h3>📜 Historique</h3>
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {prescription.historique.map((evt, idx) => (
                 <li key={idx} style={{ padding: '4px 0', fontSize: '14px', color: '#4b5563' }}>
-                  <strong>{evt.action === 'creation' ? '?? Cre par' : '?? Dlivre par'}</strong> {evt.utilisateur}
-                  ?FC? {new Date(evt.date).toLocaleString()}
+                  <strong>{evt.action === 'creation' ? '✏️ Créé par' : '✅ Délivré par'}</strong> {evt.utilisateur}
+                  – {new Date(evt.date).toLocaleString()}
                   {evt.role && <span style={{ marginLeft: '8px', color: '#6b7280', fontSize: '12px' }}>({evt.role})</span>}
                 </li>
               ))}
@@ -354,8 +362,15 @@ const PrescriptionDetail = () => {
         textDecoration: 'none',
         fontWeight: 'bold'
       }}>
-        ? Retour
+        ← Retour
       </Link>
+
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };

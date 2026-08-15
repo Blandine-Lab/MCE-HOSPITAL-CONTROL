@@ -110,16 +110,16 @@ const TypesExamens = () => {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.nom.trim()) newErrors.nom = 'Le nom est requis';
-    if (!formData.categorie) newErrors.categorie = 'La catïgorie est requise';
+    if (!formData.categorie) newErrors.categorie = 'La catégorie est requise';
     if (formData.duree_estimee && (isNaN(formData.duree_estimee) || formData.duree_estimee < 0)) {
-      newErrors.duree_estimee = 'La durïe doit ïtre un nombre positif';
+      newErrors.duree_estimee = 'La durée doit être un nombre positif';
     }
     if (formData.prix && (isNaN(formData.prix) || formData.prix < 0)) {
-      newErrors.prix = 'Le prix doit ïtre un nombre positif';
+      newErrors.prix = 'Le prix doit être un nombre positif';
     }
     const paramNames = formData.parametres.map(p => p.nom);
     const duplicate = paramNames.find((n, i) => n && paramNames.indexOf(n) !== i);
-    if (duplicate) newErrors.parametres = `Le paramïtre "${duplicate}" est dupliquï`;
+    if (duplicate) newErrors.parametres = `Le paramètre "${duplicate}" est dupliqué`;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -137,11 +137,11 @@ const TypesExamens = () => {
       if (editingType) {
         await api.put(`/types-examens/${editingType.id}`, payload);
         setTypes(types.map(t => t.id === editingType.id ? { ...t, ...payload } : t));
-        setMessage({ text: 'Type modifiï avec succïs', type: 'success' });
+        setMessage({ text: 'Type modifié avec succès', type: 'success' });
       } else {
         const res = await api.post('/types-examens', payload);
         setTypes([...types, res.data]);
-        setMessage({ text: 'Type crïï avec succïs', type: 'success' });
+        setMessage({ text: 'Type créé avec succès', type: 'success' });
       }
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
       resetForm();
@@ -152,9 +152,9 @@ const TypesExamens = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer ce type d\'examen ? Cette action est irrïversible.')) return;
+    if (!window.confirm('Supprimer ce type d\'examen ? Cette action est irréversible.')) return;
     try {
-      // Vïrifier si des examens utilisent ce type
+      // Vérifier si des examens utilisent ce type
       const check = await api.get(`/types-examens/${id}/check`);
       if (check.data.used) {
         setMessage({ text: `Impossible de supprimer : ${check.data.count} examen(s) l'utilisent`, type: 'error' });
@@ -162,7 +162,7 @@ const TypesExamens = () => {
       }
       await api.delete(`/types-examens/${id}`);
       setTypes(types.filter(t => t.id !== id));
-      setMessage({ text: 'Type supprimï avec succïs', type: 'success' });
+      setMessage({ text: 'Type supprimé avec succès', type: 'success' });
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
     } catch (err) {
       console.error(err);
@@ -171,7 +171,7 @@ const TypesExamens = () => {
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
+    return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
   }
 
   return (
@@ -219,7 +219,7 @@ const TypesExamens = () => {
           <FaSearch style={{ color: '#94a3b8' }} />
           <input
             type="text"
-            placeholder="Rechercher par nom, catïgorie ou description..."
+            placeholder="Rechercher par nom, catégorie ou description..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             style={{ flex: 1, padding: '10px 12px', border: 'none', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
@@ -250,19 +250,19 @@ const TypesExamens = () => {
                 {errors.nom && <span style={{ color: '#ef4444', fontSize: '12px' }}>{errors.nom}</span>}
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Catïgorie *</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Catégorie *</label>
                 <select
                   value={formData.categorie}
                   onChange={e => setFormData({ ...formData, categorie: e.target.value })}
                   style={{ width: '100%', padding: '10px', border: `1px solid ${errors.categorie ? '#ef4444' : '#e2e8f0'}`, borderRadius: '6px' }}
                 >
-                  <option value="laboratoire">?? Laboratoire</option>
-                  <option value="imagerie">?? Imagerie</option>
+                  <option value="laboratoire">🧪 Laboratoire</option>
+                  <option value="imagerie">🖥️ Imagerie</option>
                 </select>
                 {errors.categorie && <span style={{ color: '#ef4444', fontSize: '12px' }}>{errors.categorie}</span>}
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Durïe estimïe (min)</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Durée estimée (min)</label>
                 <input
                   type="number"
                   min="0"
@@ -293,44 +293,44 @@ const TypesExamens = () => {
                 />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Prïparation nïcessaire</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Préparation nécessaire</label>
                 <textarea
                   value={formData.preparation}
                   onChange={e => setFormData({ ...formData, preparation: e.target.value })}
                   rows="2"
-                  placeholder="Jeïne, arrït de mïdicaments, etc."
+                  placeholder="Jeûne, arrêt de médicaments, etc."
                   style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
                 />
               </div>
-              {/* Nouveau champ : Prestation associïe */}
+              {/* Nouveau champ : Prestation associée */}
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>
-                  Prestation associïe (facturation)
+                  Prestation associée (facturation)
                 </label>
                 <select
                   value={formData.prestation_id}
                   onChange={e => setFormData({ ...formData, prestation_id: e.target.value })}
                   style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
                 >
-                  <option value="">Aucune (prix par dïfaut)</option>
+                  <option value="">Aucune (prix par défaut)</option>
                   {prestations.map(p => (
                     <option key={p.id} value={p.id}>
-                      {p.code} - {p.libelle} ({p.prix_unitaire} FC)
+                      {p.code} - {p.libelle} ({p.prix_unitaire} FCFA)
                     </option>
                   ))}
                 </select>
                 <span style={{ fontSize: '12px', color: '#64748b' }}>
-                  La prestation sera utilisïe pour facturer automatiquement cet examen
+                  La prestation sera utilisée pour facturer automatiquement cet examen
                 </span>
               </div>
             </div>
 
-            {/* Gestion des paramïtres */}
+            {/* Gestion des paramètres */}
             <div style={{ marginTop: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#334155' }}>
-                Paramïtres par dïfaut (pour la saisie des rïsultats)
+                Paramètres par défaut (pour la saisie des résultats)
                 <button type="button" onClick={addParam} style={{ marginLeft: '12px', background: '#e2e8f0', border: 'none', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer' }}>
-                  <FaPlus /> Ajouter un paramïtre
+                  <FaPlus /> Ajouter un paramètre
                 </button>
               </label>
               {errors.parametres && <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '8px' }}>{errors.parametres}</div>}
@@ -338,9 +338,9 @@ const TypesExamens = () => {
                 <thead style={{ backgroundColor: '#f1f5f9' }}>
                   <tr>
                     <th style={{ padding: '8px', textAlign: 'left' }}>Nom</th>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Unitï</th>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Rïf. min</th>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Rïf. max</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Unité</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Réf. min</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Réf. max</th>
                     <th style={{ padding: '8px', textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
@@ -353,7 +353,7 @@ const TypesExamens = () => {
                           value={p.nom}
                           onChange={(e) => handleParamChange(idx, 'nom', e.target.value)}
                           style={{ width: '100%', padding: '6px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                          placeholder="ex: Hïmoglobine"
+                          placeholder="ex: Hémoglobine"
                         />
                       </td>
                       <td style={{ padding: '6px' }}>
@@ -393,7 +393,7 @@ const TypesExamens = () => {
                     </tr>
                   ))}
                   {formData.parametres.length === 0 && (
-                    <tr><td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>Aucun paramïtre dïfini</td></tr>
+                    <tr><td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>Aucun paramètre défini</td></tr>
                   )}
                 </tbody>
               </table>
@@ -415,7 +415,7 @@ const TypesExamens = () => {
                   gap: '8px'
                 }}
               >
-                <FaSave /> {editingType ? 'Modifier' : 'Crïer'}
+                <FaSave /> {editingType ? 'Modifier' : 'Créer'}
               </button>
               <button
                 type="button"
@@ -443,11 +443,11 @@ const TypesExamens = () => {
           <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Nom</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Catïgorie</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Durïe</th>
+              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Catégorie</th>
+              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Durée</th>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Prix</th>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Prestation</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Paramïtres</th>
+              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Paramètres</th>
               {canManage && <th style={{ padding: '14px 20px', textAlign: 'center', fontWeight: '600', color: '#475569' }}>Actions</th>}
             </tr>
           </thead>
@@ -455,7 +455,7 @@ const TypesExamens = () => {
             {filteredTypes.length === 0 ? (
               <tr>
                 <td colSpan={canManage ? 7 : 6} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                  Aucun type trouvï
+                  Aucun type trouvé
                 </td>
               </tr>
             ) : (
@@ -469,10 +469,10 @@ const TypesExamens = () => {
                   <td style={{ padding: '14px 20px', color: '#475569' }}>{t.duree_estimee ? `${t.duree_estimee} min` : '-'}</td>
                   <td style={{ padding: '14px 20px', color: '#475569' }}>{t.prix ? `${t.prix} FCFA` : '-'}</td>
                   <td style={{ padding: '14px 20px', color: '#475569' }}>
-                    {t.prestation_libelle ? `${t.prestation_code || ''} - ${t.prestation_libelle}` : 'Non associïe'}
+                    {t.prestation_libelle ? `${t.prestation_code || ''} - ${t.prestation_libelle}` : 'Non associée'}
                   </td>
                   <td style={{ padding: '14px 20px', color: '#475569' }}>
-                    {t.parametres && t.parametres.length > 0 ? `${t.parametres.length} paramïtre(s)` : '-'}
+                    {t.parametres && t.parametres.length > 0 ? `${t.parametres.length} paramètre(s)` : '-'}
                   </td>
                   {canManage && (
                     <td style={{ padding: '14px 20px', textAlign: 'center' }}>

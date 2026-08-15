@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import api from '../../axios'; // ? Instance avec intercepteur
 import { useNavigate } from 'react-router-dom';
+import api from '../../axios';
 import { FaUndoAlt, FaTrashAlt, FaLock } from 'react-icons/fa';
 
 const RetourForm = () => {
@@ -20,15 +20,20 @@ const RetourForm = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
+  const [submitting, setSubmitting] = useState(false);
+
+  const showToast = (message, type = 'success') => {
+    setToast(message);
+    setToastType(type);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     api.get('/pharmacy/medicaments')
       .then(res => setMedicaments(res.data))
       .catch(err => {
-        console.error('Erreur chargement mdicaments:', err);
-        setToast('Erreur chargement mdicaments');
-        setToastType('error');
-        setTimeout(() => setToast(null), 3000);
+        console.error('Erreur chargement des médicaments :', err);
+        showToast('Erreur chargement des médicaments', 'error');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -42,8 +47,9 @@ const RetourForm = () => {
         const res = await api.get(`/pharmacy/lots/disponibles/${medicamentId}`);
         setLots(res.data.filter(lot => lot.stock_actuel > 0));
       } catch (err) {
-        console.error('Erreur chargement lots:', err);
+        console.error('Erreur chargement des lots :', err);
         setLots([]);
+        showToast('Erreur chargement des lots disponibles', 'error');
       }
     } else {
       setSelectedMedicament(null);
@@ -53,75 +59,121 @@ const RetourForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.medicament_id || !form.lot_id || form.quantite <= 0) {
-      setToast('Veuillez remplir tous les champs');
-      setToastType('error');
-      setTimeout(() => setToast(null), 3000);
+
+    // Validation
+    if (!form.medicament_id) {
+      showToast('Veuillez sélectionner un médicament', 'error');
+      return;
+    }
+    if (!form.lot_id) {
+      showToast('Veuillez sélectionner un lot', 'error');
+      return;
+    }
+    if (form.quantite <= 0) {
+      showToast('La quantité doit être supérieure à 0', 'error');
       return;
     }
     if (!password) {
-      setToast('Veuillez saisir votre mot de passe pour valider');
-      setToastType('error');
-      setTimeout(() => setToast(null), 3000);
+      showToast('Veuillez saisir votre mot de passe pour valider', 'error');
       return;
     }
 
+    setSubmitting(true);
     try {
       let endpoint = '';
       let payload = {};
 
       if (form.type === 'retour') {
-        // Route retour patient
+        // Retour patient
         endpoint = '/pharmacy/retour-patient';
         payload = {
           medicament_id: parseInt(form.medicament_id),
           lot_id: parseInt(form.lot_id),
           quantite: parseInt(form.quantite),
           motif: form.motif || 'Retour patient',
-          patient_id: form.patient_id || null, // peut tre optionnel
+          patient_id: form.patient_id ? parseInt(form.patient_id) : null,
           password: password
         };
       } else {
-        // Route destruction
+        // Destruction
         endpoint = '/pharmacy/destruction';
         payload = {
           lot_id: parseInt(form.lot_id),
           quantite: parseInt(form.quantite),
           motif: form.motif || 'Destruction',
-          procede: 'Incincration' // valeur par dfaut, peut tre paramtr
+          procede: 'Incinération',
+          password: password
         };
-        // La destruction utilise aussi le mot de passe ?FC? nous devons l'ajouter dans le payload
-        // mais la route actuelle ne l'accepte peut-tre pas ; nous l'ajoutons quand mme.
-        payload.password = password;
       }
 
       await api.post(endpoint, payload);
-      setToast(form.type === 'retour' ? '? Retour enregistr' : '? Destruction enregistre');
-      setToastType('success');
-      setTimeout(() => setToast(null), 2000);
+      showToast(form.type === 'retour' ? '✅ Retour enregistré avec succès' : '✅ Destruction enregistrée avec succès');
       setTimeout(() => navigate('/pharmacy/dashboard'), 1500);
     } catch (err) {
-      console.error('Erreur:', err);
+      console.error('Erreur :', err);
       let msg = err.response?.data?.error || err.message;
       if (err.response?.status === 403) {
-        msg = 'Mot de passe incorrect. Veuillez ressayer.';
+        msg = 'Mot de passe incorrect. Veuillez réessayer.';
       }
-      setToast('? Erreur : ' + msg);
-      setToastType('error');
-      setTimeout(() => setToast(null), 3000);
+      showToast(`❌ Erreur : ${msg}`, 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  // Styles
   const containerStyle = {
-    minHeight: '100vh', backgroundColor: '#f0fdf4', padding: '32px', fontFamily: 'system-ui'
+    minHeight: '100vh',
+    backgroundColor: '#f0fdf4',
+    padding: '32px',
+    fontFamily: 'system-ui'
   };
   const cardStyle = {
-    backgroundColor: 'white', borderRadius: '16px', padding: '32px', maxWidth: '600px', margin: '0 auto', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'
+    backgroundColor: 'white',
+    borderRadius: '16px',
+    padding: '32px',
+    maxWidth: '600px',
+    margin: '0 auto',
+    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'
   };
-  const labelStyle = { display: 'block', fontWeight: '500', marginBottom: '6px', color: '#374151' };
-  const inputStyle = { width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px' };
+  const labelStyle = {
+    display: 'block',
+    fontWeight: '500',
+    marginBottom: '6px',
+    color: '#374151'
+  };
+  const inputStyle = {
+    width: '100%',
+    padding: '8px 12px',
+    border: '1px solid #cbd5e1',
+    borderRadius: '8px',
+    fontSize: '14px',
+    transition: 'border-color 0.2s'
+  };
+  const buttonPrimaryStyle = {
+    backgroundColor: '#16a34a',
+    color: 'white',
+    padding: '8px 16px',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    opacity: submitting ? 0.6 : 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  };
+  const buttonSecondaryStyle = {
+    backgroundColor: '#e5e7eb',
+    color: '#374151',
+    padding: '8px 16px',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer'
+  };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
+  if (loading) {
+    return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  }
 
   return (
     <div style={containerStyle}>
@@ -135,25 +187,42 @@ const RetourForm = () => {
           padding: '12px 24px',
           borderRadius: '8px',
           zIndex: 1000,
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          animation: 'slideIn 0.3s ease-out'
         }}>
           {toast}
         </div>
       )}
+
       <div style={cardStyle}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <h1 style={{
+          fontSize: '24px',
+          fontWeight: 'bold',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          color: '#166534'
+        }}>
           {form.type === 'retour' ? <FaUndoAlt /> : <FaTrashAlt />}
-          {form.type === 'retour' ? 'Retour patient' : 'Destruction'}
+          {form.type === 'retour' ? 'Retour patient' : 'Destruction de médicament'}
         </h1>
+
         <form onSubmit={handleSubmit}>
+          {/* Type d'opération */}
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Type d'opration</label>
-            <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} style={inputStyle}>
+            <label style={labelStyle}>Type d'opération</label>
+            <select
+              value={form.type}
+              onChange={e => setForm({ ...form, type: e.target.value })}
+              style={inputStyle}
+            >
               <option value="retour">Retour (patient)</option>
               <option value="destruction">Destruction</option>
             </select>
           </div>
 
+          {/* Patient (optionnel pour retour) */}
           {form.type === 'retour' && (
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>Patient (optionnel)</label>
@@ -161,54 +230,78 @@ const RetourForm = () => {
                 type="number"
                 placeholder="ID du patient"
                 value={form.patient_id}
-                onChange={e => setForm({...form, patient_id: e.target.value})}
+                onChange={e => setForm({ ...form, patient_id: e.target.value })}
                 style={inputStyle}
               />
             </div>
           )}
 
+          {/* Médicament */}
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Mdicament *</label>
-            <select value={form.medicament_id} onChange={e => handleMedicamentChange(e.target.value)} style={inputStyle} required>
+            <label style={labelStyle}>Médicament *</label>
+            <select
+              value={form.medicament_id}
+              onChange={e => handleMedicamentChange(e.target.value)}
+              style={inputStyle}
+              required
+            >
               <option value="">-- Choisir --</option>
-              {medicaments.map(m => <option key={m.id} value={m.id}>{m.nom} ({m.code})</option>)}
+              {medicaments.map(m => (
+                <option key={m.id} value={m.id}>{m.nom} ({m.code})</option>
+              ))}
             </select>
           </div>
 
+          {/* Lot */}
           {selectedMedicament && (
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>Lot *</label>
-              <select value={form.lot_id} onChange={e => setForm({...form, lot_id: e.target.value})} style={inputStyle} required>
+              <select
+                value={form.lot_id}
+                onChange={e => setForm({ ...form, lot_id: e.target.value })}
+                style={inputStyle}
+                required
+              >
                 <option value="">-- Choisir un lot --</option>
-                {lots.map(l => <option key={l.id} value={l.id}>Lot {l.numero_lot} (pr. {new Date(l.date_peremption).toLocaleDateString()}, stock {l.stock_actuel})</option>)}
+                {lots.length === 0 ? (
+                  <option value="" disabled>Aucun lot disponible</option>
+                ) : (
+                  lots.map(l => (
+                    <option key={l.id} value={l.id}>
+                      Lot {l.numero_lot} (pr. {new Date(l.date_peremption).toLocaleDateString()}, stock {l.stock_actuel})
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           )}
 
+          {/* Quantité */}
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Quantit *</label>
+            <label style={labelStyle}>Quantité *</label>
             <input
               type="number"
               min="1"
               value={form.quantite}
-              onChange={e => setForm({...form, quantite: parseInt(e.target.value) || 1})}
+              onChange={e => setForm({ ...form, quantite: parseInt(e.target.value) || 1 })}
               style={inputStyle}
               required
             />
           </div>
 
+          {/* Motif */}
           <div style={{ marginBottom: '16px' }}>
             <label style={labelStyle}>Motif</label>
             <textarea
               value={form.motif}
-              onChange={e => setForm({...form, motif: e.target.value})}
+              onChange={e => setForm({ ...form, motif: e.target.value })}
               rows="3"
               style={inputStyle}
               placeholder="Raison du retour / destruction"
             />
           </div>
 
-          {/* Champ mot de passe */}
+          {/* Mot de passe */}
           <div style={{ marginBottom: '24px' }}>
             <label style={labelStyle}>Mot de passe de validation *</label>
             <input
@@ -220,27 +313,37 @@ const RetourForm = () => {
               placeholder="Saisissez votre mot de passe pour valider"
             />
             <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-              <FaLock /> Votre mot de passe est requis pour signer cette opration
+              <FaLock style={{ marginRight: '4px' }} />
+              Votre mot de passe est requis pour signer cette opération
             </div>
           </div>
 
+          {/* Boutons */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
               type="button"
               onClick={() => navigate('/pharmacy/dashboard')}
-              style={{ backgroundColor: '#e5e7eb', color: '#374151', padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+              style={buttonSecondaryStyle}
             >
               Annuler
             </button>
             <button
               type="submit"
-              style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+              disabled={submitting}
+              style={buttonPrimaryStyle}
             >
-              Valider
+              {submitting ? 'Traitement...' : 'Valider'}
             </button>
           </div>
         </form>
       </div>
+
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };

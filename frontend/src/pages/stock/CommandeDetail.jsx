@@ -17,18 +17,26 @@ const CommandeDetail = () => {
 
   const getStatusBadge = (statut) => {
     const configs = {
-      en_attente: { bg: '#fef3c7', color: '#92400e', label: '? En attente' },
-      command: { bg: '#dbeafe', color: '#1e40af', label: '?? Command' },
-      partiellement_livr: { bg: '#fef3c7', color: '#92400e', label: '?? Partiel' },
-      livr: { bg: '#d1fae5', color: '#065f46', label: '? Livr' },
-      annul: { bg: '#fee2e2', color: '#991b1b', label: '? Annul' }
+      en_attente: { bg: '#fef3c7', color: '#92400e', label: '⏳ En attente' },
+      commandee: { bg: '#dbeafe', color: '#1e40af', label: '📦 Commandée' },
+      partiellement_livree: { bg: '#fef3c7', color: '#92400e', label: '📦 Partielle' },
+      livree: { bg: '#d1fae5', color: '#065f46', label: '✅ Livrée' },
+      annulee: { bg: '#fee2e2', color: '#991b1b', label: '❌ Annulée' }
     };
-    const c = configs[statut] || configs.en_attente;
+    // Gestion des anciens noms de statut si besoin (on garde la compatibilité)
+    const keyMap = {
+      'command': 'commandee',
+      'partiellement_livr': 'partiellement_livree',
+      'livr': 'livree',
+      'annul': 'annulee'
+    };
+    const normalizedStatut = keyMap[statut] || statut;
+    const c = configs[normalizedStatut] || configs.en_attente;
     return <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', backgroundColor: c.bg, color: c.color }}>{c.label}</span>;
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
-  if (!commande) return <div style={{ textAlign: 'center', padding: '60px' }}>Commande non trouve</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
+  if (!commande) return <div style={{ textAlign: 'center', padding: '60px' }}>Commande non trouvée</div>;
 
   return (
     <div>
@@ -41,7 +49,7 @@ const CommandeDetail = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {getStatusBadge(commande.statut)}
-            {(commande.statut === 'en_attente' || commande.statut === 'command') && (
+            {(commande.statut === 'en_attente' || commande.statut === 'commandee' || commande.statut === 'command') && (
               <Link to={`/stock/commandes/${id}/edit`} style={{ backgroundColor: '#f59e0b', color: 'white', padding: '6px 16px', borderRadius: '6px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 <FaEdit /> Modifier
               </Link>
@@ -50,15 +58,15 @@ const CommandeDetail = () => {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginTop: '20px' }}>
           <div><FaCalendar style={{ marginRight: '8px' }} /> <strong>Date :</strong> {new Date(commande.date_commande).toLocaleDateString('fr-FR')}</div>
-          <div><FaTruck style={{ marginRight: '8px' }} /> <strong>Livraison prvue :</strong> {commande.date_livraison_prevue ? new Date(commande.date_livraison_prevue).toLocaleDateString('fr-FR') : '-'}</div>
-          <div><FaUser style={{ marginRight: '8px' }} /> <strong>Cr par :</strong> {commande.created_by_nom || '-'}</div>
+          <div><FaTruck style={{ marginRight: '8px' }} /> <strong>Livraison prévue :</strong> {commande.date_livraison_prevue ? new Date(commande.date_livraison_prevue).toLocaleDateString('fr-FR') : '-'}</div>
+          <div><FaUser style={{ marginRight: '8px' }} /> <strong>Créé par :</strong> {commande.created_by_nom || '-'}</div>
         </div>
         {commande.notes && <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}><strong>Notes :</strong> {commande.notes}</div>}
 
         <h3 style={{ marginTop: '24px' }}>Lignes de commande</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
-            <tr><th>Produit</th><th style={{ textAlign: 'right' }}>Quantit</th><th style={{ textAlign: 'right' }}>Prix unitaire</th><th style={{ textAlign: 'right' }}>Total</th></tr>
+            <tr><th>Produit</th><th style={{ textAlign: 'right' }}>Quantité</th><th style={{ textAlign: 'right' }}>Prix unitaire</th><th style={{ textAlign: 'right' }}>Total</th></tr>
           </thead>
           <tbody>
             {commande.lignes?.map((l, i) => (

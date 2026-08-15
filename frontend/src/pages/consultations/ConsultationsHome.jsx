@@ -1,22 +1,23 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
 const ConsultationsHome = () => {
-  const navigate = useNavigate();
   const [loaded, setLoaded] = useState(false);
-  const bgImage = '/CONSULTATION.jpg';
-  const clickIcon = '/CLICK.jpg';
+  // ✅ Images placées dans le dossier public (ou utilisez des URLs absolues)
+  const bgImage = '/CONSULTATION.jpg';   // vérifiez que ce fichier existe
+  const clickIcon = '/CLICK.jpg';        // vérifiez que ce fichier existe
 
   useEffect(() => {
     setLoaded(true);
   }, []);
 
+  // Styles définis en dehors du composant pour éviter les recréations
   const cardStyle = {
     display: 'block',
     backgroundImage: `url(${bgImage})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    backgroundColor: '#1e3a8a',
+    backgroundColor: '#1e3a8a', // fallback si l'image ne charge pas
     borderRadius: '16px',
     boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
     overflow: 'hidden',
@@ -36,7 +37,7 @@ const ConsultationsHome = () => {
     justifyContent: 'center',
     height: '100%',
     textAlign: 'center',
-    transition: 'backgroundColor 0.3s',
+    transition: 'background-color 0.3s ease',
   };
 
   const iconStyle = {
@@ -59,21 +60,24 @@ const ConsultationsHome = () => {
     fontSize: '14px',
   };
 
+  // Gestionnaires d'événements
   const handleMouseEnter = (e) => {
-    e.currentTarget.style.transform = 'scale(1.02) translateY(-5px)';
-    e.currentTarget.style.boxShadow = '0 25px 30px -12px rgba(0,0,0,0.3)';
-    const overlay = e.currentTarget.querySelector('.overlay');
+    const card = e.currentTarget;
+    card.style.transform = 'scale(1.02) translateY(-5px)';
+    card.style.boxShadow = '0 25px 30px -12px rgba(0,0,0,0.3)';
+    const overlay = card.querySelector('.overlay');
     if (overlay) overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.45)';
-    const img = e.currentTarget.querySelector('.card-icon');
+    const img = card.querySelector('.card-icon');
     if (img) img.style.transform = 'scale(1.1)';
   };
 
   const handleMouseLeave = (e) => {
-    e.currentTarget.style.transform = 'scale(1) translateY(0)';
-    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
-    const overlay = e.currentTarget.querySelector('.overlay');
+    const card = e.currentTarget;
+    card.style.transform = 'scale(1) translateY(0)';
+    card.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+    const overlay = card.querySelector('.overlay');
     if (overlay) overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.65)';
-    const img = e.currentTarget.querySelector('.card-icon');
+    const img = card.querySelector('.card-icon');
     if (img) img.style.transform = 'scale(1)';
   };
 
@@ -81,9 +85,9 @@ const ConsultationsHome = () => {
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', padding: '32px' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '16px' }}>
-          <h1 style={{ 
-            fontSize: '36px', 
-            fontWeight: 'bold', 
+          <h1 style={{
+            fontSize: '36px',
+            fontWeight: 'bold',
             color: '#1e3a8a',
             opacity: loaded ? 1 : 0,
             transform: loaded ? 'translateY(0)' : 'translateY(-20px)',
@@ -95,78 +99,84 @@ const ConsultationsHome = () => {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
-          {/* Cartes existantes */}
+          {/* Admission / Hospitalisation */}
           <Link to="/admission" style={cardStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <div className="overlay" style={overlayStyle}>
-              <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
+              <img src={clickIcon} alt="Cliquer" className="card-icon" style={iconStyle} />
               <h2 style={titleStyle}>Admission / Hospitalisation</h2>
-              <p style={descStyle}>Admettre un patient, crer un sjour, occuper un lit</p>
+              <p style={descStyle}>Admettre un patient, créer un séjour, occuper un lit</p>
             </div>
           </Link>
 
+          {/* Urgences */}
           <Link to="/urgences" style={cardStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <div className="overlay" style={overlayStyle}>
-              <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
+              <img src={clickIcon} alt="Cliquer" className="card-icon" style={iconStyle} />
               <h2 style={titleStyle}>Urgences</h2>
-              <p style={descStyle}>Triage, priorit, prise en charge rapide</p>
+              <p style={descStyle}>Triage, priorité, prise en charge rapide</p>
             </div>
           </Link>
 
+          {/* Rendez-vous */}
           <Link to="/rendezvous" style={cardStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <div className="overlay" style={overlayStyle}>
-              <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
-              <h2 style={titleStyle}>Rendez?FC?vous</h2>
-              <p style={descStyle}>Planification et rappels SMS/Email</p>
+              <img src={clickIcon} alt="Cliquer" className="card-icon" style={iconStyle} />
+              <h2 style={titleStyle}>Rendez-vous</h2>
+              <p style={descStyle}>Planification et rappels SMS / Email</p>
             </div>
           </Link>
 
+          {/* Gestion des lits */}
           <Link to="/lits" style={cardStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <div className="overlay" style={overlayStyle}>
-              <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
+              <img src={clickIcon} alt="Cliquer" className="card-icon" style={iconStyle} />
               <h2 style={titleStyle}>Gestion des lits</h2>
-              <p style={descStyle}>Visualisation des chambres et lits (occups/libres)</p>
+              <p style={descStyle}>Visualisation des chambres et lits (occupés / libres)</p>
             </div>
           </Link>
 
+          {/* Transfert de patient */}
           <Link to="/transfert" style={cardStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <div className="overlay" style={overlayStyle}>
-              <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
+              <img src={clickIcon} alt="Cliquer" className="card-icon" style={iconStyle} />
               <h2 style={titleStyle}>Transfert de patient</h2>
               <p style={descStyle}>Changer de lit ou de service</p>
             </div>
           </Link>
 
+          {/* Sortie de patient */}
           <Link to="/sortie" style={cardStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <div className="overlay" style={overlayStyle}>
-              <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
+              <img src={clickIcon} alt="Cliquer" className="card-icon" style={iconStyle} />
               <h2 style={titleStyle}>Sortie de patient</h2>
-              <p style={descStyle}>Librer le lit, enregistrer la sortie</p>
+              <p style={descStyle}>Libérer le lit, enregistrer la sortie</p>
             </div>
           </Link>
 
-          {/* Prescriptions et ordonnances */}
-          <Link 
-            to="/doctor/prescriptions" 
-            style={cardStyle} 
-            onMouseEnter={handleMouseEnter} 
+          {/* Prescriptions (médecin) */}
+          <Link
+            to="/doctor/prescriptions"
+            style={cardStyle}
+            onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
             <div className="overlay" style={{ ...overlayStyle, backgroundColor: 'rgba(22, 163, 74, 0.75)' }}>
-              <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
-              <h2 style={titleStyle}>?? Prescriptions</h2>
-              <p style={descStyle}>Crer et suivre vos prescriptions mdicales</p>
+              <img src={clickIcon} alt="Cliquer" className="card-icon" style={iconStyle} />
+              <h2 style={titleStyle}>Prescriptions</h2>
+              <p style={descStyle}>Créer et suivre vos prescriptions médicales</p>
             </div>
           </Link>
 
-          <Link 
-            to="/pharmacist/prescriptions" 
-            style={cardStyle} 
-            onMouseEnter={handleMouseEnter} 
+          {/* Ordonnances (pharmacien) */}
+          <Link
+            to="/pharmacist/prescriptions"
+            style={cardStyle}
+            onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
             <div className="overlay" style={{ ...overlayStyle, backgroundColor: 'rgba(37, 99, 235, 0.75)' }}>
-              <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
-              <h2 style={titleStyle}>?? Ordonnances</h2>
+              <img src={clickIcon} alt="Cliquer" className="card-icon" style={iconStyle} />
+              <h2 style={titleStyle}>Ordonnances</h2>
               <p style={descStyle}>Consulter et servir les ordonnances en attente</p>
             </div>
           </Link>
@@ -174,18 +184,18 @@ const ConsultationsHome = () => {
           {/* Patients */}
           <Link to="/patients" style={cardStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <div className="overlay" style={{ ...overlayStyle, backgroundColor: 'rgba(124, 58, 237, 0.7)' }}>
-              <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
-              <h2 style={titleStyle}>?? Patients</h2>
-              <p style={descStyle}>Voir la liste des patients et accder  leurs dossiers</p>
+              <img src={clickIcon} alt="Cliquer" className="card-icon" style={iconStyle} />
+              <h2 style={titleStyle}>Patients</h2>
+              <p style={descStyle}>Voir la liste des patients et accéder à leurs dossiers</p>
             </div>
           </Link>
 
-          {/* ========== NOUVEAU : BLOC OPRATOIRE ========== */}
+          {/* Bloc Opératoire */}
           <Link to="/bloc" style={cardStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             <div className="overlay" style={{ ...overlayStyle, backgroundColor: 'rgba(220, 38, 38, 0.75)' }}>
-              <img src={clickIcon} alt="Click" className="card-icon" style={iconStyle} />
-              <h2 style={titleStyle}>?? Bloc Opratoire</h2>
-              <p style={descStyle}>Planifier les interventions, grer les salles et les quipes chirurgicales</p>
+              <img src={clickIcon} alt="Cliquer" className="card-icon" style={iconStyle} />
+              <h2 style={titleStyle}>Bloc Opératoire</h2>
+              <p style={descStyle}>Planifier les interventions, gérer les salles et les équipes chirurgicales</p>
             </div>
           </Link>
         </div>

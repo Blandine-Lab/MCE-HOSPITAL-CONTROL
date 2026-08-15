@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../../axios'; // ? Instance avec intercepteur
+import api from '../../axios';
 
 const RendezVousList = () => {
   const [rdvs, setRdvs] = useState([]);
@@ -12,27 +12,13 @@ const RendezVousList = () => {
     service_id: '',
     date_rdv: '',
     motif: '',
-    type_consultation: 'gïnïrale',
+    type_consultation: 'générale',
     categorie: 'ambulatoire',
     prix: 50.00,
   });
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
-  const [userRole, setUserRole] = useState(null); // ? Rïle (prït pour l'avenir)
-
-  // ? Rïcupïrer le rïle depuis le token JWT
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUserRole(payload.role);
-      } catch (e) {
-        console.error('Erreur dïcodage token', e);
-      }
-    }
-  }, []);
 
   const showToast = (msg, type = 'success') => {
     setToast(msg);
@@ -40,13 +26,23 @@ const RendezVousList = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Chargement initial
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        await Promise.all([
+          api.get('/patients').then(res => setPatients(res.data)),
+          api.get('/consultations/medecins').then(res => setMedecins(res.data)),
+          api.get('/consultations/services').then(res => setServices(res.data))
+        ]);
+        setLoaded(true);
+      } catch (err) {
+        console.error('Erreur chargement données initiales:', err);
+        showToast('Erreur de chargement des données', 'error');
+      }
+    };
+    fetchData();
     fetchRdvs();
-    // ? Rïcupïration avec api
-    api.get('/patients').then(res => setPatients(res.data)).catch(console.error);
-    api.get('/consultations/medecins').then(res => setMedecins(res.data)).catch(console.error);
-    api.get('/consultations/services').then(res => setServices(res.data)).catch(console.error);
-    setLoaded(true);
   }, []);
 
   const fetchRdvs = async () => {
@@ -55,44 +51,60 @@ const RendezVousList = () => {
       setRdvs(res.data);
     } catch (err) {
       console.error('Erreur fetch rdvs:', err);
-      showToast('Erreur chargement rendez-vous', 'error');
+      const msg = err.response?.data?.error || 'Erreur chargement rendez-vous';
+      showToast('❌ ' + msg, 'error');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/consultations/rendezvous', form);
+      // ✅ Transformer les chaînes vides en null pour les clés étrangères
+      const payload = {
+        patient_id: form.patient_id || null,
+        medecin_id: form.medecin_id || null,
+        service_id: form.service_id || null,
+        date_rdv: form.date_rdv,
+        motif: form.motif || '',
+        type_consultation: form.type_consultation || 'générale',
+        categorie: form.categorie || 'ambulatoire',
+        prix: form.prix || 50.00
+      };
+
+      await api.post('/consultations/rendezvous', payload);
       setForm({
         patient_id: '',
         medecin_id: '',
         service_id: '',
         date_rdv: '',
         motif: '',
-        type_consultation: 'gïnïrale',
+        type_consultation: 'générale',
         categorie: 'ambulatoire',
         prix: 50.00,
       });
-      fetchRdvs();
-      showToast('Rendez-vous ajoutï avec succïs');
+      await fetchRdvs();
+      showToast('Rendez-vous ajouté avec succès');
     } catch (err) {
-      console.error(err);
-      showToast('Erreur lors de lFCajout', 'error');
+      console.error('Erreur ajout rendez-vous:', err);
+      const msg = err.response?.data?.error || 'Erreur lors de l\'ajout';
+      showToast('❌ ' + msg, 'error');
     }
   };
 
   const updateStatut = async (id, statut) => {
     try {
       await api.put(`/consultations/rendezvous/${id}`, { statut });
-      fetchRdvs();
-      showToast(`Rendez-vous ${statut === 'confirme' ? 'confirmï' : 'annulï'}`);
+      await fetchRdvs();
+      const label = statut === 'confirme' ? 'confirmé' : 'annulé';
+      showToast(`Rendez-vous ${label}`);
     } catch (err) {
-      console.error(err);
-      showToast('Erreur lors de la mise ï jour', 'error');
+      console.error('Erreur mise à jour statut:', err);
+      const msg = err.response?.data?.error || 'Erreur lors de la mise à jour';
+      showToast('❌ ' + msg, 'error');
     }
   };
 
-  // Styles inchangïs
+  // Styles
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#f0f9ff',
@@ -183,6 +195,16 @@ const RendezVousList = () => {
     transition: 'opacity 0.2s',
   });
 
+  // Fonction pour obtenir le nom du service (même si le backend ne joint pas)
+  const getServiceName = (rdv) => {
+    if (rdv.service_nom) return rdv.service_nom;
+    if (rdv.service_id) {
+      const service = services.find(s => s.id === rdv.service_id);
+      return service ? service.nom : '-';
+    }
+    return '-';
+  };
+
   return (
     <div style={containerStyle}>
       {toast && (
@@ -202,14 +224,14 @@ const RendezVousList = () => {
         </div>
       )}
       <div style={innerStyle}>
-        <h1 style={titleStyle}>?? Planification des rendez-vous</h1>
+        <h1 style={titleStyle}>📅 Planification des rendez-vous</h1>
         <form onSubmit={handleSubmit} style={formStyle}>
           <select required value={form.patient_id} onChange={e => setForm({...form, patient_id: e.target.value})} style={inputStyle}>
             <option value="">Patient</option>
             {patients.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
           </select>
           <select value={form.medecin_id} onChange={e => setForm({...form, medecin_id: e.target.value})} style={inputStyle}>
-            <option value="">Mïdecin</option>
+            <option value="">Médecin</option>
             {medecins.map(m => <option key={m.id} value={m.id}>{m.nom} {m.prenom}</option>)}
           </select>
           <select value={form.service_id} onChange={e => setForm({...form, service_id: e.target.value})} style={inputStyle}>
@@ -220,11 +242,11 @@ const RendezVousList = () => {
           <input type="text" placeholder="Motif" value={form.motif} onChange={e => setForm({...form, motif: e.target.value})} style={inputStyle} />
 
           <select value={form.type_consultation} onChange={e => setForm({...form, type_consultation: e.target.value})} style={inputStyle}>
-            <option value="gïnïrale">Gïnïrale</option>
-            <option value="spïcialiste">Spïcialiste</option>
+            <option value="générale">Générale</option>
+            <option value="spécialiste">Spécialiste</option>
             <option value="urgence">Urgence</option>
             <option value="suivi">Suivi</option>
-            <option value="tïlïconsultation">Tïlïconsultation</option>
+            <option value="téléconsultation">Téléconsultation</option>
           </select>
 
           <select value={form.categorie} onChange={e => setForm({...form, categorie: e.target.value})} style={inputStyle}>
@@ -242,7 +264,9 @@ const RendezVousList = () => {
             style={inputStyle}
           />
 
-          <button type="submit" style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = '#1d4ed8'} onMouseLeave={e => e.target.style.backgroundColor = '#2563eb'}>? Ajouter RDV</button>
+          <button type="submit" style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = '#1d4ed8'} onMouseLeave={e => e.target.style.backgroundColor = '#2563eb'}>
+            ➕ Ajouter RDV
+          </button>
         </form>
 
         <div style={{ overflowX: 'auto' }}>
@@ -251,11 +275,11 @@ const RendezVousList = () => {
               <tr>
                 <th style={thStyle}>Date</th>
                 <th style={thStyle}>Patient</th>
-                <th style={thStyle}>Mïdecin</th>
+                <th style={thStyle}>Médecin</th>
                 <th style={thStyle}>Service</th>
                 <th style={thStyle}>Motif</th>
                 <th style={thStyle}>Type</th>
-                <th style={thStyle}>Catïgorie</th>
+                <th style={thStyle}>Catégorie</th>
                 <th style={thStyle}>Prix</th>
                 <th style={thStyle}>Statut</th>
                 <th style={thStyle}>Actions</th>
@@ -267,17 +291,21 @@ const RendezVousList = () => {
                   <td style={tdStyle}>{new Date(r.date_rdv).toLocaleString()}</td>
                   <td style={tdStyle}>{r.patient_nom} {r.patient_prenom}</td>
                   <td style={tdStyle}>{r.medecin_nom} {r.medecin_prenom}</td>
-                  <td style={tdStyle}>{r.service_nom}</td>
+                  <td style={tdStyle}>{getServiceName(r)}</td>
                   <td style={tdStyle}>{r.motif}</td>
-                  <td style={tdStyle}>{r.type_consultation || 'gïnïrale'}</td>
+                  <td style={tdStyle}>{r.type_consultation || 'générale'}</td>
                   <td style={tdStyle}>{r.categorie || 'ambulatoire'}</td>
                   <td style={tdStyle}>{r.prix ? parseFloat(r.prix).toFixed(2) + ' FC' : '50.00 FC'}</td>
                   <td style={tdStyle}><span style={statusBadge(r.statut)}>{r.statut}</span></td>
                   <td style={tdStyle}>
                     {r.statut === 'planifie' && (
                       <>
-                        <button onClick={() => updateStatut(r.id, 'confirme')} style={actionButtonStyle('#22c55e')} onMouseEnter={e => e.target.style.opacity = 0.8} onMouseLeave={e => e.target.style.opacity = 1}>Confirmer</button>
-                        <button onClick={() => updateStatut(r.id, 'annule')} style={actionButtonStyle('#ef4444')} onMouseEnter={e => e.target.style.opacity = 0.8} onMouseLeave={e => e.target.style.opacity = 1}>Annuler</button>
+                        <button onClick={() => updateStatut(r.id, 'confirme')} style={actionButtonStyle('#22c55e')} onMouseEnter={e => e.target.style.opacity = 0.8} onMouseLeave={e => e.target.style.opacity = 1}>
+                          Confirmer
+                        </button>
+                        <button onClick={() => updateStatut(r.id, 'annule')} style={actionButtonStyle('#ef4444')} onMouseEnter={e => e.target.style.opacity = 0.8} onMouseLeave={e => e.target.style.opacity = 1}>
+                          Annuler
+                        </button>
                       </>
                     )}
                   </td>

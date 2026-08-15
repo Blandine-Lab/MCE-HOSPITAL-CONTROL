@@ -12,7 +12,7 @@ const PatientsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ? Rcuprer le rle depuis le token JWT
+  // Récupérer le rôle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const PatientsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur dcodage token', e);
+        console.error('Erreur décodage token', e);
       }
     }
   }, []);
@@ -49,19 +49,19 @@ const PatientsList = () => {
     fetchPatients();
   }, []);
 
-  // ? handleDelete avec gestion 403
+  // handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('?? Supprimer dfinitivement ce patient ? Cette action est irrversible.')) return;
+    if (!window.confirm('⚠️ Supprimer définitivement ce patient ? Cette action est irréversible.')) return;
     try {
       await api.delete(`/patients/${id}`);
       setPatients(patients.filter(p => p.id !== id));
-      showToast('Patient supprim avec succs');
+      showToast('Patient supprimé avec succès');
     } catch (err) {
       console.error('Erreur suppression patient:', err);
       if (err.response?.status === 403) {
-        showToast('? Seul un administrateur peut supprimer un patient.', 'error');
+        showToast('🔒 Seul un administrateur peut supprimer un patient.', 'error');
       } else {
-        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
@@ -75,7 +75,7 @@ const PatientsList = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>? Chargement des patients...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement des patients...</div>
       </div>
     );
   }
@@ -154,9 +154,9 @@ const PatientsList = () => {
           <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Nom</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Prnom</th>
+              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Prénom</th>
               <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Date naissance</th>
-              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Tlphone</th>
+              <th style={{ padding: '14px 20px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>Téléphone</th>
               <th style={{ padding: '14px 20px', textAlign: 'center', fontWeight: '600', color: '#475569' }}>Actions</th>
             </tr>
           </thead>
@@ -164,7 +164,7 @@ const PatientsList = () => {
             {filteredPatients.length === 0 ? (
               <tr>
                 <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                  Aucun patient trouv
+                  Aucun patient trouvé
                 </td>
               </tr>
             ) : (
@@ -203,13 +203,13 @@ const PatientsList = () => {
                         <button
                           onClick={() => handleDelete(p.id)}
                           style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                          title="Supprimer dfinitivement (admin)"
+                          title="Supprimer définitivement (admin)"
                         >
                           <FaTrash />
                         </button>
                       )}
                       {!isAdmin && (
-                        <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
+                        <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
                       )}
                     </div>
                   </td>

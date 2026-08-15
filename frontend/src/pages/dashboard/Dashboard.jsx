@@ -4,7 +4,7 @@ import {
   FaBed, FaChartPie, FaEuroSign, FaMoneyBillWave, FaExclamationTriangle,
   FaWrench, FaUserMd, FaUserNurse, FaUserSlash, FaCalendarDay,
   FaCalendarWeek, FaCalendarAlt, FaCalendarCheck, FaSync, FaStethoscope,
-  FaFileInvoice, FaCheckCircle, FaTimesCircle // ?? AM?LIORATION
+  FaFileInvoice, FaCheckCircle, FaTimesCircle // ✅ AMÉLIORATION
 } from 'react-icons/fa';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
@@ -54,8 +54,8 @@ const Dashboard = () => {
     equipementsPanne: 0,
   });
   const [todayRevenue, setTodayRevenue] = useState(0);
-  const [todayFacturesCount, setTodayFacturesCount] = useState(0); // ?? AM?LIORATION
-  const [todayPayeesCount, setTodayPayeesCount] = useState(0); // ?? AM?LIORATION
+  const [todayFacturesCount, setTodayFacturesCount] = useState(0); // ✅ AMÉLIORATION
+  const [todayPayeesCount, setTodayPayeesCount] = useState(0); // ✅ AMÉLIORATION
   const [lastFactures, setLastFactures] = useState([]);
   const [occupationLits, setOccupationLits] = useState([]);
   const [interventions, setInterventions] = useState([]);
@@ -158,7 +158,7 @@ const Dashboard = () => {
       const interventionsData = interventionsRes.status === 'fulfilled' ? interventionsRes.value.data || [] : [];
       const rendezvous = rendezvousRes.status === 'fulfilled' ? rendezvousRes.value.data || [] : [];
 
-      // --- Patients hospitalis?s ---
+      // --- Patients hospitalisés ---
       const patientsActifs = patients.filter(p => p.lit_id !== null && p.lit_id !== undefined).length;
 
       // --- Lits ---
@@ -188,24 +188,24 @@ const Dashboard = () => {
       const filteredFactures = filterByPeriod(factures, 'date_emission', period);
       const ca = filteredFactures.reduce((sum, f) => sum + (parseFloat(f.montant_total) || 0), 0);
       const impayes = factures
-        .filter(f => f.statut !== 'pay?' && f.statut !== 'payee')
+        .filter(f => f.statut !== 'payé' && f.statut !== 'payee')
         .reduce((sum, f) => sum + (parseFloat(f.montant_total) || 0), 0);
 
-      // --- Compteurs du jour (factures totales et pay?es) --- ?? AM?LIORATION
+      // --- Compteurs du jour (factures totales et payées) --- ✅ AMÉLIORATION
       const todayStr = new Date().toISOString().split('T')[0];
       const facturesAujourdhui = factures.filter(f => {
         const d = new Date(f.date_emission);
         return d.toISOString().split('T')[0] === todayStr;
       });
       setTodayFacturesCount(facturesAujourdhui.length);
-      const payeesAujourdhui = facturesAujourdhui.filter(f => f.statut === 'payee' || f.statut === 'pay?');
+      const payeesAujourdhui = facturesAujourdhui.filter(f => f.statut === 'payee' || f.statut === 'payé');
       setTodayPayeesCount(payeesAujourdhui.length);
 
-      // --- Derni?res factures (20 plus r?centes) --- ?? AM?LIORATION (20 au lieu de 10)
+      // --- Dernières factures (20 plus récentes) --- ✅ AMÉLIORATION (20 au lieu de 10)
       const sortedFactures = [...factures].sort((a, b) => new Date(b.date_emission) - new Date(a.date_emission));
       setLastFactures(sortedFactures.slice(0, 20));
 
-      // --- Facturation journali?re (30 jours) ---
+      // --- Facturation journalière (30 jours) ---
       const dailyTotals = {};
       let todayTotal = 0;
       const thirtyDaysAgo = new Date();
@@ -245,13 +245,13 @@ const Dashboard = () => {
       // --- Bloc ---
       const blocCount = interventionsData.length;
 
-      // --- M?dicaments critiques ---
+      // --- Médicaments critiques ---
       const medicCritiques = medicaments.filter(m => (m.stock || 0) < (m.seuil_alerte || 5)).length;
 
       // --- Personnel ---
-      const medecins = employes.filter(e => e.role === 'medecin' || e.poste === 'M?decin').length;
+      const medecins = employes.filter(e => e.role === 'medecin' || e.poste === 'Médecin').length;
       const infirmiers = employes.filter(e => e.role === 'infirmier' || e.poste === 'Infirmier').length;
-      const absencesCount = absences.filter(a => a.statut === 'en_cours' || a.statut === 'approuv?').length;
+      const absencesCount = absences.filter(a => a.statut === 'en_cours' || a.statut === 'approuvé').length;
 
       // --- Consultations du jour ---
       const consultationsToday = rendezvous.filter(rv => {
@@ -295,7 +295,7 @@ const Dashboard = () => {
 
       setInterventions(interventionsData);
 
-      // --- Graphique ?volution admissions/sorties (12 mois) ---
+      // --- Graphique Évolution admissions/sorties (12 mois) ---
       const months = [];
       const admissionsCountByMonth = [];
       const sortiesCountByMonth = [];
@@ -344,7 +344,7 @@ const Dashboard = () => {
         ],
       });
 
-      // --- Graphique ?volution des consultations (12 mois) ---
+      // --- Graphique Évolution des consultations (12 mois) ---
       const consultationsCountByMonth = [];
       for (let i = 11; i >= 0; i--) {
         const date = new Date();
@@ -372,7 +372,7 @@ const Dashboard = () => {
         ],
       });
 
-      // --- Motifs d'admission (p?riode) ---
+      // --- Motifs d'admission (période) ---
       const motifs = {};
       filteredAdmissions.forEach(a => {
         const motif = a.motif || a.type || 'Autre';
@@ -396,7 +396,7 @@ const Dashboard = () => {
 
       setLastUpdated(new Date());
     } catch (error) {
-      console.error('? Erreur chargement dashboard:', error);
+      console.error('❌ Erreur chargement dashboard:', error);
     } finally {
       setLoading(false);
     }
@@ -486,7 +486,7 @@ const Dashboard = () => {
       padding: '24px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
-      {/* En-t?te */}
+      {/* En-tête */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -497,10 +497,10 @@ const Dashboard = () => {
       }}>
         <div>
           <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-            ?? Tableau de bord hospitalier
+            📊 Tableau de bord hospitalier
           </h1>
           <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>
-            Vue d'ensemble en temps r?el
+            Vue d'ensemble en temps réel
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -536,7 +536,7 @@ const Dashboard = () => {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
           >
-            <FaSync /> Rafra?chir
+            <FaSync /> Rafraîchir
           </button>
         </div>
       </div>
@@ -619,10 +619,10 @@ const Dashboard = () => {
             fontWeight: period === 'year' ? 'bold' : 'normal',
           }}
         >
-          <FaCalendarCheck /> Cette ann?e
+          <FaCalendarCheck /> Cette année
         </button>
         <div style={{ marginLeft: 'auto', fontSize: '12px', color: '#94a3b8' }}>
-          Derni?re mise ? jour : {lastUpdated.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          Dernière mise à jour : {lastUpdated.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </div>
       </div>
 
@@ -633,32 +633,32 @@ const Dashboard = () => {
         gap: '16px',
         marginBottom: '24px',
       }}>
-        <StatCard icon={FaUsers} label="Patients pr?sents" value={stats.patients} color="#3b82f6" />
+        <StatCard icon={FaUsers} label="Patients présents" value={stats.patients} color="#3b82f6" />
         <StatCard icon={FaUserPlus} label="Admissions" value={stats.admissions} color="#10b981" />
         <StatCard icon={FaUserMinus} label="Sorties" value={stats.sorties} color="#8b5cf6" />
         <StatCard icon={FaAmbulance} label="Urgences" value={stats.urgences} color="#ef4444" />
-        <StatCard icon={FaHospital} label="Bloc op?ratoire" value={stats.bloc} color="#f59e0b" />
+        <StatCard icon={FaHospital} label="Bloc opératoire" value={stats.bloc} color="#f59e0b" />
         <StatCard 
           icon={FaBed} 
-          label="Lits occup?s" 
+          label="Lits occupés" 
           value={`${stats.litsOccupes}/${stats.totalLits}`} 
           color="#14b8a6"
           subtitle={`Taux: ${stats.tauxOccupation}%`}
         />
-        <StatCard icon={FaEuroSign} label="CA (p?riode)" value={`${stats.ca.toLocaleString()} FC`} color="#22c55e" />
-        <StatCard icon={FaMoneyBillWave} label="Impay?s" value={`${stats.impayes.toLocaleString()} FC`} color="#ef4444" />
+        <StatCard icon={FaEuroSign} label="CA (période)" value={`${stats.ca.toLocaleString()} FC`} color="#22c55e" />
+        <StatCard icon={FaMoneyBillWave} label="Impayés" value={`${stats.impayes.toLocaleString()} FC`} color="#ef4444" />
         <StatCard icon={FaEuroSign} label="CA aujourd'hui" value={`${todayRevenue.toFixed(2)} FC`} color="#22c55e" />
-        {/* ?? AM?LIORATION : nouvelles cartes factures */}
+        {/* ✅ AMÉLIORATION : nouvelles cartes factures */}
         <StatCard icon={FaFileInvoice} label="Factures aujourd'hui" value={todayFacturesCount} color="#3b82f6" />
-        <StatCard icon={FaCheckCircle} label="Pay?es aujourd'hui" value={todayPayeesCount} color="#10b981" />
-        <StatCard icon={FaExclamationTriangle} label="M?dic. critiques" value={stats.medicCritiques} color="#f97316" />
-        <StatCard icon={FaWrench} label="?quipements panne" value={stats.equipementsPanne || 0} color="#dc2626" />
-        <StatCard icon={FaUserMd} label="M?decins pr?sents" value={stats.medecins} color="#6366f1" />
-        <StatCard icon={FaUserNurse} label="Infirmiers pr?sents" value={stats.infirmiers} color="#ec4899" />
+        <StatCard icon={FaCheckCircle} label="Payées aujourd'hui" value={todayPayeesCount} color="#10b981" />
+        <StatCard icon={FaExclamationTriangle} label="Médic. critiques" value={stats.medicCritiques} color="#f97316" />
+        <StatCard icon={FaWrench} label="Équipements en panne" value={stats.equipementsPanne || 0} color="#dc2626" />
+        <StatCard icon={FaUserMd} label="Médecins présents" value={stats.medecins} color="#6366f1" />
+        <StatCard icon={FaUserNurse} label="Infirmiers présents" value={stats.infirmiers} color="#ec4899" />
         <StatCard icon={FaUserSlash} label="Absences" value={stats.absences} color="#f43f5e" />
       </div>
 
-      {/* Graphiques (inchang?s) */}
+      {/* Graphiques (inchangés) */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
@@ -673,7 +673,7 @@ const Dashboard = () => {
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
         }}>
           <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 16px 0' }}>
-            ?? ?volution admissions/sorties (12 mois)
+            📈 Évolution admissions/sorties (12 mois)
           </h3>
           {evolutionData ? (
             <Line
@@ -686,7 +686,7 @@ const Dashboard = () => {
             />
           ) : (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-              Donn?es insuffisantes
+              Données insuffisantes
             </div>
           )}
         </div>
@@ -698,7 +698,7 @@ const Dashboard = () => {
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
         }}>
           <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 16px 0' }}>
-            ?? Motifs d'admission ({period === 'day' ? 'auj.' : period === 'week' ? 'cette semaine' : period === 'month' ? 'ce mois' : 'cette ann?e'})
+            🍩 Motifs d'admission ({period === 'day' ? 'auj.' : period === 'week' ? 'cette semaine' : period === 'month' ? 'ce mois' : 'cette année'})
           </h3>
           {motifsData && motifsData.labels.length > 0 ? (
             <div style={{ maxWidth: '280px', margin: '0 auto' }}>
@@ -712,7 +712,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-              Aucune donn?e
+              Aucune donnée
             </div>
           )}
         </div>
@@ -724,7 +724,7 @@ const Dashboard = () => {
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
         }}>
           <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 16px 0' }}>
-            ?? ?volution des consultations (12 mois)
+            📈 Évolution des consultations (12 mois)
           </h3>
           {consultationsEvolutionData ? (
             <Line
@@ -737,7 +737,7 @@ const Dashboard = () => {
             />
           ) : (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-              Donn?es insuffisantes
+              Données insuffisantes
             </div>
           )}
         </div>
@@ -749,7 +749,7 @@ const Dashboard = () => {
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
         }}>
           <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 16px 0' }}>
-            ?? ?volution de la facturation (30 derniers jours)
+            📈 Évolution de la facturation (30 derniers jours)
           </h3>
           {dailyRevenueData ? (
             <Line
@@ -762,13 +762,13 @@ const Dashboard = () => {
             />
           ) : (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-              Donn?es insuffisantes
+              Données insuffisantes
             </div>
           )}
         </div>
       </div>
 
-      {/* ?? AM?LIORATION : Section des derni?res factures (plus visible) */}
+      {/* ✅ AMÉLIORATION : Section des dernières factures (plus visible) */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '16px',
@@ -779,26 +779,26 @@ const Dashboard = () => {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: 0 }}>
-            ?? Derni?res factures (20 plus r?centes)
+            📋 Dernières factures (20 plus récentes)
           </h3>
           <Link to="/factures" style={{ color: '#3b82f6', fontSize: '14px', textDecoration: 'none' }}>
-            Voir toutes ?
+            Voir toutes →
           </Link>
         </div>
         {lastFactures.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
-            Aucune facture trouv?e
+            Aucune facture trouvée
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc' }}>
-                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>N?</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>N°</th>
                   <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Patient</th>
-                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Date ?mission</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Date émission</th>
                   <th style={{ padding: '10px', textAlign: 'right', borderBottom: '2px solid #e2e8f0' }}>Montant total</th>
-                  <th style={{ padding: '10px', textAlign: 'right', borderBottom: '2px solid #e2e8f0' }}>Pay?</th>
+                  <th style={{ padding: '10px', textAlign: 'right', borderBottom: '2px solid #e2e8f0' }}>Payé</th>
                   <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e2e8f0' }}>Statut</th>
                   <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e2e8f0' }}>Action</th>
                 </tr>
@@ -813,18 +813,18 @@ const Dashboard = () => {
                     <td style={{ padding: '10px', textAlign: 'right' }}>{parseFloat(f.montant_paye || 0).toFixed(2)} FC</td>
                     <td style={{ padding: '10px', textAlign: 'center' }}>
                       <span style={{
-                        backgroundColor: (f.statut === 'payee' || f.statut === 'pay?') ? '#10b981' : '#ef4444',
+                        backgroundColor: (f.statut === 'payee' || f.statut === 'payé') ? '#10b981' : '#ef4444',
                         color: 'white',
                         padding: '2px 12px',
                         borderRadius: '20px',
                         fontSize: '12px',
                       }}>
-                        {(f.statut === 'payee' || f.statut === 'pay?') ? 'Pay?e' : 'Impay?e'}
+                        {(f.statut === 'payee' || f.statut === 'payé') ? 'Payée' : 'Impayée'}
                       </span>
                     </td>
                     <td style={{ padding: '10px', textAlign: 'center' }}>
                       <Link to={`/factures/${f.id}`} style={{ color: '#3b82f6' }}>
-                        <FaFileInvoice /> D?tail
+                        <FaFileInvoice /> Détail
                       </Link>
                     </td>
                   </tr>
@@ -844,12 +844,12 @@ const Dashboard = () => {
         marginBottom: '24px',
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 16px 0' }}>
-          ?? Consultations du jour ({new Date().toLocaleDateString('fr-FR')})
+          🩺 Consultations du jour ({new Date().toLocaleDateString('fr-FR')})
         </h3>
         {consultationsJour.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
             <FaStethoscope style={{ fontSize: '40px', marginBottom: '8px' }} />
-            <p>Aucune consultation pr?vue aujourd'hui</p>
+            <p>Aucune consultation prévue aujourd'hui</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -857,7 +857,7 @@ const Dashboard = () => {
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc' }}>
                   <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Patient</th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>M?decin</th>
+                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Médecin</th>
                   <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Date / Heure</th>
                   <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Motif</th>
                   <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Statut</th>
@@ -884,14 +884,14 @@ const Dashboard = () => {
                     <td style={{ padding: '12px' }}>{rv.motif || 'N/C'}</td>
                     <td style={{ padding: '12px' }}>
                       <span style={{
-                        backgroundColor: rv.statut === 'termin?' ? '#10b981' :
-                                      rv.statut === 'annul?' ? '#ef4444' : '#3b82f6',
+                        backgroundColor: rv.statut === 'terminée' ? '#10b981' :
+                                      rv.statut === 'annulée' ? '#ef4444' : '#3b82f6',
                         color: 'white',
                         padding: '2px 10px',
                         borderRadius: '20px',
                         fontSize: '12px',
                       }}>
-                        {rv.statut || 'Planifi?'}
+                        {rv.statut || 'Planifiée'}
                       </span>
                     </td>
                   </tr>
@@ -911,12 +911,12 @@ const Dashboard = () => {
         marginBottom: '24px',
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 16px 0' }}>
-          ?? Interventions chirurgicales ({period === 'day' ? 'auj.' : period === 'week' ? 'cette semaine' : period === 'month' ? 'ce mois' : 'cette ann?e'})
+          🏥 Interventions chirurgicales ({period === 'day' ? 'auj.' : period === 'week' ? 'cette semaine' : period === 'month' ? 'ce mois' : 'cette année'})
         </h3>
         {interventions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
             <FaHospital style={{ fontSize: '48px', marginBottom: '12px' }} />
-            <p>Aucune intervention pr?vue pour cette p?riode</p>
+            <p>Aucune intervention prévue pour cette période</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -939,14 +939,14 @@ const Dashboard = () => {
                     <td style={{ padding: '12px' }}>{new Date(inter.date_prevue || inter.date_intervention).toLocaleDateString('fr-FR')}</td>
                     <td style={{ padding: '12px' }}>
                       <span style={{
-                        backgroundColor: inter.statut === 'termin?' ? '#10b981' : 
+                        backgroundColor: inter.statut === 'terminée' ? '#10b981' : 
                                       inter.statut === 'en_cours' ? '#f59e0b' : '#3b82f6',
                         color: 'white',
                         padding: '2px 10px',
                         borderRadius: '20px',
                         fontSize: '12px',
                       }}>
-                        {inter.statut || 'Planifi?'}
+                        {inter.statut || 'Planifiée'}
                       </span>
                     </td>
                   </tr>
@@ -965,25 +965,25 @@ const Dashboard = () => {
         boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: '0 0 16px 0' }}>
-          ?? Occupation d?taill?e des lits par b?timent et ?tage
+          🛏️ Occupation détaillée des lits par bâtiment et étage
         </h3>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc' }}>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>B?timent</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>?tage</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Bâtiment</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Étage</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Total lits</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Occup?s</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Occupés</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Taux</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>R?partition</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Répartition</th>
               </tr>
             </thead>
             <tbody>
               {occupationLits.length === 0 ? (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
-                    Aucune donn?e d'occupation des lits disponible
+                    Aucune donnée d'occupation des lits disponible
                   </td>
                 </tr>
               ) : (

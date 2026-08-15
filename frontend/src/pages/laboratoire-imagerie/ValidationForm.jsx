@@ -15,7 +15,7 @@ import {
   FaExclamationTriangle,
   FaSave,
   FaPrint,
-  FaClipboardCheck  // ? Ajout essentiel
+  FaClipboardCheck
 } from 'react-icons/fa';
 
 const ValidationForm = () => {
@@ -30,11 +30,11 @@ const ValidationForm = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Vrifier les permissions
+  // Vérifier les permissions (admin inclus)
   const permissions = user?.permissions || [];
   const canValidate = permissions.includes('validate_laboratory') || user?.role === 'biologiste' || user?.role === 'admin';
 
-  // Chargement des donnes
+  // Chargement des données
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -56,7 +56,7 @@ const ValidationForm = () => {
 
   // Gestion de la validation
   const handleValidate = async () => {
-    if (!window.confirm('Confirmer la validation de cet examen ? Cette action est irrversible.')) return;
+    if (!window.confirm('Confirmer la validation de cet examen ? Cette action est irréversible.')) return;
 
     setSubmitting(true);
     setError('');
@@ -66,7 +66,7 @@ const ValidationForm = () => {
       await api.put(`/examens/${id}/validation`, {
         commentaire_validation: commentaire
       });
-      setSuccess('? Examen valid avec succs !');
+      setSuccess('✅ Examen validé avec succès !');
       setTimeout(() => {
         navigate(`/laboratoire/examen/${id}`);
       }, 2000);
@@ -77,9 +77,9 @@ const ValidationForm = () => {
     }
   };
 
-  // Gestion de la rouverture (annuler la validation)
+  // Gestion de la réouverture (annuler la validation)
   const handleReopen = async () => {
-    if (!window.confirm('Confirmer la rouverture de cet examen ? Les rsultats repasseront en statut "termin".')) return;
+    if (!window.confirm('Confirmer la réouverture de cet examen ? Les résultats repasseront en statut "Réalisé".')) return;
 
     setSubmitting(true);
     setError('');
@@ -87,39 +87,40 @@ const ValidationForm = () => {
 
     try {
       await api.put(`/examens/${id}/reopen`);
-      setSuccess('? Examen rouvert avec succs');
+      setSuccess('✅ Examen rouvert avec succès');
       setTimeout(() => {
         navigate(`/laboratoire/examen/${id}`);
       }, 2000);
     } catch (err) {
-      console.error('Erreur rouverture :', err);
-      setError(err.response?.data?.error || 'Erreur lors de la rouverture');
+      console.error('Erreur réouverture :', err);
+      setError(err.response?.data?.error || 'Erreur lors de la réouverture');
       setSubmitting(false);
     }
   };
 
-  // ? Impression PDF avec token dans l'URL
+  // Impression PDF avec token dans l'URL
   const handlePrint = () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('Vous devez tre connect pour imprimer le PDF.');
+      alert('Vous devez être connecté pour imprimer le PDF.');
       return;
     }
-    // Encoder le token pour viter les problmes de caractres spciaux
     const encodedToken = encodeURIComponent(token);
     window.open(`/api/examens/${id}/pdf?token=${encodedToken}`, '_blank');
   };
 
-  // Rendu du statut
+  // Rendu du statut (avec 'realise')
   const getStatusBadge = (statut) => {
     const configs = {
-      'demand': { bg: '#dbeafe', color: '#1e40af', label: '?? Demand' },
-      'en_cours': { bg: '#fef3c7', color: '#92400e', label: '? En cours' },
-      'termin': { bg: '#d1fae5', color: '#065f46', label: '? Termin' },
-      'valide': { bg: '#ede9fe', color: '#5b21b6', label: '? Valid' },
-      'annul': { bg: '#fee2e2', color: '#991b1b', label: '? Annul' },
+      'demandé': { bg: '#dbeafe', color: '#1e40af', label: '📋 Demandé' },
+      'en_attente': { bg: '#dbeafe', color: '#1e40af', label: '📋 En attente' },
+      'en_cours': { bg: '#fef3c7', color: '#92400e', label: '⏳ En cours' },
+      'terminé': { bg: '#d1fae5', color: '#065f46', label: '✅ Terminé' },
+      'realise': { bg: '#d1fae5', color: '#065f46', label: '✅ Réalisé' },
+      'validé': { bg: '#ede9fe', color: '#5b21b6', label: '🔬 Validé' },
+      'annulé': { bg: '#fee2e2', color: '#991b1b', label: '❌ Annulé' },
     };
-    const config = configs[statut] || configs['demand'];
+    const config = configs[statut] || configs['demandé'];
     return (
       <span style={{
         padding: '6px 16px',
@@ -138,8 +139,8 @@ const ValidationForm = () => {
   if (!canValidate) {
     return (
       <div style={{ padding: '60px 20px', textAlign: 'center', color: '#ef4444' }}>
-        <h2>? Accs non autoris</h2>
-        <p>Vous n'avez pas les droits ncessaires pour valider des examens.</p>
+        <h2>⛔ Accès non autorisé</h2>
+        <p>Vous n'avez pas les droits nécessaires pour valider des examens.</p>
         <Link to="/laboratoire" style={{ color: '#3b82f6', textDecoration: 'none', marginTop: '16px', display: 'inline-block' }}>
           <FaArrowLeft /> Retour au laboratoire
         </Link>
@@ -150,7 +151,7 @@ const ValidationForm = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>? Chargement...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement...</div>
       </div>
     );
   }
@@ -166,8 +167,8 @@ const ValidationForm = () => {
     );
   }
 
-  // Si l'examen est dj valid
-  if (examen.statut === 'valide') {
+  // Si l'examen est déjà validé
+  if (examen.statut === 'validé') {
     return (
       <div>
         <div style={{ marginBottom: '24px' }}>
@@ -179,7 +180,7 @@ const ValidationForm = () => {
             textDecoration: 'none',
             fontWeight: '500'
           }}>
-            <FaArrowLeft /> Retour  l'examen
+            <FaArrowLeft /> Retour à l'examen
           </Link>
         </div>
         <div style={{
@@ -190,8 +191,8 @@ const ValidationForm = () => {
           textAlign: 'center'
         }}>
           <FaCheckCircle style={{ fontSize: '64px', color: '#10b981' }} />
-          <h2 style={{ color: '#0f172a' }}>Cet examen est dj valid</h2>
-          <p style={{ color: '#64748b' }}>Valid le {new Date(examen.date_validation).toLocaleDateString('fr-FR')}</p>
+          <h2 style={{ color: '#0f172a' }}>Cet examen est déjà validé</h2>
+          <p style={{ color: '#64748b' }}>Validé le {new Date(examen.date_validation).toLocaleDateString('fr-FR')}</p>
           {user?.role === 'admin' && (
             <button
               onClick={handleReopen}
@@ -217,8 +218,8 @@ const ValidationForm = () => {
     );
   }
 
-  // Si l'examen n'est pas en statut "termin" (saisi)
-  if (examen.statut !== 'termin') {
+  // ✅ CORRECTION : accepter 'terminé' ou 'realise'
+  if (examen.statut !== 'terminé' && examen.statut !== 'realise') {
     return (
       <div>
         <div style={{ marginBottom: '24px' }}>
@@ -230,7 +231,7 @@ const ValidationForm = () => {
             textDecoration: 'none',
             fontWeight: '500'
           }}>
-            <FaArrowLeft /> Retour  l'examen
+            <FaArrowLeft /> Retour à l'examen
           </Link>
         </div>
         <div style={{
@@ -243,7 +244,7 @@ const ValidationForm = () => {
           <FaExclamationTriangle style={{ fontSize: '64px', color: '#f59e0b' }} />
           <h2 style={{ color: '#0f172a' }}>Examen non saisissable</h2>
           <p style={{ color: '#64748b' }}>
-            Cet examen doit avoir un statut <strong>"Termin"</strong> pour tre valid.
+            Cet examen doit avoir un statut <strong>"Terminé"</strong> ou <strong>"Réalisé"</strong> pour être validé.
             <br />Statut actuel : {getStatusBadge(examen.statut)}
           </p>
           <Link to={`/laboratoire/resultats/${id}`} style={{
@@ -255,7 +256,7 @@ const ValidationForm = () => {
             borderRadius: '8px',
             textDecoration: 'none'
           }}>
-            Aller saisir les rsultats
+            Aller saisir les résultats
           </Link>
         </div>
       </div>
@@ -275,7 +276,7 @@ const ValidationForm = () => {
           textDecoration: 'none',
           fontWeight: '500'
         }}>
-          <FaArrowLeft /> Retour  l'examen
+          <FaArrowLeft /> Retour à l'examen
         </Link>
         <button
           onClick={handlePrint}
@@ -294,7 +295,7 @@ const ValidationForm = () => {
         </button>
       </div>
 
-      {/* En-tte */}
+      {/* En-tête */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
@@ -305,7 +306,7 @@ const ValidationForm = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <h2 style={{ margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <FaClipboardCheck style={{ color: '#8b5cf6' }} /> Validation des rsultats
+              <FaClipboardCheck style={{ color: '#8b5cf6' }} /> Validation des résultats
             </h2>
             <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>
               {examen.type_examen} - {examen.patient_prenom} {examen.patient_nom}
@@ -338,7 +339,7 @@ const ValidationForm = () => {
           </div>
           <div>
             <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>
-              {examen.categorie === 'laboratoire' ? <FaFlask /> : <FaXRay />} Catgorie
+              {examen.categorie === 'laboratoire' ? <FaFlask /> : <FaXRay />} Catégorie
             </p>
             <p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>
               {examen.categorie === 'laboratoire' ? 'Laboratoire' : 'Imagerie'}
@@ -347,7 +348,7 @@ const ValidationForm = () => {
         </div>
       </div>
 
-      {/* Rsultats  valider */}
+      {/* Résultats à valider */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
@@ -355,7 +356,7 @@ const ValidationForm = () => {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         marginBottom: '24px'
       }}>
-        <h3 style={{ marginTop: 0, color: '#0f172a' }}>Rsultats  valider</h3>
+        <h3 style={{ marginTop: 0, color: '#0f172a' }}>Résultats à valider</h3>
 
         {error && (
           <div style={{
@@ -382,9 +383,9 @@ const ValidationForm = () => {
 
         {parametres.length === 0 ? (
           <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>
-            Aucun paramtre structur. Rsultats textuels :
+            Aucun paramètre structuré. Résultats textuels :
             <div style={{ marginTop: '8px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', textAlign: 'left' }}>
-              {examen.resultats || 'Non renseigns'}
+              {examen.resultats || 'Non renseignés'}
             </div>
           </div>
         ) : (
@@ -392,11 +393,11 @@ const ValidationForm = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ backgroundColor: '#f1f5f9' }}>
                 <tr>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Paramtre</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Paramètre</th>
                   <th style={{ padding: '10px', textAlign: 'left' }}>Valeur</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Unit</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Rfrence</th>
-                  <th style={{ padding: '10px', textAlign: 'left' }}>Interprtation</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Unité</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Référence</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Interprétation</th>
                 </tr>
               </thead>
               <tbody>
@@ -407,9 +408,9 @@ const ValidationForm = () => {
                                      parseFloat(p.valeur) > parseFloat(p.ref_max) * 1.5;
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '8px', fontWeight: '500' }}>{p.parametre_nom}</td>
+                      <td style={{ padding: '8px', fontWeight: '500' }}>{p.parametre_nom || p.nom}</td>
                       <td style={{ padding: '8px', fontWeight: isCritical ? 'bold' : 'normal', color: isCritical ? '#dc2626' : 'inherit' }}>
-                        {p.valeur} {isCritical && '??'}
+                        {p.valeur} {isCritical && '⚠️'}
                       </td>
                       <td style={{ padding: '8px' }}>{p.unite}</td>
                       <td style={{ padding: '8px' }}>{p.ref_min} - {p.ref_max}</td>
@@ -419,7 +420,7 @@ const ValidationForm = () => {
                             color: isNormal ? '#10b981' : isAbnormal ? '#ef4444' : '#f59e0b',
                             fontWeight: 'bold'
                           }}>
-                            {isNormal ? '? Normal' : isAbnormal ? (p.interpretation === 'haut' ? '? Haut' : '? Bas') : ''}
+                            {isNormal ? '✅ Normal' : isAbnormal ? (p.interpretation === 'haut' ? '⬆ Haut' : '⬇ Bas') : ''}
                           </span>
                         )}
                       </td>
@@ -471,7 +472,7 @@ const ValidationForm = () => {
               gap: '8px'
             }}
           >
-            <FaCheckCircle /> {submitting ? 'Validation...' : 'Valider les rsultats'}
+            <FaCheckCircle /> {submitting ? 'Validation...' : 'Valider les résultats'}
           </button>
           <Link
             to={`/laboratoire/examen/${id}`}

@@ -53,14 +53,14 @@ const EcritureForm = () => {
     setLoading(true);
     setError('');
     try {
-      // Vrifier l'quilibre
+      // Vérifier l'équilibre
       let totalDebit = 0, totalCredit = 0;
       formData.lignes.forEach(l => {
         if (l.sens === 'debit') totalDebit += parseFloat(l.montant) || 0;
         else totalCredit += parseFloat(l.montant) || 0;
       });
       if (totalDebit !== totalCredit) {
-        setError('Les totaux dbit et crdit doivent tre gaux');
+        setError('Les totaux débit et crédit doivent être égaux');
         setLoading(false);
         return;
       }
@@ -68,7 +68,7 @@ const EcritureForm = () => {
       await api.post('/ecritures', formData);
       navigate('/finance/ecritures');
     } catch (err) {
-      setError(err.response?.data?.error || 'Erreur');
+      setError(err.response?.data?.error || 'Erreur lors de l\'enregistrement');
       setLoading(false);
     }
   };
@@ -79,14 +79,14 @@ const EcritureForm = () => {
         <FaArrowLeft /> Retour
       </Link>
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', marginTop: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h2>Nouvelle criture comptable</h2>
+        <h2>Nouvelle écriture comptable</h2>
         {error && <div style={{ color: 'red' }}>{error}</div>}
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
             <div>
               <label>Journal *</label>
               <select name="journal_id" value={formData.journal_id} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                <option value="">Slectionner</option>
+                <option value="">Sélectionner</option>
                 {journaux.map(j => <option key={j.id} value={j.id}>{j.code} - {j.nom}</option>)}
               </select>
             </div>
@@ -95,12 +95,12 @@ const EcritureForm = () => {
               <input name="date_ecriture" type="date" value={formData.date_ecriture} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
             </div>
             <div>
-              <label>Libell *</label>
+              <label>Libellé *</label>
               <input name="libelle" value={formData.libelle} onChange={handleChange} required style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
             </div>
           </div>
 
-          <h3 style={{ marginTop: '24px' }}>Lignes d'criture</h3>
+          <h3 style={{ marginTop: '24px' }}>Lignes d'écriture</h3>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ backgroundColor: '#f1f5f9' }}>
@@ -117,14 +117,14 @@ const EcritureForm = () => {
                   <tr key={index} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '8px' }}>
                       <select value={ligne.compte_id} onChange={e => handleLigneChange(index, 'compte_id', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-                        <option value="">Slectionner</option>
+                        <option value="">Sélectionner</option>
                         {comptes.map(c => <option key={c.id} value={c.id}>{c.code} - {c.nom}</option>)}
                       </select>
                     </td>
                     <td style={{ padding: '8px' }}>
                       <select value={ligne.sens} onChange={e => handleLigneChange(index, 'sens', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-                        <option value="debit">Dbit</option>
-                        <option value="credit">Crdit</option>
+                        <option value="debit">Débit</option>
+                        <option value="credit">Crédit</option>
                       </select>
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right' }}>
@@ -148,7 +148,7 @@ const EcritureForm = () => {
 
           <div style={{ marginTop: '24px' }}>
             <button type="submit" disabled={loading} style={{ backgroundColor: '#f59e0b', color: 'white', padding: '12px 32px', border: 'none', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-              <FaSave /> {loading ? 'Enregistrement...' : 'Enregistrer l\'criture'}
+              <FaSave /> {loading ? 'Enregistrement...' : 'Enregistrer l\'écriture'}
             </button>
           </div>
         </form>

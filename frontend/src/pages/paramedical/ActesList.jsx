@@ -11,7 +11,7 @@ const ActesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ? Rcuprer le rle depuis le token JWT
+  // Récupérer le rôle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,7 +19,7 @@ const ActesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur dcodage token', e);
+        console.error('Erreur décodage token', e);
       }
     }
   }, []);
@@ -48,26 +48,26 @@ const ActesList = () => {
     fetchActes();
   }, []);
 
-  // ? handleDelete avec gestion 403
+  // handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('?? Supprimer dfinitivement cet acte ? Cette action est irrversible.')) return;
+    if (!window.confirm('⚠️ Supprimer définitivement cet acte ? Cette action est irréversible.')) return;
     try {
       await api.delete(`/actes/${id}`);
       setActes(actes.filter(a => a.id !== id));
-      showToast('Acte supprim avec succs');
+      showToast('Acte supprimé avec succès');
     } catch (err) {
       console.error('Erreur suppression acte:', err);
       if (err.response?.status === 403) {
-        showToast('? Seul un administrateur peut supprimer un acte.', 'error');
+        showToast('🔒 Seul un administrateur peut supprimer un acte.', 'error');
       } else {
-        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px 20px' }}>? Chargement des actes...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px 20px' }}>⏳ Chargement des actes...</div>;
 
   return (
     <div>
@@ -89,7 +89,7 @@ const ActesList = () => {
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '28px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <FaUserMd style={{ color: '#3b82f6' }} /> Actes paramdicaux
+          <FaUserMd style={{ color: '#3b82f6' }} /> Actes paramédicaux
         </h1>
         <Link 
           to="/paramedical/actes/new"
@@ -137,13 +137,13 @@ const ActesList = () => {
                         <button
                           onClick={() => handleDelete(a.id)}
                           style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                          title="Supprimer dfinitivement (admin)"
+                          title="Supprimer définitivement (admin)"
                         >
                           <FaTrash />
                         </button>
                       )}
                       {!isAdmin && (
-                        <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
+                        <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
                       )}
                     </div>
                   </td>

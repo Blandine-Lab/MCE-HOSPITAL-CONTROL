@@ -66,7 +66,7 @@ const DashboardBI = () => {
       setMotifsAdmission(motifsRes.data);
     } catch (err) {
       console.error('Erreur chargement BI :', err);
-      // Fallback avec donnes simules pour viter l'cran vide
+      // Fallback avec données simulées pour éviter l'écran vide
       setStats({
         patients: 245,
         consultations: 128,
@@ -79,27 +79,27 @@ const DashboardBI = () => {
         infirmiers: 32
       });
       setEvolution([
-        { mois: 'Jan', total: 45 }, { mois: 'Fv', total: 52 }, { mois: 'Mar', total: 60 },
+        { mois: 'Jan', total: 45 }, { mois: 'Fév', total: 52 }, { mois: 'Mar', total: 60 },
         { mois: 'Avr', total: 55 }, { mois: 'Mai', total: 70 }, { mois: 'Juin', total: 68 },
-        { mois: 'Juil', total: 75 }, { mois: 'Ao', total: 82 }, { mois: 'Sep', total: 78 },
-        { mois: 'Oct', total: 90 }, { mois: 'Nov', total: 85 }, { mois: 'Dc', total: 95 }
+        { mois: 'Juil', total: 75 }, { mois: 'Aoû', total: 82 }, { mois: 'Sep', total: 78 },
+        { mois: 'Oct', total: 90 }, { mois: 'Nov', total: 85 }, { mois: 'Déc', total: 95 }
       ]);
       setFacturesEvolution([
-        { mois: 'Jan', total: 80000 }, { mois: 'Fv', total: 95000 }, { mois: 'Mar', total: 110000 },
+        { mois: 'Jan', total: 80000 }, { mois: 'Fév', total: 95000 }, { mois: 'Mar', total: 110000 },
         { mois: 'Avr', total: 105000 }, { mois: 'Mai', total: 120000 }, { mois: 'Juin', total: 115000 },
-        { mois: 'Juil', total: 130000 }, { mois: 'Ao', total: 140000 }, { mois: 'Sep', total: 135000 },
-        { mois: 'Oct', total: 150000 }, { mois: 'Nov', total: 145000 }, { mois: 'Dc', total: 160000 }
+        { mois: 'Juil', total: 130000 }, { mois: 'Aoû', total: 140000 }, { mois: 'Sep', total: 135000 },
+        { mois: 'Oct', total: 150000 }, { mois: 'Nov', total: 145000 }, { mois: 'Déc', total: 160000 }
       ]);
       setOccupationLits([
-        { service: 'Mdecine', occupes: 18, total: 25 },
+        { service: 'Médecine', occupes: 18, total: 25 },
         { service: 'Chirurgie', occupes: 22, total: 28 },
-        { service: 'Pdiatrie', occupes: 12, total: 20 },
-        { service: 'Gyncologie', occupes: 15, total: 18 },
+        { service: 'Pédiatrie', occupes: 12, total: 20 },
+        { service: 'Gynécologie', occupes: 15, total: 18 },
         { service: 'Urgences', occupes: 8, total: 15 }
       ]);
       setMotifsAdmission([
         { motif: 'Urgence', count: 32 },
-        { motif: 'Programm', count: 45 },
+        { motif: 'Programmé', count: 45 },
         { motif: 'Transfert', count: 12 },
         { motif: 'Autre', count: 8 }
       ]);
@@ -108,7 +108,7 @@ const DashboardBI = () => {
     }
   };
 
-  // Prparation des donnes pour les graphiques
+  // Préparation des données pour les graphiques
   const months = evolution.map(item => item.mois);
   const consultationsData = evolution.map(item => item.total);
   const facturesData = facturesEvolution.map(item => item.total);
@@ -171,14 +171,14 @@ const DashboardBI = () => {
     ]
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement des indicateurs...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement des indicateurs...</div>;
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <h1 style={{ fontSize: '28px', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
           <FaChartBar style={{ color: '#8b5cf6' }} />
-          Tableau de bord dcisionnel
+          Tableau de bord décisionnel
         </h1>
         <div style={{ display: 'flex', gap: '8px' }}>
           {['day', 'week', 'month', 'year'].map(p => (
@@ -196,13 +196,13 @@ const DashboardBI = () => {
                 transition: 'all 0.2s'
               }}
             >
-              {p === 'day' ? 'Jour' : p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Anne'}
+              {p === 'day' ? 'Jour' : p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Année'}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Indicateurs cls */}
+      {/* Indicateurs clés */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px', marginBottom: '32px' }}>
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textAlign: 'center' }}>
           <FaUsers style={{ fontSize: '24px', color: '#3b82f6' }} />
@@ -222,19 +222,19 @@ const DashboardBI = () => {
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textAlign: 'center' }}>
           <FaMoneyBillWave style={{ fontSize: '24px', color: '#8b5cf6' }} />
           <h2 style={{ margin: '8px 0 0', fontSize: '24px' }}>{stats?.factures?.montant?.toLocaleString() || 0} FCFA</h2>
-          <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Chiffre d?FC?affaires</p>
+          <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Chiffre d'affaires</p>
         </div>
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textAlign: 'center' }}>
           <FaBed style={{ fontSize: '24px', color: '#3b82f6' }} />
           <h2 style={{ margin: '8px 0 0', fontSize: '24px' }}>
             {stats?.litsOccupes}/{stats?.totalLits}
           </h2>
-          <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Lits occups</p>
+          <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Lits occupés</p>
         </div>
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textAlign: 'center' }}>
           <FaUserMd style={{ fontSize: '24px', color: '#ec4899' }} />
           <h2 style={{ margin: '8px 0 0', fontSize: '24px' }}>{stats?.medecins || 0}</h2>
-          <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Mdecins</p>
+          <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Médecins</p>
         </div>
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textAlign: 'center' }}>
           <FaHospital style={{ fontSize: '24px', color: '#6366f1' }} />
@@ -251,17 +251,17 @@ const DashboardBI = () => {
       {/* Graphiques */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>?? volution des consultations</h3>
+          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>📈 Évolution des consultations</h3>
           <Line data={evolutionChartData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
         </div>
 
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>?? Chiffre d?FC?affaires (12 mois)</h3>
+          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>📊 Chiffre d'affaires (12 mois)</h3>
           <Line data={facturesChartData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
         </div>
 
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>?? Occupation des lits par service</h3>
+          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>🏥 Occupation des lits par service</h3>
           <Bar 
             data={occupationChartData}
             options={{
@@ -273,17 +273,17 @@ const DashboardBI = () => {
         </div>
 
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>?? Motifs d?FC?admission</h3>
+          <h3 style={{ marginTop: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>📋 Motifs d'admission</h3>
           <div style={{ maxWidth: '280px', margin: '0 auto' }}>
             <Doughnut data={motifChartData} options={{ plugins: { legend: { position: 'right' } } }} />
           </div>
         </div>
       </div>
 
-      {/* Alerte si les donnes sont manquantes */}
+      {/* Alerte si les données sont manquantes */}
       {!stats && (
         <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#fef3c7', borderRadius: '8px', textAlign: 'center' }}>
-          <p style={{ color: '#92400e' }}>?? Certaines donnes ne sont pas disponibles. Vrifiez que les endpoints BI sont actifs.</p>
+          <p style={{ color: '#92400e' }}>⚠️ Certaines données ne sont pas disponibles. Vérifiez que les endpoints BI sont actifs.</p>
         </div>
       )}
     </div>

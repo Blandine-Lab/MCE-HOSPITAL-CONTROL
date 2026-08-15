@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { FaEye, FaCheck, FaTimes, FaHistory, FaSyringe } from 'react-icons/fa';
-import api from '../../axios'; // Instance avec intercepteur pour le token
+import api from '../../axios';
 
 const OrdonnancesList = () => {
   const [ordonnances, setOrdonnances] = useState([]);
@@ -11,22 +10,26 @@ const OrdonnancesList = () => {
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
   const [showModal, setShowModal] = useState(false);
-  const [lotsDisponibles, setLotsDisponibles] = useState({}); // { medicamentId: [lot, ...] }
-  const [selectedLots, setSelectedLots] = useState({}); // { ligneIndex: lotId }
-  const [quantites, setQuantites] = useState({}); // { ligneIndex: quantite }
+  const [lotsDisponibles, setLotsDisponibles] = useState({});
+  const [selectedLots, setSelectedLots] = useState({});
+  const [quantites, setQuantites] = useState({});
   const [password, setPassword] = useState('');
   const [delivering, setDelivering] = useState(false);
 
-  // Rcuprer les ordonnances en attente
+  const showToast = (message, type = 'success') => {
+    setToast(message);
+    setToastType(type);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Récupérer les ordonnances en attente
   const fetchOrdonnances = async () => {
     try {
       const res = await api.get('/pharmacy/ordonnances/en-attente');
       setOrdonnances(res.data);
     } catch (err) {
-      console.error('Erreur fetchOrdonnances:', err);
-      setToast('Erreur chargement ordonnances: ' + (err.response?.status || err.message));
-      setToastType('error');
-      setTimeout(() => setToast(null), 5000);
+      console.error('Erreur fetchOrdonnances :', err);
+      showToast('Erreur chargement des ordonnances : ' + (err.response?.status || err.message), 'error');
     } finally {
       setLoading(false);
     }
@@ -36,63 +39,56 @@ const OrdonnancesList = () => {
     fetchOrdonnances();
   }, []);
 
-  // Voir les dtails d'une ordonnance (lignes)
+  // Voir les détails d'une ordonnance
   const viewOrdonnance = async (id) => {
     try {
       const res = await api.get(`/pharmacy/ordonnances/${id}/lignes`);
       const lignesData = res.data;
       setSelectedOrdonnance({ id, ...res.data });
       setLignes(lignesData);
-      // Initialiser les tats pour chaque ligne
+
+      // Initialiser les états pour chaque ligne
       const initialLots = {};
       const initialQuantites = {};
       for (let i = 0; i < lignesData.length; i++) {
         const ligne = lignesData[i];
-        initialQuantites[i] = ligne.quantite_prescrit - (ligne.quantite_delivree || 0); // reste  dlivrer
-        // Rcuprer les lots disponibles pour ce mdicament
+        initialQuantites[i] = ligne.quantite_prescrit - (ligne.quantite_delivree || 0);
+        // Récupérer les lots disponibles pour ce médicament
         try {
           const lotsRes = await api.get(`/pharmacy/lots/disponibles/${ligne.medicament_id}`);
           if (lotsRes.data.length > 0) {
-            initialLots[i] = lotsRes.data[0].id; // pr-slectionner le premier lot
+            initialLots[i] = lotsRes.data[0].id; // pré-sélectionner le premier lot
           }
-          // Stocker la liste des lots pour ce mdicament
           setLotsDisponibles(prev => ({ ...prev, [ligne.medicament_id]: lotsRes.data }));
         } catch (err) {
-          console.error('Erreur chargement lots pour mdicament', ligne.medicament_id);
+          console.error(`Erreur chargement lots pour médicament ${ligne.medicament_id} :`, err);
         }
       }
       setSelectedLots(initialLots);
       setQuantites(initialQuantites);
       setShowModal(true);
     } catch (err) {
-      console.error(err);
-      setToast('Erreur chargement des lignes');
-      setToastType('error');
-      setTimeout(() => setToast(null), 3000);
+      console.error('Erreur viewOrdonnance :', err);
+      showToast('Erreur chargement des lignes de l\'ordonnance', 'error');
     }
   };
 
-  // Dlivrer une ligne
+  // Délivrer une ligne
   const deliverLine = async (ligneIndex) => {
     const ligne = lignes[ligneIndex];
     const lotId = selectedLots[ligneIndex];
     const quantite = quantites[ligneIndex];
+
     if (!lotId) {
-      setToast('Veuillez slectionner un lot');
-      setToastType('error');
-      setTimeout(() => setToast(null), 3000);
+      showToast('Veuillez sélectionner un lot', 'error');
       return;
     }
     if (!quantite || quantite <= 0) {
-      setToast('Quantit invalide');
-      setToastType('error');
-      setTimeout(() => setToast(null), 3000);
+      showToast('Quantité invalide', 'error');
       return;
     }
     if (!password) {
-      setToast('Veuillez saisir votre mot de passe');
-      setToastType('error');
-      setTimeout(() => setToast(null), 3000);
+      showToast('Veuillez saisir votre mot de passe', 'error');
       return;
     }
 
@@ -109,27 +105,24 @@ const OrdonnancesList = () => {
         password: password
       };
       await api.post('/pharmacy/delivrance', payload);
-      setToast('? Dlivrance enregistre');
-      setToastType('success');
-      setTimeout(() => setToast(null), 3000);
-      // Recharger la liste des ordonnances et fermer la modal
+      showToast('✅ Délivrance enregistrée avec succès', 'success');
       fetchOrdonnances();
       setShowModal(false);
     } catch (err) {
-      console.error('Erreur dlivrance:', err);
+      console.error('Erreur délivrance :', err);
       let msg = err.response?.data?.error || err.message;
       if (err.response?.status === 403) {
-        msg = 'Mot de passe incorrect. Veuillez ressayer.';
+        msg = 'Mot de passe incorrect. Veuillez réessayer.';
       }
-      setToast('? Erreur : ' + msg);
-      setToastType('error');
-      setTimeout(() => setToast(null), 3000);
+      showToast('❌ Erreur : ' + msg, 'error');
     } finally {
       setDelivering(false);
     }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
+  if (loading) {
+    return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
+  }
 
   return (
     <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
@@ -143,13 +136,14 @@ const OrdonnancesList = () => {
           padding: '12px 24px',
           borderRadius: '8px',
           zIndex: 1000,
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          animation: 'slideIn 0.3s ease-out'
         }}>
           {toast}
         </div>
       )}
 
-      <h2 style={{ marginBottom: '20px' }}>?? Ordonnances en attente de dlivrance</h2>
+      <h2 style={{ marginBottom: '20px' }}>📋 Ordonnances en attente de délivrance</h2>
 
       {ordonnances.length === 0 ? (
         <p>Aucune ordonnance en attente.</p>
@@ -157,9 +151,9 @@ const OrdonnancesList = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>N</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>N°</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Patient</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Mdecin</th>
+              <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Médecin</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Date</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Statut</th>
               <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Actions</th>
@@ -180,8 +174,8 @@ const OrdonnancesList = () => {
                     borderRadius: '20px',
                     fontSize: '12px'
                   }}>
-                    {ord.statut === 'en_attente' ? '? En attente' : 
-                     ord.statut === 'partiellement_delivree' ? '?? Partielle' : '? Dlivre'}
+                    {ord.statut === 'en_attente' ? '⏳ En attente' :
+                     ord.statut === 'partiellement_delivree' ? '🔶 Partielle' : '✅ Délivrée'}
                   </span>
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>
@@ -189,7 +183,7 @@ const OrdonnancesList = () => {
                     onClick={() => viewOrdonnance(ord.id)}
                     style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
                   >
-                    <FaEye /> Dtails
+                    <FaEye /> Détails
                   </button>
                 </td>
               </tr>
@@ -222,20 +216,20 @@ const OrdonnancesList = () => {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2>Ordonnance ORD-{String(selectedOrdonnance.id).padStart(4, '0')}</h2>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}></button>
+              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>✕</button>
             </div>
             <p><strong>Patient :</strong> {selectedOrdonnance.patient_prenom} {selectedOrdonnance.patient_nom}</p>
-            <p><strong>Mdecin :</strong> Dr. {selectedOrdonnance.medecin_prenom} {selectedOrdonnance.medecin_nom}</p>
+            <p><strong>Médecin :</strong> Dr. {selectedOrdonnance.medecin_prenom} {selectedOrdonnance.medecin_nom}</p>
             <p><strong>Date :</strong> {new Date(selectedOrdonnance.date_prescription).toLocaleString()}</p>
             {selectedOrdonnance.observations && <p><strong>Observations :</strong> {selectedOrdonnance.observations}</p>}
 
-            <h3 style={{ marginTop: '20px', marginBottom: '10px' }}>?? Mdicaments prescrits</h3>
+            <h3 style={{ marginTop: '20px', marginBottom: '10px' }}>💊 Médicaments prescrits</h3>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Mdicament</th>
+                  <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Médicament</th>
                   <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Prescrit</th>
-                  <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Dlivr</th>
+                  <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Délivré</th>
                   <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Reste</th>
                   <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Lot</th>
                   <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f3f4f6' }}>Action</th>
@@ -281,7 +275,7 @@ const OrdonnancesList = () => {
                               disabled={delivering}
                               style={{ background: '#16a34a', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
                             >
-                              <FaCheck /> Dlivrer
+                              <FaCheck /> Délivrer
                             </button>
                           </div>
                         )}
@@ -309,6 +303,12 @@ const OrdonnancesList = () => {
           </div>
         </div>
       )}
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };

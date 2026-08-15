@@ -16,7 +16,7 @@ const PatientMedicalRecord = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('info');
 
-  // Donnes cliniques
+  // Données cliniques
   const [consultations, setConsultations] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
   const [examens, setExamens] = useState([]);
@@ -32,7 +32,7 @@ const PatientMedicalRecord = () => {
         const patientRes = await api.get(`/patients/${id}`);
         setPatient(patientRes.data);
 
-        // Charger les donnes associes
+        // Charger les données associées
         await Promise.all([
           fetchConsultations(id),
           fetchPrescriptions(id),
@@ -43,7 +43,7 @@ const PatientMedicalRecord = () => {
 
         setLoading(false);
       } catch (err) {
-        console.error('? Erreur chargement dossier patient :', err);
+        console.error('❌ Erreur chargement dossier patient :', err);
         setError('Impossible de charger le dossier du patient');
         setLoading(false);
       }
@@ -57,18 +57,18 @@ const PatientMedicalRecord = () => {
       const res = await api.get(`/consultations/patient/${patientId}`);
       setConsultations(res.data || []);
     } catch (err) {
-      console.warn('?? Erreur consultations :', err.message);
+      console.warn('⚠️ Erreur consultations :', err.message);
       setConsultations([]);
     }
   };
 
   const fetchPrescriptions = async (patientId) => {
     try {
-      // ? Correction : ajout du prfixe /consultations/
+      // Correction : ajout du préfixe /consultations/
       const res = await api.get(`/consultations/prescriptions/patient/${patientId}`);
       setPrescriptions(res.data || []);
     } catch (err) {
-      console.warn('?? Erreur prescriptions :', err.message);
+      console.warn('⚠️ Erreur prescriptions :', err.message);
       setPrescriptions([]);
     }
   };
@@ -78,18 +78,18 @@ const PatientMedicalRecord = () => {
       const res = await api.get(`/examens/patient/${patientId}`);
       setExamens(res.data || []);
     } catch (err) {
-      console.warn('?? Erreur examens :', err.message);
+      console.warn('⚠️ Erreur examens :', err.message);
       setExamens([]);
     }
   };
 
   const fetchOrdonnances = async (patientId) => {
     try {
-      // ? Correction : ajout du prfixe /consultations/
+      // Correction : ajout du préfixe /consultations/
       const res = await api.get(`/consultations/ordonnances/patient/${patientId}`);
       setOrdonnances(res.data || []);
     } catch (err) {
-      console.warn('?? Erreur ordonnances :', err.message);
+      console.warn('⚠️ Erreur ordonnances :', err.message);
       setOrdonnances([]);
     }
   };
@@ -99,24 +99,24 @@ const PatientMedicalRecord = () => {
       const res = await api.get(`/consultations/admissions/patient/${patientId}`);
       setAdmissions(res.data || []);
     } catch (err) {
-      console.warn('?? Erreur admissions :', err.message);
+      console.warn('⚠️ Erreur admissions :', err.message);
       setAdmissions([]);
     }
   };
 
   const getStatusBadge = (statut) => {
     const colors = {
-      'planifi': { bg: '#fef9c3', text: '#854d0e' },
-      'confirme': { bg: '#dbeafe', text: '#1e40af' },
-      'termin': { bg: '#d1fae5', text: '#065f46' },
-      'annul': { bg: '#fee2e2', text: '#991b1b' },
-      'demand': { bg: '#fef3c7', text: '#92400e' },
+      'planifié': { bg: '#fef9c3', text: '#854d0e' },
+      'confirmé': { bg: '#dbeafe', text: '#1e40af' },
+      'terminé': { bg: '#d1fae5', text: '#065f46' },
+      'annulé': { bg: '#fee2e2', text: '#991b1b' },
+      'demandé': { bg: '#fef3c7', text: '#92400e' },
       'en_cours': { bg: '#dbeafe', text: '#1e40af' },
-      'valide': { bg: '#d1fae5', text: '#065f46' },
-      'payee': { bg: '#d1fae5', text: '#065f46' },
-      'impayee': { bg: '#fee2e2', text: '#991b1b' },
+      'validé': { bg: '#d1fae5', text: '#065f46' },
+      'payée': { bg: '#d1fae5', text: '#065f46' },
+      'impayée': { bg: '#fee2e2', text: '#991b1b' },
     };
-    const s = colors[statut] || colors['planifi'];
+    const s = colors[statut] || colors['planifié'];
     return { backgroundColor: s.bg, color: s.text, padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '500' };
   };
 
@@ -161,7 +161,7 @@ const PatientMedicalRecord = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>? Chargement du dossier...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement du dossier...</div>
       </div>
     );
   }
@@ -169,23 +169,23 @@ const PatientMedicalRecord = () => {
   if (error || !patient) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: '#ef4444' }}>
-        <div style={{ fontSize: '20px' }}>{error || 'Patient non trouv'}</div>
+        <div style={{ fontSize: '20px' }}>{error || 'Patient non trouvé'}</div>
       </div>
     );
   }
 
   // Calcul des totaux pour les onglets
   const counts = {
-    consultations: consultations.filter(c => c.statut !== 'annul').length,
+    consultations: consultations.filter(c => c.statut !== 'annulé').length,
     prescriptions: prescriptions.length,
-    examens: examens.filter(e => e.statut !== 'annul').length,
+    examens: examens.filter(e => e.statut !== 'annulé').length,
     ordonnances: ordonnances.length,
     admissions: admissions.length,
   };
 
   return (
     <div>
-      {/* En-tte avec retour */}
+      {/* En-tête avec retour */}
       <div style={{ marginBottom: '24px' }}>
         <Link 
           to="/medical/patients" 
@@ -198,7 +198,7 @@ const PatientMedicalRecord = () => {
             fontWeight: '500'
           }}
         >
-          <FaArrowLeft /> Retour  la liste
+          <FaArrowLeft /> Retour à la liste
         </Link>
       </div>
 
@@ -231,11 +231,11 @@ const PatientMedicalRecord = () => {
             </h1>
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '4px' }}>
               <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <FaCalendar /> N(e) le {patient.date_naissance ? new Date(patient.date_naissance).toLocaleDateString('fr-FR') : 'N/C'}
+                <FaCalendar /> Né(e) le {patient.date_naissance ? new Date(patient.date_naissance).toLocaleDateString('fr-FR') : 'N/C'}
               </span>
               {patient.ipp && (
                 <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  ??? IPP : {patient.ipp}
+                  🏷️ IPP : {patient.ipp}
                 </span>
               )}
             </div>
@@ -248,24 +248,24 @@ const PatientMedicalRecord = () => {
             )}
             {patient.email && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', backgroundColor: '#f1f5f9', padding: '4px 12px', borderRadius: '20px' }}>
-                ?? {patient.email}
+                ✉️ {patient.email}
               </span>
             )}
           </div>
         </div>
         {patient.antecedents && (
           <div style={{ marginTop: '8px', padding: '12px 16px', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
-            <span style={{ fontWeight: '600', color: '#92400e' }}>?? Antcdents :</span> {patient.antecedents}
+            <span style={{ fontWeight: '600', color: '#92400e' }}>📋 Antécédents :</span> {patient.antecedents}
           </div>
         )}
         {patient.allergies && (
           <div style={{ marginTop: '8px', padding: '12px 16px', backgroundColor: '#fee2e2', borderRadius: '8px' }}>
-            <span style={{ fontWeight: '600', color: '#991b1b' }}>?? Allergies :</span> {patient.allergies}
+            <span style={{ fontWeight: '600', color: '#991b1b' }}>⚠️ Allergies :</span> {patient.allergies}
           </div>
         )}
         {patient.traitements && (
           <div style={{ marginTop: '8px', padding: '12px 16px', backgroundColor: '#dbeafe', borderRadius: '8px' }}>
-            <span style={{ fontWeight: '600', color: '#1e40af' }}>?? Traitements :</span> {patient.traitements}
+            <span style={{ fontWeight: '600', color: '#1e40af' }}>💊 Traitements :</span> {patient.traitements}
           </div>
         )}
       </div>
@@ -300,7 +300,7 @@ const PatientMedicalRecord = () => {
         {/* Onglet Informations */}
         {activeTab === 'info' && (
           <div>
-            <h3 style={{ marginTop: 0, color: '#0f172a' }}>Informations gnrales</h3>
+            <h3 style={{ marginTop: 0, color: '#0f172a' }}>Informations générales</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <p style={{ color: '#64748b', margin: 0 }}><strong>Nom complet</strong></p>
@@ -315,13 +315,13 @@ const PatientMedicalRecord = () => {
                 <p style={{ margin: '4px 0 16px 0', color: '#0f172a' }}>{patient.date_naissance ? new Date(patient.date_naissance).toLocaleDateString('fr-FR') : 'N/C'}</p>
               </div>
               <div>
-                <p style={{ color: '#64748b', margin: 0 }}><strong>ge</strong></p>
+                <p style={{ color: '#64748b', margin: 0 }}><strong>Âge</strong></p>
                 <p style={{ margin: '4px 0 16px 0', color: '#0f172a' }}>
                   {patient.date_naissance ? `${new Date().getFullYear() - new Date(patient.date_naissance).getFullYear()} ans` : 'N/C'}
                 </p>
               </div>
               <div>
-                <p style={{ color: '#64748b', margin: 0 }}><strong>Tlphone</strong></p>
+                <p style={{ color: '#64748b', margin: 0 }}><strong>Téléphone</strong></p>
                 <p style={{ margin: '4px 0 16px 0', color: '#0f172a' }}>{patient.telephone || 'N/C'}</p>
               </div>
               <div>
@@ -333,7 +333,7 @@ const PatientMedicalRecord = () => {
                 <p style={{ margin: '4px 0 16px 0', color: '#0f172a' }}>{patient.adresse || 'N/C'}</p>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <p style={{ color: '#64748b', margin: 0 }}><strong>Personne  prvenir</strong></p>
+                <p style={{ color: '#64748b', margin: 0 }}><strong>Personne à prévenir</strong></p>
                 <p style={{ margin: '4px 0 0 0', color: '#0f172a' }}>
                   {patient.personne_a_prevenir_nom1 || 'Aucune'} 
                   {patient.personne_a_prevenir_tel1 && ` - ${patient.personne_a_prevenir_tel1}`}
@@ -348,14 +348,14 @@ const PatientMedicalRecord = () => {
           <div>
             <h3 style={{ marginTop: 0, color: '#0f172a' }}>Historique des consultations</h3>
             {consultations.length === 0 ? (
-              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Aucune consultation trouve.</p>
+              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Aucune consultation trouvée.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8fafc' }}>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Date</th>
-                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Mdecin</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Médecin</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Motif</th>
                       <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e2e8f0' }}>Statut</th>
                     </tr>
@@ -367,8 +367,8 @@ const PatientMedicalRecord = () => {
                         <td style={{ padding: '10px' }}>{c.medecin_nom || c.medecin || '-'}</td>
                         <td style={{ padding: '10px' }}>{c.motif || c.raison || '-'}</td>
                         <td style={{ padding: '10px', textAlign: 'center' }}>
-                          <span style={getStatusBadge(c.statut || c.status || 'planifi')}>
-                            {c.statut || c.status || 'Planifi'}
+                          <span style={getStatusBadge(c.statut || c.status || 'planifié')}>
+                            {c.statut || c.status || 'Planifié'}
                           </span>
                         </td>
                       </tr>
@@ -385,16 +385,16 @@ const PatientMedicalRecord = () => {
           <div>
             <h3 style={{ marginTop: 0, color: '#0f172a' }}>Prescriptions</h3>
             {prescriptions.length === 0 ? (
-              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Aucune prescription trouve.</p>
+              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Aucune prescription trouvée.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8fafc' }}>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Date</th>
-                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Mdecin</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Médecin</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Statut</th>
-                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Dtails</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Détails</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -428,9 +428,9 @@ const PatientMedicalRecord = () => {
         {/* Onglet Examens */}
         {activeTab === 'examens' && (
           <div>
-            <h3 style={{ marginTop: 0, color: '#0f172a' }}>Examens & rsultats</h3>
+            <h3 style={{ marginTop: 0, color: '#0f172a' }}>Examens & résultats</h3>
             {examens.length === 0 ? (
-              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Aucun examen trouv.</p>
+              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Aucun examen trouvé.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -438,7 +438,7 @@ const PatientMedicalRecord = () => {
                     <tr style={{ backgroundColor: '#f8fafc' }}>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Date demande</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Type</th>
-                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Catgorie</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Catégorie</th>
                       <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e2e8f0' }}>Statut</th>
                     </tr>
                   </thead>
@@ -450,11 +450,11 @@ const PatientMedicalRecord = () => {
                         <td style={{ padding: '10px' }}>{e.categorie || '-'}</td>
                         <td style={{ padding: '10px', textAlign: 'center' }}>
                           <span style={getStatusBadge(e.statut)}>
-                            {e.statut === 'demand' ? 'Demand' :
+                            {e.statut === 'demandé' ? 'Demandé' :
                              e.statut === 'en_cours' ? 'En cours' :
-                             e.statut === 'termin' ? 'Termin' :
-                             e.statut === 'valide' ? 'Valid' :
-                             e.statut === 'annul' ? 'Annul' : e.statut}
+                             e.statut === 'terminé' ? 'Terminé' :
+                             e.statut === 'validé' ? 'Validé' :
+                             e.statut === 'annulé' ? 'Annulé' : e.statut}
                           </span>
                         </td>
                       </tr>
@@ -471,15 +471,15 @@ const PatientMedicalRecord = () => {
           <div>
             <h3 style={{ marginTop: 0, color: '#0f172a' }}>Ordonnances</h3>
             {ordonnances.length === 0 ? (
-              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Aucune ordonnance trouve.</p>
+              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Aucune ordonnance trouvée.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8fafc' }}>
-                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>N</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>N°</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Date</th>
-                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Mdecin</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Médecin</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Observations</th>
                       <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e2e8f0' }}>Statut</th>
                     </tr>
@@ -510,7 +510,7 @@ const PatientMedicalRecord = () => {
           <div>
             <h3 style={{ marginTop: 0, color: '#0f172a' }}>Historique des hospitalisations</h3>
             {admissions.length === 0 ? (
-              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Aucune hospitalisation trouve.</p>
+              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Aucune hospitalisation trouvée.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>

@@ -27,11 +27,11 @@ const DashboardStock = () => {
     }).catch(console.error);
   }, []);
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
 
   return (
     <div>
-      <h1 style={{ fontSize: '28px', color: '#0f172a', marginBottom: '24px' }}>Tableau de bord Stock</h1>
+      <h1 style={{ fontSize: '28px', color: '#0f172a', marginBottom: '24px' }}>📊 Tableau de bord du stock</h1>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
         <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textAlign: 'center' }}>
           <FaBoxes style={{ fontSize: '32px', color: '#3b82f6' }} />
@@ -51,7 +51,7 @@ const DashboardStock = () => {
         <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textAlign: 'center' }}>
           <FaExclamationTriangle style={{ fontSize: '32px', color: '#ef4444' }} />
           <h2>{stats.alertesStock}</h2>
-          <p style={{ color: '#64748b' }}>Alertes stock</p>
+          <p style={{ color: '#64748b' }}>Alertes de stock</p>
         </div>
       </div>
     </div>

@@ -11,7 +11,7 @@ const InventairesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ? Rcuprer le rle depuis le token JWT
+  // Récupérer le rôle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,7 +19,7 @@ const InventairesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur dcodage token', e);
+        console.error('Erreur décodage token', e);
       }
     }
   }, []);
@@ -38,8 +38,8 @@ const InventairesList = () => {
         setLoading(false);
       })
       .catch(err => {
-        console.error(err);
-        showToast('Erreur chargement des inventaires', 'error');
+        console.error('Erreur de chargement des inventaires:', err);
+        showToast('Erreur lors du chargement des inventaires', 'error');
         setLoading(false);
       });
   };
@@ -48,36 +48,43 @@ const InventairesList = () => {
     fetchInventaires();
   }, []);
 
-  // ? handleDelete avec gestion 403
-  const handleDelete = async (id, type) => {
-    if (!window.confirm(`?? Voulez-vous vraiment supprimer l'inventaire "${type}" du ${new Date().toLocaleDateString('fr-FR')} ? Cette action est irrversible.`)) return;
+  const handleDelete = async (id, type, dateInventaire) => {
+    const dateStr = new Date(dateInventaire).toLocaleDateString('fr-FR');
+    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer l'inventaire de type "${type}" du ${dateStr} ? Cette action est irréversible.`)) return;
     try {
       await api.delete(`/inventaires/${id}`);
       setInventaires(inventaires.filter(inv => inv.id !== id));
-      showToast('Inventaire supprim avec succs');
+      showToast('Inventaire supprimé avec succès');
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        showToast('? Seul un administrateur peut supprimer un inventaire.', 'error');
+        showToast('⛔ Seul un administrateur peut supprimer un inventaire.', 'error');
       } else {
-        showToast('Erreur lors de la suppression', 'error');
+        showToast('❌ Erreur lors de la suppression', 'error');
       }
     }
   };
 
   const getStatusBadge = (statut) => {
-    const configs = {
-      en_cours: { bg: '#fef3c7', color: '#92400e', label: '? En cours' },
-      termin: { bg: '#d1fae5', color: '#065f46', label: '? Termin' },
-      annul: { bg: '#fee2e2', color: '#991b1b', label: '? Annul' }
+    // Normalisation des clés pour gérer les anciennes valeurs
+    const keyMap = {
+      'termin': 'termine',
+      'annul': 'annule'
     };
-    const c = configs[statut] || configs.en_cours;
+    const normalized = keyMap[statut] || statut;
+
+    const configs = {
+      en_cours: { bg: '#fef3c7', color: '#92400e', label: '⏳ En cours' },
+      termine: { bg: '#d1fae5', color: '#065f46', label: '✅ Terminé' },
+      annule: { bg: '#fee2e2', color: '#991b1b', label: '❌ Annulé' }
+    };
+    const c = configs[normalized] || configs.en_cours;
     return <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', backgroundColor: c.bg, color: c.color }}>{c.label}</span>;
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
 
   return (
     <div>
@@ -118,9 +125,9 @@ const InventairesList = () => {
                 <td style={{ textAlign: 'center' }}>
                   <Link to={`/stock/inventaires/${inv.id}`} style={{ color: '#3b82f6', marginRight: '12px' }}><FaEye /></Link>
                   {isAdmin ? (
-                    <button onClick={() => handleDelete(inv.id, inv.type)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>
+                    <button onClick={() => handleDelete(inv.id, inv.type, inv.date)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
                   )}
                 </td>
               </tr>

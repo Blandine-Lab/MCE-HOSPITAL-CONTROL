@@ -11,7 +11,7 @@ const CommandesList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ? Rcuprer le rle depuis le token JWT
+  // Récupérer le rôle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,7 +19,7 @@ const CommandesList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur dcodage token', e);
+        console.error('Erreur décodage token', e);
       }
     }
   }, []);
@@ -38,8 +38,8 @@ const CommandesList = () => {
         setLoading(false);
       })
       .catch(err => {
-        console.error(err);
-        showToast('Erreur chargement des commandes', 'error');
+        console.error('Erreur de chargement des commandes:', err);
+        showToast('Erreur lors du chargement des commandes', 'error');
         setLoading(false);
       });
   };
@@ -48,38 +48,46 @@ const CommandesList = () => {
     fetchCommandes();
   }, []);
 
-  // ? handleDelete avec gestion 403
   const handleDelete = async (id, numero) => {
-    if (!window.confirm(`?? Voulez-vous vraiment supprimer la commande n${numero} ? Cette action est irrversible.`)) return;
+    if (!window.confirm(`⚠️ Voulez-vous vraiment supprimer la commande n°${numero} ? Cette action est irréversible.`)) return;
     try {
       await api.delete(`/commandes/${id}`);
       setCommandes(commandes.filter(c => c.id !== id));
-      showToast('Commande supprime avec succs');
+      showToast('Commande supprimée avec succès');
     } catch (err) {
       console.error('Erreur suppression :', err);
       if (err.response?.status === 403) {
-        showToast('? Seul un administrateur peut supprimer une commande.', 'error');
+        showToast('⛔ Seul un administrateur peut supprimer une commande.', 'error');
       } else {
-        showToast('Erreur lors de la suppression', 'error');
+        showToast('❌ Erreur lors de la suppression', 'error');
       }
     }
   };
 
   const getStatusBadge = (statut) => {
-    const configs = {
-      en_attente: { bg: '#fef3c7', color: '#92400e', label: '? En attente' },
-      command: { bg: '#dbeafe', color: '#1e40af', label: '?? Command' },
-      partiellement_livr: { bg: '#fef3c7', color: '#92400e', label: '?? Partiel' },
-      livr: { bg: '#d1fae5', color: '#065f46', label: '? Livr' },
-      annul: { bg: '#fee2e2', color: '#991b1b', label: '? Annul' }
+    // Normalisation des clés pour gérer les anciennes valeurs
+    const keyMap = {
+      'command': 'commandee',
+      'partiellement_livr': 'partiellement_livree',
+      'livr': 'livree',
+      'annul': 'annulee'
     };
-    const c = configs[statut] || configs.en_attente;
+    const normalized = keyMap[statut] || statut;
+
+    const configs = {
+      en_attente: { bg: '#fef3c7', color: '#92400e', label: '⏳ En attente' },
+      commandee: { bg: '#dbeafe', color: '#1e40af', label: '📦 Commandée' },
+      partiellement_livree: { bg: '#fef3c7', color: '#92400e', label: '📦 Partielle' },
+      livree: { bg: '#d1fae5', color: '#065f46', label: '✅ Livrée' },
+      annulee: { bg: '#fee2e2', color: '#991b1b', label: '❌ Annulée' }
+    };
+    const c = configs[normalized] || configs.en_attente;
     return <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '500', backgroundColor: c.bg, color: c.color }}>{c.label}</span>;
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
 
   return (
     <div>
@@ -108,7 +116,7 @@ const CommandesList = () => {
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
-            <tr><th>N Commande</th><th>Fournisseur</th><th>Date</th><th style={{ textAlign: 'right' }}>Montant</th><th>Statut</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
+            <tr><th>N° Commande</th><th>Fournisseur</th><th>Date</th><th style={{ textAlign: 'right' }}>Montant</th><th>Statut</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
           </thead>
           <tbody>
             {commandes.map((c, i) => (
@@ -120,13 +128,13 @@ const CommandesList = () => {
                 <td>{getStatusBadge(c.statut)}</td>
                 <td style={{ textAlign: 'center' }}>
                   <Link to={`/stock/commandes/${c.id}`} style={{ color: '#3b82f6', marginRight: '12px' }}><FaEye /></Link>
-                  {c.statut !== 'livr' && c.statut !== 'annul' && (
+                  {c.statut !== 'livree' && c.statut !== 'annulee' && c.statut !== 'livr' && c.statut !== 'annul' && (
                     <Link to={`/stock/commandes/${c.id}/edit`} style={{ color: '#f59e0b', marginRight: '12px' }}><FaEdit /></Link>
                   )}
                   {isAdmin ? (
                     <button onClick={() => handleDelete(c.id, c.numero_commande)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash /></button>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
                   )}
                 </td>
               </tr>

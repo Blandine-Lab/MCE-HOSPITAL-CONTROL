@@ -8,14 +8,14 @@ import {
 } from 'react-icons/fa';
 
 const ExportsList = () => {
-  // tats pour la liste des exports
+  // États pour la liste des exports
   const [exports, setExports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState(null);
   const [userRole, setUserRole] = useState(null);
 
-  // tats pour le formulaire d'export
+  // États pour le formulaire d'export
   const [showForm, setShowForm] = useState(false);
   const [exportType, setExportType] = useState('factures');
   const [exportFormat, setExportFormat] = useState('pdf');
@@ -24,11 +24,11 @@ const ExportsList = () => {
   const [filters, setFilters] = useState({});
   const [showFilters, setShowFilters] = useState(false);
 
-  // tats pour les donnes disponibles (filtres dynamiques)
+  // États pour les données disponibles (filtres dynamiques)
   const [services, setServices] = useState([]);
   const [statutsFacture, setStatutsFacture] = useState(['payee', 'impayee', 'partielle']);
 
-  // ? Rcuprer le rle depuis le token JWT
+  // Récupérer le rôle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -36,7 +36,7 @@ const ExportsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur dcodage token', e);
+        console.error('Erreur décodage token', e);
       }
     }
   }, []);
@@ -54,7 +54,7 @@ const ExportsList = () => {
       setExports(res.data || []);
     } catch (err) {
       console.error('Erreur chargement exports:', err);
-      // Donnes simules pour l'exemple
+      // Données simulées pour l'exemple
       setExports([
         { 
           id: 1, 
@@ -108,7 +108,7 @@ const ExportsList = () => {
 
       const res = await api.post('/bi/exports', payload);
       
-      // Ajouter le nouvel export  la liste
+      // Ajouter le nouvel export à la liste
       const newExport = {
         id: res.data.id || Date.now(),
         nom_fichier: res.data.nom_fichier || `${exportType}_${new Date().toISOString().split('T')[0]}.${exportFormat}`,
@@ -117,11 +117,11 @@ const ExportsList = () => {
         created_at: new Date().toISOString(),
         statut: 'en_cours',
         type: exportType,
-        filtre: dateDebut ? `${dateDebut} ? ${dateFin || 'auj.'}` : 'Toutes'
+        filtre: dateDebut ? `${dateDebut} → ${dateFin || 'auj.'}` : 'Toutes'
       };
       setExports([newExport, ...exports]);
       
-      setToast({ type: 'success', message: 'Export gnr avec succs !' });
+      setToast({ type: 'success', message: 'Export généré avec succès !' });
       setShowForm(false);
       
       // Simuler la fin de l'export (pour l'exemple)
@@ -132,8 +132,8 @@ const ExportsList = () => {
       }, 3000);
       
     } catch (err) {
-      console.error('Erreur gnration export:', err);
-      setToast({ type: 'error', message: 'Erreur lors de la gnration de l\'export' });
+      console.error('Erreur génération export:', err);
+      setToast({ type: 'error', message: 'Erreur lors de la génération de l\'export' });
     } finally {
       setGenerating(false);
     }
@@ -153,22 +153,21 @@ const ExportsList = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Erreur tlchargement:', err);
-      setToast({ type: 'error', message: 'Erreur lors du tlchargement' });
+      console.error('Erreur téléchargement:', err);
+      setToast({ type: 'error', message: 'Erreur lors du téléchargement' });
     }
   };
 
-  // ? handleDeleteExport avec gestion 403
   const handleDeleteExport = async (id) => {
     if (!window.confirm('Supprimer cet export ?')) return;
     try {
       await api.delete(`/bi/exports/${id}`);
       setExports(prev => prev.filter(e => e.id !== id));
-      setToast({ type: 'success', message: 'Export supprim' });
+      setToast({ type: 'success', message: 'Export supprimé' });
     } catch (err) {
       console.error('Erreur suppression:', err);
       if (err.response?.status === 403) {
-        setToast({ type: 'error', message: '? Seul un administrateur peut supprimer un export.' });
+        setToast({ type: 'error', message: '⛔ Seul un administrateur peut supprimer un export.' });
       } else {
         setToast({ type: 'error', message: 'Erreur lors de la suppression' });
       }
@@ -176,7 +175,7 @@ const ExportsList = () => {
   };
 
   const formatTaille = (octets) => {
-    if (!octets) return '?FC?';
+    if (!octets) return '?';
     if (octets < 1024) return `${octets} o`;
     if (octets < 1048576) return `${(octets / 1024).toFixed(1)} Ko`;
     return `${(octets / 1048576).toFixed(1)} Mo`;
@@ -193,7 +192,7 @@ const ExportsList = () => {
 
   const getStatutBadge = (statut) => {
     if (statut === 'termine') {
-      return <span style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '2px 10px', borderRadius: '20px', fontSize: '12px' }}><FaCheckCircle style={{ marginRight: '4px' }} /> Termin</span>;
+      return <span style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '2px 10px', borderRadius: '20px', fontSize: '12px' }}><FaCheckCircle style={{ marginRight: '4px' }} /> Terminé</span>;
     } else if (statut === 'en_cours') {
       return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '2px 10px', borderRadius: '20px', fontSize: '12px' }}><FaSpinner className="spin" style={{ marginRight: '4px' }} /> En cours</span>;
     } else if (statut === 'erreur') {
@@ -204,7 +203,7 @@ const ExportsList = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>? Chargement des exports...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement des exports...</div>;
 
   return (
     <div>
@@ -243,7 +242,7 @@ const ExportsList = () => {
               gap: '6px'
             }}
           >
-            <FaSync /> Rafrachir
+            <FaSync /> Rafraîchir
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
@@ -264,24 +263,24 @@ const ExportsList = () => {
         </div>
       </div>
 
-      {/* Formulaire de gnration d'export */}
+      {/* Formulaire de génération d'export */}
       {showForm && (
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0 }}>Gnrer un export</h3>
+            <h3 style={{ margin: 0 }}>Générer un export</h3>
             <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}><FaTimes /></button>
           </div>
           <form onSubmit={handleGenerateExport}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Type de donnes *</label>
+                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Type de données *</label>
                 <select value={exportType} onChange={e => setExportType(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
                   <option value="factures">Factures</option>
                   <option value="patients">Patients</option>
                   <option value="prescriptions">Prescriptions</option>
                   <option value="consultations">Consultations</option>
                   <option value="stocks">Stocks</option>
-                  <option value="employes">Employs</option>
+                  <option value="employes">Employés</option>
                 </select>
               </div>
               <div>
@@ -293,19 +292,19 @@ const ExportsList = () => {
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Priode</label>
+                <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Période</label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} style={{ flex: 1, padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
-                  <span>?</span>
+                  <span>→</span>
                   <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} style={{ flex: 1, padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }} />
                 </div>
               </div>
             </div>
 
-            {/* Filtres avancs */}
+            {/* Filtres avancés */}
             <div style={{ marginBottom: '16px' }}>
               <button type="button" onClick={() => setShowFilters(!showFilters)} style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <FaFilter /> {showFilters ? 'Masquer' : 'Afficher'} les filtres avancs
+                <FaFilter /> {showFilters ? 'Masquer' : 'Afficher'} les filtres avancés
               </button>
               {showFilters && (
                 <div style={{ marginTop: '12px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
@@ -314,8 +313,8 @@ const ExportsList = () => {
                       <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Statut</label>
                       <select value={filters.statut || ''} onChange={e => setFilters({ ...filters, statut: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
                         <option value="">Tous</option>
-                        <option value="payee">Paye</option>
-                        <option value="impayee">Impaye</option>
+                        <option value="payee">Payée</option>
+                        <option value="impayee">Impayée</option>
                         <option value="partielle">Partielle</option>
                       </select>
                     </div>
@@ -325,7 +324,7 @@ const ExportsList = () => {
                       <label style={{ display: 'block', fontWeight: '500', marginBottom: '4px' }}>Statut patient</label>
                       <select value={filters.statut_patient || ''} onChange={e => setFilters({ ...filters, statut_patient: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
                         <option value="">Tous</option>
-                        <option value="hospitalise">Hospitalis</option>
+                        <option value="hospitalise">Hospitalisé</option>
                         <option value="sorti">Sorti</option>
                         <option value="ambulatoire">Ambulatoire</option>
                       </select>
@@ -363,7 +362,7 @@ const ExportsList = () => {
                 }}
               >
                 {generating ? <FaSpinner className="spin" /> : <FaFileExport />}
-                {generating ? 'Gnration...' : 'Gnrer l\'export'}
+                {generating ? 'Génération...' : 'Générer l\'export'}
               </button>
               <button type="button" onClick={() => setShowForm(false)} style={{ backgroundColor: '#e5e7eb', border: 'none', padding: '10px 24px', borderRadius: '6px', cursor: 'pointer' }}>Annuler</button>
             </div>
@@ -376,7 +375,7 @@ const ExportsList = () => {
         {exports.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
             <FaFileExport style={{ fontSize: '48px', marginBottom: '12px' }} />
-            <p>Aucun export trouv. Gnrez votre premier export !</p>
+            <p>Aucun export trouvé. Générez votre premier export !</p>
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -418,7 +417,7 @@ const ExportsList = () => {
                         cursor: e.statut === 'termine' ? 'pointer' : 'default',
                         marginRight: '8px'
                       }}
-                      title={e.statut === 'termine' ? 'Tlcharger' : 'Export en cours'}
+                      title={e.statut === 'termine' ? 'Télécharger' : 'Export en cours'}
                     >
                       <FaDownload />
                     </button>
@@ -437,7 +436,7 @@ const ExportsList = () => {
                         <FaTrash />
                       </button>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '14px', marginLeft: '4px' }} title="Rserv aux administrateurs">??</span>
+                      <span style={{ color: '#94a3b8', fontSize: '14px', marginLeft: '4px' }} title="Réservé aux administrateurs">🔒</span>
                     )}
                   </td>
                 </tr>

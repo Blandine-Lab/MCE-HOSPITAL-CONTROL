@@ -53,14 +53,18 @@ function requireRole(roles) {
 }
 
 // ============================================================
-// Middleware de restriction par permission (NOUVEAU)
+// Middleware de restriction par permission (CORRIGÉ)
 // ============================================================
 function requirePermission(permission) {
     return (req, res, next) => {
         if (!req.user) {
             return res.status(401).json({ error: 'Non authentifié' });
         }
-        // Vérifier si l'utilisateur possède la permission dans son tableau de permissions
+        // ✅ ADMIN : accès à tout sans vérification de permission
+        if (req.user.role === 'admin') {
+            return next();
+        }
+        // Vérifier la permission pour les autres rôles
         if (!req.user.permissions || !req.user.permissions.includes(permission)) {
             return res.status(403).json({ error: `Permission '${permission}' requise` });
         }
@@ -69,7 +73,7 @@ function requirePermission(permission) {
 }
 
 // ============================================================
-// ✅ Middleware : réserver la suppression aux administrateurs
+// Middleware : réserver la suppression aux administrateurs
 // ============================================================
 function requireAdmin(req, res, next) {
     if (!req.user) {

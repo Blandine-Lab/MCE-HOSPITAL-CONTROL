@@ -5,7 +5,7 @@ import { FaUserMd, FaProcedures, FaHospital, FaHome, FaFileMedical } from 'react
 const MedicalModule = () => {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Menu latral DME */}
+      {/* Menu latéral DME */}
       <nav style={{
         width: '250px',
         backgroundColor: '#0f172a',

@@ -13,7 +13,7 @@ const SoinsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ? Rcuprer le rle depuis le token JWT
+  // Récupérer le rôle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -21,7 +21,7 @@ const SoinsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur dcodage token', e);
+        console.error('Erreur décodage token', e);
       }
     }
   }, []);
@@ -50,19 +50,19 @@ const SoinsList = () => {
     fetchSoins();
   }, []);
 
-  // ? handleDelete avec gestion 403
+  // handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('?? Supprimer dfinitivement ce soin ? Cette action est irrversible.')) return;
+    if (!window.confirm('⚠️ Supprimer définitivement ce soin ? Cette action est irréversible.')) return;
     try {
       await api.delete(`/soins/${id}`);
       setSoins(soins.filter(s => s.id !== id));
-      showToast('Soin supprim avec succs');
+      showToast('Soin supprimé avec succès');
     } catch (err) {
       console.error('Erreur suppression soin:', err);
       if (err.response?.status === 403) {
-        showToast('? Seul un administrateur peut supprimer un soin.', 'error');
+        showToast('🔒 Seul un administrateur peut supprimer un soin.', 'error');
       } else {
-        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
@@ -80,12 +80,12 @@ const SoinsList = () => {
 
   const getStatusBadge = (statut) => {
     const configs = {
-      'planifi': { bg: '#dbeafe', color: '#1e40af', label: '?? Planifi' },
-      'en_cours': { bg: '#fef3c7', color: '#92400e', label: '? En cours' },
-      'effectu': { bg: '#d1fae5', color: '#065f46', label: '? Effectu' },
-      'annul': { bg: '#fee2e2', color: '#991b1b', label: '? Annul' },
+      'planifie': { bg: '#dbeafe', color: '#1e40af', label: '📋 Planifié' },
+      'en_cours': { bg: '#fef3c7', color: '#92400e', label: '🔄 En cours' },
+      'effectue': { bg: '#d1fae5', color: '#065f46', label: '✅ Effectué' },
+      'annule': { bg: '#fee2e2', color: '#991b1b', label: '❌ Annulé' },
     };
-    const config = configs[statut] || configs['planifi'];
+    const config = configs[statut] || configs['planifie'];
     return (
       <span style={{
         padding: '4px 12px',
@@ -103,7 +103,7 @@ const SoinsList = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>? Chargement des soins...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement des soins...</div>
       </div>
     );
   }
@@ -191,10 +191,10 @@ const SoinsList = () => {
             }}
           >
             <option value="tous">Tous les statuts</option>
-            <option value="planifi">Planifi</option>
+            <option value="planifie">Planifié</option>
             <option value="en_cours">En cours</option>
-            <option value="effectu">Effectu</option>
-            <option value="annul">Annul</option>
+            <option value="effectue">Effectué</option>
+            <option value="annule">Annulé</option>
           </select>
         </div>
       </div>
@@ -221,7 +221,7 @@ const SoinsList = () => {
             {filteredSoins.length === 0 ? (
               <tr>
                 <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                  Aucun soin trouv
+                  Aucun soin trouvé
                 </td>
               </tr>
             ) : (
@@ -269,12 +269,12 @@ const SoinsList = () => {
                             border: 'none',
                             cursor: 'pointer'
                           }}
-                          title="Supprimer dfinitivement (admin)"
+                          title="Supprimer définitivement (admin)"
                         >
                           <FaTrash />
                         </button>
                       ) : (
-                        <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
+                        <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
                       )}
                     </div>
                   </td>

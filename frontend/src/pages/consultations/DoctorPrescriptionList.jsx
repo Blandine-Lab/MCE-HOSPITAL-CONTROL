@@ -11,9 +11,9 @@ const DoctorPrescriptionList = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
-  const [userRole, setUserRole] = useState(null); // ? Prt pour l'avenir
+  const [userRole, setUserRole] = useState(null);
 
-  // ? Rcuprer le rle depuis le token JWT
+  // Récupérer le rôle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -21,7 +21,7 @@ const DoctorPrescriptionList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur dcodage token', e);
+        console.error('Erreur décodage token', e);
       }
     }
   }, []);
@@ -44,14 +44,14 @@ const DoctorPrescriptionList = () => {
         setLoading(false);
       } catch (err) {
         console.error('Erreur chargement :', err);
-        showToast('Erreur lors du chargement des donnes', 'error');
+        showToast('Erreur lors du chargement des données', 'error');
         setLoading(false);
       }
     };
     fetchData();
   }, []);
 
-  // Filtrer les prescriptions par mdecin (si un filtre est actif)
+  // Filtrer les prescriptions par médecin
   const filteredPrescriptions = filterMedecinId
     ? prescriptions.filter(p => p.medecin_id === parseInt(filterMedecinId))
     : prescriptions;
@@ -65,7 +65,7 @@ const DoctorPrescriptionList = () => {
         alignItems: 'center',
         background: 'linear-gradient(135deg, #1e3a8a 0%, #312e81 100%)'
       }}>
-        <div style={{ color: 'white', fontSize: '24px' }}>? Chargement...</div>
+        <div style={{ color: 'white', fontSize: '24px' }}>⏳ Chargement...</div>
       </div>
     );
   }
@@ -93,7 +93,7 @@ const DoctorPrescriptionList = () => {
         </div>
       )}
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* En-tte */}
+        {/* En-tête */}
         <div style={{
           background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
           borderRadius: '20px',
@@ -120,11 +120,11 @@ const DoctorPrescriptionList = () => {
               Mes prescriptions
             </h1>
             <p style={{ color: '#bfdbfe', marginTop: '8px', fontSize: '16px' }}>
-              {filteredPrescriptions.length} prescription(s) affiche(s)
+              {filteredPrescriptions.length} prescription(s) affichée(s)
             </p>
           </div>
           <Link
-            to="/prescription/new"
+            to="/prescriptions/new"
             style={{
               backgroundColor: '#16a34a',
               color: 'white',
@@ -152,7 +152,7 @@ const DoctorPrescriptionList = () => {
           </Link>
         </div>
 
-        {/* Filtre par mdecin */}
+        {/* Filtre par médecin */}
         <div style={{
           background: 'rgba(255,255,255,0.08)',
           backdropFilter: 'blur(8px)',
@@ -166,7 +166,7 @@ const DoctorPrescriptionList = () => {
           border: '1px solid rgba(255,255,255,0.1)'
         }}>
           <FaUserMd style={{ color: '#93c5fd', fontSize: '20px' }} />
-          <label style={{ color: '#e2e8f0', fontWeight: '500' }}>Filtrer par mdecin :</label>
+          <label style={{ color: '#e2e8f0', fontWeight: '500' }}>Filtrer par médecin :</label>
           <select
             value={filterMedecinId}
             onChange={(e) => setFilterMedecinId(e.target.value)}
@@ -179,10 +179,10 @@ const DoctorPrescriptionList = () => {
               minWidth: '200px'
             }}
           >
-            <option value="" style={{ color: '#1e293b' }}>Tous les mdecins</option>
+            <option value="" style={{ color: '#1e293b' }}>Tous les médecins</option>
             {medecins.map(m => (
               <option key={m.id} value={m.id} style={{ color: '#1e293b' }}>
-                {m.prenom} {m.nom} ({m.specialite || 'Gnraliste'})
+                {m.prenom} {m.nom} ({m.specialite || 'Généraliste'})
               </option>
             ))}
           </select>
@@ -199,10 +199,10 @@ const DoctorPrescriptionList = () => {
             border: '1px solid rgba(255,255,255,0.2)'
           }}>
             <p style={{ fontSize: '20px', color: '#e2e8f0' }}>
-              {filterMedecinId ? 'Aucune prescription pour ce mdecin.' : 'Aucune prescription pour le moment.'}
+              {filterMedecinId ? 'Aucune prescription pour ce médecin.' : 'Aucune prescription pour le moment.'}
             </p>
             {!filterMedecinId && (
-              <Link to="/prescription/new" style={{ color: '#93c5fd', fontWeight: 'bold' }}>
+              <Link to="/prescriptions/new" style={{ color: '#93c5fd', fontWeight: 'bold' }}>
                 Commencer une prescription ?
               </Link>
             )}
@@ -222,7 +222,7 @@ const DoctorPrescriptionList = () => {
                   borderBottom: '2px solid rgba(255,255,255,0.1)'
                 }}>
                   <th style={{ padding: '18px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Patient</th>
-                  <th style={{ padding: '18px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Mdecin</th>
+                  <th style={{ padding: '18px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Médecin</th>
                   <th style={{ padding: '18px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Date</th>
                   <th style={{ padding: '18px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Statut</th>
                   <th style={{ padding: '18px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Actions</th>
@@ -258,16 +258,16 @@ const DoctorPrescriptionList = () => {
                         borderRadius: '20px',
                         fontSize: '14px',
                         fontWeight: '600',
-                        backgroundColor: p.status === 'pending' ? '#f59e0b' : '#10b981',
+                        backgroundColor: p.statut === 'en_attente' ? '#f59e0b' : (p.statut === 'servie' ? '#10b981' : '#6b7280'),
                         color: 'white',
                         display: 'inline-block'
                       }}>
-                        {p.status === 'pending' ? '? En attente' : '? Servie'}
+                        {p.statut === 'en_attente' ? '⏳ En attente' : p.statut === 'servie' ? '✅ Servie' : p.statut}
                       </span>
                     </td>
                     <td style={{ padding: '16px 24px' }}>
                       <Link
-                        to={`/prescription/${p.id}`}
+                        to={`/prescriptions/${p.id}`}
                         style={{
                           color: '#93c5fd',
                           textDecoration: 'none',

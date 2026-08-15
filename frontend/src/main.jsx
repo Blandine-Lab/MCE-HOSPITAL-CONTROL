@@ -13,13 +13,13 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 
-// ========== IMPORTS SCURIT (PERMISSIONS) ==========
+// ========== IMPORTS SÉCURITÉ (PERMISSIONS) ==========
 import { PermissionRoute } from './components/PermissionRoute';
 
 // ========== LAYOUT (NAVBAR) ==========
 import Layout from './components/Layout';
 
-// ========== PAGE ACCS NON AUTORIS ==========
+// ========== PAGE ACCÈS NON AUTORISÉ ==========
 import Unauthorized from './pages/Unauthorized';
 
 // ========== PAGE PARTENAIRE (PUBLIC) ==========
@@ -29,7 +29,7 @@ import RendezVousPartenaire from './pages/RendezVousPartenaire';
 import api from './axios';
 import { onConnectionChange } from './services/offlineStorage';
 
-// Anciens imports (conservs pour les autres modules)
+// Anciens imports (conservés pour les autres modules)
 import PatientsList from './pages/patients/PatientsList';
 import PatientForm from './pages/patients/PatientForm';
 import PatientProfile from './pages/patients/PatientProfile';
@@ -58,6 +58,8 @@ import PrescriptionCreation from './pages/consultations/PrescriptionCreation';
 import DoctorPrescriptionList from './pages/consultations/DoctorPrescriptionList';
 import PharmacistPrescriptionList from './pages/consultations/PharmacistPrescriptionList';
 import PrescriptionDetail from './pages/consultations/PrescriptionDetail';
+// ✅ NOUVEL IMPORT POUR L'IMPRESSION
+import PrescriptionPrint from './pages/consultations/PrescriptionPrint';
 
 // ========== IMPORTS DME ==========
 import MedicalModule from './pages/medical/MedicalModule';
@@ -69,7 +71,7 @@ import MedicalBedManagement from './pages/medical/BedManagement';
 import AdmissionDetail from './pages/medical/AdmissionDetail';
 import AdmissionEdit from './pages/medical/AdmissionEdit';
 
-// ========== IMPORTS MODULE PARAMDICAL & SOINS ==========
+// ========== IMPORTS MODULE PARAMÉDICAL & SOINS ==========
 import ParamedicalModule from './pages/paramedical/ParamedicalModule';
 import SoinsList from './pages/paramedical/SoinsList';
 import SoinForm from './pages/paramedical/SoinForm';
@@ -103,14 +105,16 @@ import CongeForm from './pages/rh-planning/CongeForm';
 import AbsencesList from './pages/rh-planning/AbsencesList';
 import AbsenceForm from './pages/rh-planning/AbsenceForm';
 import StatsRH from './pages/rh-planning/StatsRH';
-// ? NOUVEAU : imports pour les contrats
+// NOUVEAU : Demandes de congé & formation
+import DemandesConge from './pages/rh-planning/DemandesConge';
+// Contrats
 import ContratsList from './pages/rh-planning/ContratsList';
 import ContratForm from './pages/rh-planning/ContratForm';
 import ContratDetail from './pages/rh-planning/ContratDetail';
-import ContratPrint from './pages/rh-planning/ContratPrint';        // Ajout
-import GenerationContrat from './pages/rh-planning/GenerationContrat'; // Ajout
+import ContratPrint from './pages/rh-planning/ContratPrint';
+import GenerationContrat from './pages/rh-planning/GenerationContrat';
 
-// ========== IMPORTS MODULE FINANCES & COMPTABILIT ==========
+// ========== IMPORTS MODULE FINANCES & COMPTABILITÉ ==========
 import FinancesModule from './pages/finances/FinancesModule';
 import DashboardFinances from './pages/finances/DashboardFinances';
 import ComptesList from './pages/finances/ComptesList';
@@ -140,9 +144,9 @@ import StockCommandeForm from './pages/stock/CommandeForm';
 import CommandeDetail from './pages/stock/CommandeDetail';
 import InventairesList from './pages/stock/InventairesList';
 import InventaireForm from './pages/stock/InventaireForm';
-import InventaireDetail from './pages/stock/InventaireDetail'; // ? NOUVEAU
+import InventaireDetail from './pages/stock/InventaireDetail';
 
-// ========== IMPORTS MODULE QUALIT & RISQUES ==========
+// ========== IMPORTS MODULE QUALITÉ & RISQUES ==========
 import QualiteModule from './pages/qualite/QualiteModule';
 import DashboardQualite from './pages/qualite/DashboardQualite';
 import SignalementsList from './pages/qualite/SignalementsList';
@@ -161,13 +165,13 @@ import NonConformiteForm from './pages/qualite/NonConformiteForm';
 import EvaluationsRisquesList from './pages/qualite/EvaluationsRisquesList';
 import EvaluationRisqueForm from './pages/qualite/EvaluationRisqueForm';
 
-// ========== IMPORTS MODULE REPORTING & DCISIONNEL (BI) ==========
+// ========== IMPORTS MODULE REPORTING & DÉCISIONNEL (BI) ==========
 import ReportingModule from './pages/reporting/ReportingModule';
 import DashboardBI from './pages/reporting/DashboardBI';
 import RapportsList from './pages/reporting/RapportsList';
 import ExportsList from './pages/reporting/ExportsList';
 
-// ========== IMPORTS MODULE SCURIT ==========
+// ========== IMPORTS MODULE SÉCURITÉ ==========
 import SecurityModule from './pages/security/SecurityModule';
 import DashboardSecurity from './pages/security/DashboardSecurity';
 import RolesList from './pages/security/RolesList';
@@ -177,7 +181,7 @@ import LogsList from './pages/security/LogsList';
 import SessionsList from './pages/security/SessionsList';
 import TentativesList from './pages/security/TentativesList';
 
-// ========== IMPORTS MODULE INTEROPRABILIT ==========
+// ========== IMPORTS MODULE INTEROPÉRABILITÉ ==========
 import InteroperabiliteModule from './pages/interoperabilite/InteroperabiliteModule';
 import DashboardInteroperabilite from './pages/interoperabilite/DashboardInteroperabilite';
 import SystemesList from './pages/interoperabilite/SystemesList';
@@ -185,7 +189,7 @@ import FluxList from './pages/interoperabilite/FluxList';
 import LogsInteroperabiliteList from './pages/interoperabilite/LogsList';
 import WebhooksList from './pages/interoperabilite/WebhooksList';
 
-// ========== IMPORTS MODULE BLOC OPRATOIRE ==========
+// ========== IMPORTS MODULE BLOC OPÉRATOIRE ==========
 import BlocModule from './pages/bloc/BlocModule';
 import PlanningBloc from './pages/bloc/PlanningBloc';
 import InterventionsList from './pages/bloc/InterventionsList';
@@ -212,7 +216,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('?? ErrorBoundary a captur une erreur :', error, errorInfo);
+    console.error('ErrorBoundary a capturé une erreur :', error, errorInfo);
     this.setState({ errorInfo });
   }
 
@@ -220,9 +224,9 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: '2rem', color: '#b91c1c', backgroundColor: '#fee2e2', minHeight: '100vh' }}>
-          <h1>? Erreur dans l'application</h1>
+          <h1>Erreur dans l'application</h1>
           <details style={{ whiteSpace: 'pre-wrap', marginTop: '1rem' }}>
-            <summary>Dtails techniques</summary>
+            <summary>Détails techniques</summary>
             <p><strong>{this.state.error?.toString()}</strong></p>
             <p>{this.state.errorInfo?.componentStack}</p>
           </details>
@@ -240,11 +244,11 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
-        console.log('? Service Worker enregistr avec succs');
-        console.log('?? Scope:', registration.scope);
+        console.log('Service Worker enregistré avec succès');
+        console.log('Scope:', registration.scope);
       })
       .catch((error) => {
-        console.error('? Erreur enregistrement Service Worker:', error);
+        console.error('Erreur enregistrement Service Worker:', error);
       });
   });
 }
@@ -293,13 +297,13 @@ const RoleRoute = ({ children, allowedRoles }) => {
 const SyncManager = () => {
   useEffect(() => {
     if (navigator.onLine) {
-      console.log('?? Synchronisation initiale...');
+      console.log('Synchronisation initiale...');
       api.sync().catch(console.error);
     }
 
     const cleanup = onConnectionChange((isOnline) => {
       if (isOnline) {
-        console.log('?? Connexion rtablie, synchronisation...');
+        console.log('Connexion rétablie, synchronisation...');
         setTimeout(() => {
           api.sync().catch(console.error);
         }, 2000);
@@ -327,16 +331,28 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 {/* ===== Routes publiques (sans navbar) ===== */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/ui" element={<UIShowcase />} />
-                <Route path="/test" element={<div style={{ color: 'green', fontSize: '2rem' }}>? Test OK</div>} />
+                <Route path="/test" element={<div style={{ color: 'green', fontSize: '2rem' }}>Test OK</div>} />
 
-                {/* ? NOUVELLE ROUTE PUBLIQUE POUR LES PARTENAIRES ? */}
+                {/* Route publique pour les partenaires */}
                 <Route path="/rdv-partenaire/:token" element={<RendezVousPartenaire />} />
 
-                {/* ===== Routes protges avec Layout (navbar) ===== */}
+                {/* ===== Route d'impression (sans Layout) ===== */}
+                <Route
+                  path="/prescription/print/:id"
+                  element={
+                    <ProtectedRoute>
+                      <PermissionRoute permission="view_prescriptions">
+                        <PrescriptionPrint />
+                      </PermissionRoute>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* ===== Routes protégées avec Layout (navbar) ===== */}
                 <Route element={<Layout />}>
                   <Route path="/badge/:id" element={<Badge />} />
 
-                  {/* Page d'accueil (Home)  visible par tous les utilisateurs connects */}
+                  {/* Page d'accueil (Home) visible par tous les utilisateurs connectés */}
                   <Route
                     path="/"
                     element={
@@ -346,7 +362,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     }
                   />
 
-                  {/* Page Accs non autoris */}
+                  {/* Page Accès non autorisé */}
                   <Route
                     path="/unauthorized"
                     element={
@@ -484,7 +500,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     }
                   />
 
-                  {/* ===== FACTURATION (avec permissions ddies) ===== */}
+                  {/* ===== FACTURATION (avec permissions dédiées) ===== */}
                   <Route
                     path="/factures"
                     element={
@@ -612,7 +628,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     }
                   />
 
-                  {/* ? Nouveaux : Routes de gestion des commandes pour la pharmacie */}
+                  {/* Commandes pharmacie */}
                   <Route
                     path="/pharmacy/commandes"
                     element={
@@ -659,6 +675,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   {/* Prescriptions */}
                   <Route
                     path="/prescription/new"
+                    element={
+                      <ProtectedRoute>
+                        <PermissionRoute permission="manage_prescriptions">
+                          <PrescriptionCreation />
+                        </PermissionRoute>
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* ✅ AJOUT DE LA ROUTE MANQUANTE POUR /prescriptions/new (avec S) */}
+                  <Route
+                    path="/prescriptions/new"
                     element={
                       <ProtectedRoute>
                         <PermissionRoute permission="manage_prescriptions">
@@ -751,7 +778,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   />
 
                   {/* ============================================================ */}
-                  {/* MODULE MDICAL (DME)  AVEC NOUVELLES ROUTES                 */}
+                  {/* MODULE MÉDICAL (DME) - ROUTES COMPLÈTES                     */}
                   {/* ============================================================ */}
                   <Route
                     path="/medical"
@@ -773,7 +800,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="beds" element={<MedicalBedManagement />} />
                   </Route>
 
-                  {/* MODULE PARAMDICAL */}
+                  {/* MODULE PARAMÉDICAL */}
                   <Route
                     path="/paramedical"
                     element={
@@ -795,7 +822,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </Route>
 
                   {/* ============================================================ */}
-                  {/* MODULE LABORATOIRE & IMAGERIE - ROUTES COMPLTES */}
+                  {/* MODULE LABORATOIRE & IMAGERIE - ROUTES COMPLÈTES             */}
                   {/* ============================================================ */}
                   <Route
                     path="/laboratoire"
@@ -819,10 +846,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="stats" element={<Navigate to="/laboratoire" replace />} />
                   </Route>
                   <Route path="/laboratory" element={<Navigate to="/laboratoire" replace />} />
-                  {/* ============================================================ */}
 
                   {/* ============================================================ */}
-                  {/* MODULE RH (RESSOURCES HUMAINES & PLANNING)  ROUTES COMPLTES */}
+                  {/* MODULE RH (RESSOURCES HUMAINES & PLANNING) - ROUTES COMPLÈTES */}
                   {/* ============================================================ */}
                   <Route
                     path="/rh"
@@ -852,18 +878,22 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="absences" element={<AbsencesList />} />
                     <Route path="absences/nouveau" element={<AbsenceForm />} />
                     <Route path="absences/:id" element={<AbsenceForm />} />
-                    {/* ? NOUVEAU : Routes pour les contrats */}
+                    {/* Routes pour les contrats */}
                     <Route path="contrats" element={<ContratsList />} />
                     <Route path="contrats/nouveau" element={<ContratForm />} />
                     <Route path="contrats/:id" element={<ContratDetail />} />
                     <Route path="contrats/edit/:id" element={<ContratForm />} />
-                    <Route path="contrats/print/:id" element={<ContratPrint />} />          {/* NOUVEAU */}
-                    <Route path="contrats/generer" element={<GenerationContrat />} />        {/* NOUVEAU */}
+                    <Route path="contrats/print/:id" element={<ContratPrint />} />
+                    <Route path="contrats/generer" element={<GenerationContrat />} />
+                    {/* La route demandes-conge a été déplacée hors du module RH */}
                     <Route path="stats" element={<StatsRH />} />
                   </Route>
                   <Route path="/hr" element={<Navigate to="/rh" replace />} />
 
-                  {/* MODULE FINANCES (comptabilit) */}
+                  {/* ===== NOUVELLE ROUTE INDÉPENDANTE POUR LES DEMANDES ===== */}
+                  <Route path="/demandes-conge" element={<DemandesConge />} />
+
+                  {/* MODULE FINANCES (comptabilité) */}
                   <Route
                     path="/finance"
                     element={
@@ -889,11 +919,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="budgets/:id/edit" element={<BudgetForm />} />
                     <Route path="paiements" element={<PaiementsList />} />
                     <Route path="paiements/nouveau" element={<PaiementForm />} />
+                    {/* ✅ AJOUT DE LA ROUTE MANQUANTE POUR /finance/paiements/:id */}
+                    <Route path="paiements/:id" element={<Navigate to="/finance/paiements" replace />} />
                     <Route path="rapports" element={<RapportsFinanciers />} />
                   </Route>
                   <Route path="/finances" element={<Navigate to="/finance" replace />} />
 
-                  {/* MODULE STOCK (avec alias StockCommandeForm) */}
+                  {/* MODULE STOCK */}
                   <Route
                     path="/stock"
                     element={
@@ -918,11 +950,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="commandes/:id" element={<CommandeDetail />} />
                     <Route path="inventaires" element={<InventairesList />} />
                     <Route path="inventaires/nouveau" element={<InventaireForm />} />
-                    <Route path="inventaires/:id" element={<InventaireDetail />} />  {/* ? NOUVEAU */}
+                    <Route path="inventaires/:id" element={<InventaireDetail />} />
                   </Route>
                   <Route path="/stocks" element={<Navigate to="/stock" replace />} />
 
-                  {/* MODULE QUALIT */}
+                  {/* MODULE QUALITÉ */}
                   <Route
                     path="/qualite"
                     element={
@@ -975,7 +1007,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </Route>
                   <Route path="/bi" element={<Navigate to="/reporting" replace />} />
 
-                  {/* MODULE SCURIT */}
+                  {/* MODULE SÉCURITÉ */}
                   <Route
                     path="/security"
                     element={
@@ -996,7 +1028,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="tentatives" element={<TentativesList />} />
                   </Route>
 
-                  {/* MODULE INTEROPRABILIT */}
+                  {/* MODULE INTEROPÉRABILITÉ */}
                   <Route
                     path="/interoperabilite"
                     element={
@@ -1015,7 +1047,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </Route>
                   <Route path="/interop" element={<Navigate to="/interoperabilite" replace />} />
 
-                  {/* ========== MODULE BLOC OPRATOIRE ========== */}
+                  {/* ========== MODULE BLOC OPÉRATOIRE ========== */}
                   <Route
                     path="/bloc"
                     element={

@@ -17,20 +17,20 @@ const SoinDetail = () => {
         setLoading(false);
       })
       .catch(err => {
-        console.error('Erreur chargement dtail :', err);
-        setError('Impossible de charger les dtails du soin');
+        console.error('Erreur chargement détail :', err);
+        setError('Impossible de charger les détails du soin');
         setLoading(false);
       });
   }, [id]);
 
   const getStatusBadge = (statut) => {
     const configs = {
-      'planifi': { bg: '#dbeafe', color: '#1e40af', label: '?? Planifi' },
-      'en_cours': { bg: '#fef3c7', color: '#92400e', label: '? En cours' },
-      'effectu': { bg: '#d1fae5', color: '#065f46', label: '? Effectu' },
-      'annul': { bg: '#fee2e2', color: '#991b1b', label: '? Annul' },
+      'planifié': { bg: '#dbeafe', color: '#1e40af', label: '📋 Planifié' },
+      'en_cours': { bg: '#fef3c7', color: '#92400e', label: '🔄 En cours' },
+      'effectué': { bg: '#d1fae5', color: '#065f46', label: '✅ Effectué' },
+      'annulé': { bg: '#fee2e2', color: '#991b1b', label: '❌ Annulé' },
     };
-    const config = configs[statut] || configs['planifi'];
+    const config = configs[statut] || configs['planifié'];
     return (
       <span style={{
         padding: '6px 16px',
@@ -48,7 +48,7 @@ const SoinDetail = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>? Chargement...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement...</div>
       </div>
     );
   }
@@ -56,7 +56,7 @@ const SoinDetail = () => {
   if (error || !soin) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: '#ef4444' }}>
-        <div style={{ fontSize: '20px' }}>{error || 'Soin non trouv'}</div>
+        <div style={{ fontSize: '20px' }}>{error || 'Soin non trouvé'}</div>
       </div>
     );
   }
@@ -72,7 +72,7 @@ const SoinDetail = () => {
           textDecoration: 'none',
           fontWeight: '500'
         }}>
-          <FaArrowLeft /> Retour  la liste
+          <FaArrowLeft /> Retour à la liste
         </Link>
       </div>
 
@@ -131,7 +131,7 @@ const SoinDetail = () => {
           <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
             <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Prestataire</p>
             <p style={{ fontWeight: '500', fontSize: '18px', margin: '4px 0 0 0' }}>
-              {soin.prestataire || 'Non assign'}
+              {soin.prestataire || 'Non assigné'}
             </p>
           </div>
 
@@ -152,7 +152,7 @@ const SoinDetail = () => {
             <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Heure</p>
             <p style={{ fontWeight: '500', fontSize: '18px', margin: '4px 0 0 0' }}>
               <FaClock style={{ marginRight: '8px', color: '#3b82f6' }} />
-              {soin.heure_soin || 'Non spcifie'}
+              {soin.heure_soin || 'Non spécifiée'}
             </p>
           </div>
         </div>

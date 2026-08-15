@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../axios'; // ? Utilisation de l'instance partage
+import api from '../../axios';
 
 const AdmissionForm = () => {
   const navigate = useNavigate();
@@ -21,19 +21,26 @@ const AdmissionForm = () => {
 
   useEffect(() => {
     Promise.all([
-      api.get('/patients'), // ? Suppression de l'URL absolue
+      api.get('/patients'),
       api.get('/consultations/lits/disponibles'),
       api.get('/consultations/services'),
       api.get('/consultations/medecins')
-    ]).then(([patRes, litRes, servRes, medRes]) => {
-      console.log('Services reus :', servRes.data);
-      setPatients(patRes.data.filter(p => p.statut !== 'sorti'));
-      setLits(litRes.data);
-      setServices(servRes.data);
-      setMedecins(medRes.data);
-      setLoading(false);
-      setLoaded(true);
-    }).catch(err => console.error(err));
+    ])
+      .then(([patRes, litRes, servRes, medRes]) => {
+        console.log('Services reçus :', servRes.data);
+        setPatients(patRes.data.filter(p => p.statut !== 'sorti'));
+        setLits(litRes.data);
+        setServices(servRes.data);
+        setMedecins(medRes.data);
+        setLoading(false);
+        setLoaded(true);
+      })
+      .catch(err => {
+        console.error('Erreur de chargement des données :', err);
+        setLoading(false); // ✅ empêche le spinner infini
+        setToast('Impossible de charger les données. Veuillez réessayer.');
+        setTimeout(() => setToast(null), 4000);
+      });
   }, []);
 
   const handleChange = (e) => {
@@ -44,16 +51,17 @@ const AdmissionForm = () => {
     e.preventDefault();
     try {
       await api.post('/consultations/admissions', form);
-      setToast('Patient admis avec succs ?FC? sjour cr');
+      setToast('✅ Patient admis avec succès. Séjour créé.');
       setTimeout(() => setToast(null), 3000);
       setTimeout(() => navigate('/patients'), 1500);
     } catch (err) {
-      setToast('Erreur lors de l?FC?admission');
+      console.error('Erreur lors de l\'admission :', err);
+      setToast('❌ Erreur lors de l\'admission. Vérifiez les données.');
       setTimeout(() => setToast(null), 3000);
     }
   };
 
-  // Styles (inchangs)
+  // Styles (inchangés, mais conservés)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#f0fdf4',
@@ -121,11 +129,13 @@ const AdmissionForm = () => {
     transition: 'background-color 0.2s',
   };
 
-  if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #16a34a', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }}></div>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #16a34a', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }}></div>
+      </div>
+    );
+  }
 
   return (
     <div style={containerStyle}>
@@ -139,7 +149,7 @@ const AdmissionForm = () => {
         </div>
       )}
       <div style={innerStyle}>
-        <h1 style={titleStyle}>?? Admission / Hospitalisation</h1>
+        <h1 style={titleStyle}>🏥 Admission / Hospitalisation</h1>
         <div style={cardStyle}>
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '20px' }}>
@@ -154,7 +164,11 @@ const AdmissionForm = () => {
                 <label style={labelStyle}>Lit disponible *</label>
                 <select name="lit_id" value={form.lit_id} onChange={handleChange} style={inputStyle} required>
                   <option value="">Choisir un lit</option>
-                  {lits.map(l => <option key={l.id} value={l.id}>Lit {l.numero} - Chambre {l.chambre} (Serv. {l.service_nom})</option>)}
+                  {lits.map(l => (
+                    <option key={l.id} value={l.id}>
+                      Lit {l.numero} - Chambre {l.chambre_nom} (Serv. {l.service_nom})
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -165,9 +179,9 @@ const AdmissionForm = () => {
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>Mdecin rfrent</label>
+                <label style={labelStyle}>Médecin référent</label>
                 <select name="medecin_referent_id" value={form.medecin_referent_id} onChange={handleChange} style={inputStyle}>
-                  <option value="">Choisir un mdecin</option>
+                  <option value="">Choisir un médecin</option>
                   {medecins.map(m => <option key={m.id} value={m.id}>{m.nom} {m.prenom}</option>)}
                 </select>
               </div>
@@ -177,8 +191,12 @@ const AdmissionForm = () => {
               <textarea name="motif" value={form.motif} onChange={handleChange} rows="3" style={textareaStyle} placeholder="Raison de l'hospitalisation..."></textarea>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" style={cancelButtonStyle} onClick={() => navigate('/consultations')} onMouseEnter={e => e.target.style.backgroundColor = '#d1d5db'} onMouseLeave={e => e.target.style.backgroundColor = '#e5e7eb'}>Annuler</button>
-              <button type="submit" style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = '#15803d'} onMouseLeave={e => e.target.style.backgroundColor = '#16a34a'}>Admettre le patient</button>
+              <button type="button" style={cancelButtonStyle} onClick={() => navigate('/consultations')} onMouseEnter={e => e.target.style.backgroundColor = '#d1d5db'} onMouseLeave={e => e.target.style.backgroundColor = '#e5e7eb'}>
+                Annuler
+              </button>
+              <button type="submit" style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = '#15803d'} onMouseLeave={e => e.target.style.backgroundColor = '#16a34a'}>
+                Admettre le patient
+              </button>
             </div>
           </form>
         </div>

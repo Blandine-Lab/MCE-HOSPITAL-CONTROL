@@ -29,7 +29,7 @@ const PatientSuivi = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>? Chargement du suivi...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement du suivi...</div>
       </div>
     );
   }
@@ -37,19 +37,19 @@ const PatientSuivi = () => {
   if (!patient) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: '#ef4444' }}>
-        <div style={{ fontSize: '20px' }}>Patient non trouv</div>
+        <div style={{ fontSize: '20px' }}>Patient non trouvé</div>
       </div>
     );
   }
 
   const getStatusBadge = (statut) => {
     const configs = {
-      'planifi': { bg: '#dbeafe', color: '#1e40af', label: '?? Planifi' },
-      'en_cours': { bg: '#fef3c7', color: '#92400e', label: '? En cours' },
-      'effectu': { bg: '#d1fae5', color: '#065f46', label: '? Effectu' },
-      'annul': { bg: '#fee2e2', color: '#991b1b', label: '? Annul' },
+      'planifié': { bg: '#dbeafe', color: '#1e40af', label: '📋 Planifié' },
+      'en_cours': { bg: '#fef3c7', color: '#92400e', label: '🔄 En cours' },
+      'effectué': { bg: '#d1fae5', color: '#065f46', label: '✅ Effectué' },
+      'annulé': { bg: '#fee2e2', color: '#991b1b', label: '❌ Annulé' },
     };
-    const config = configs[statut] || configs['planifi'];
+    const config = configs[statut] || configs['planifié'];
     return (
       <span style={{
         padding: '4px 12px',
@@ -64,8 +64,8 @@ const PatientSuivi = () => {
     );
   };
 
-  const soinsEffectues = soins.filter(s => s.statut === 'effectu').length;
-  const soinsPlanifies = soins.filter(s => s.statut === 'planifi' || s.statut === 'en_cours').length;
+  const soinsEffectues = soins.filter(s => s.statut === 'effectué').length;
+  const soinsPlanifies = soins.filter(s => s.statut === 'planifié' || s.statut === 'en_cours').length;
 
   return (
     <div>
@@ -109,7 +109,7 @@ const PatientSuivi = () => {
               {patient.prenom} {patient.nom}
             </h1>
             <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>
-              Suivi des soins paramdicaux
+              Suivi des soins paramédicaux
             </p>
           </div>
         </div>
@@ -122,11 +122,11 @@ const PatientSuivi = () => {
           <p style={{ fontSize: '28px', fontWeight: 'bold', margin: '4px 0 0 0', color: '#0f172a' }}>{soins.length}</p>
         </div>
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <p style={{ color: '#64748b', margin: 0 }}>? Soins effectus</p>
+          <p style={{ color: '#64748b', margin: 0 }}>✅ Soins effectués</p>
           <p style={{ fontSize: '28px', fontWeight: 'bold', margin: '4px 0 0 0', color: '#10b981' }}>{soinsEffectues}</p>
         </div>
         <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <p style={{ color: '#64748b', margin: 0 }}>?? Soins  venir</p>
+          <p style={{ color: '#64748b', margin: 0 }}>📅 Soins à venir</p>
           <p style={{ fontSize: '28px', fontWeight: 'bold', margin: '4px 0 0 0', color: '#3b82f6' }}>{soinsPlanifies}</p>
         </div>
       </div>
@@ -144,7 +144,7 @@ const PatientSuivi = () => {
         </h3>
         {soins.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-            Aucun soin enregistr pour ce patient
+            Aucun soin enregistré pour ce patient
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>

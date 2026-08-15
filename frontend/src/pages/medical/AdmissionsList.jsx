@@ -12,7 +12,7 @@ const AdmissionsList = () => {
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
 
-  // ? Rcuprer le rle depuis le token JWT
+  // Récupérer le rôle depuis le token JWT
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -20,7 +20,7 @@ const AdmissionsList = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUserRole(payload.role);
       } catch (e) {
-        console.error('Erreur dcodage token', e);
+        console.error('Erreur décodage token', e);
       }
     }
   }, []);
@@ -34,7 +34,7 @@ const AdmissionsList = () => {
   const fetchAdmissions = async () => {
     try {
       const res = await api.get('/consultations/admissions');
-      console.log('? Donnes admissions :', res.data);
+      console.log('📋 Données admissions :', res.data);
       setAdmissions(res.data);
       setLoading(false);
     } catch (err) {
@@ -48,26 +48,26 @@ const AdmissionsList = () => {
     fetchAdmissions();
   }, []);
 
-  // ? handleDelete avec gestion 403
+  // handleDelete avec gestion 403
   const handleDelete = async (id) => {
-    if (!window.confirm('?? Supprimer dfinitivement cette admission ? Cette action est irrversible.')) return;
+    if (!window.confirm('⚠️ Supprimer définitivement cette admission ? Cette action est irréversible.')) return;
     try {
       await api.delete(`/consultations/admissions/${id}`);
       setAdmissions(admissions.filter(a => a.id !== id));
-      showToast('Admission supprime avec succs');
+      showToast('Admission supprimée avec succès');
     } catch (err) {
       console.error('Erreur suppression admission:', err);
       if (err.response?.status === 403) {
-        showToast('? Seul un administrateur peut supprimer une admission.', 'error');
+        showToast('🔒 Seul un administrateur peut supprimer une admission.', 'error');
       } else {
-        showToast('? Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
+        showToast('❌ Erreur lors de la suppression : ' + (err.response?.data?.error || err.message), 'error');
       }
     }
   };
 
   const isAdmin = userRole === 'admin';
 
-  if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>Chargement...</div>;
+  if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>⏳ Chargement...</div>;
   if (error) return <div style={{ padding: '20px', color: '#ef4444' }}>{error}</div>;
 
   return (
@@ -113,7 +113,7 @@ const AdmissionsList = () => {
             <tr>
               <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Patient</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Service</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Mdecin</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Médecin</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Date</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Motif</th>
               <th style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>Actions</th>
@@ -123,7 +123,7 @@ const AdmissionsList = () => {
             {admissions.length === 0 ? (
               <tr>
                 <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-                  Aucune admission enregistre
+                  Aucune admission enregistrée
                 </td>
               </tr>
             ) : (
@@ -145,7 +145,7 @@ const AdmissionsList = () => {
                     <Link
                       to={`/medical/admissions/${a.id}`}
                       style={{ color: '#3b82f6', marginRight: '8px' }}
-                      title="Voir le dtail"
+                      title="Voir le détail"
                     >
                       <FaEye />
                     </Link>
@@ -160,13 +160,13 @@ const AdmissionsList = () => {
                       <button
                         onClick={() => handleDelete(a.id)}
                         style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                        title="Supprimer dfinitivement (admin)"
+                        title="Supprimer définitivement (admin)"
                       >
                         <FaTrash />
                       </button>
                     )}
                     {!isAdmin && (
-                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Rserv aux administrateurs">??</span>
+                      <span style={{ color: '#94a3b8', fontSize: '14px' }} title="Réservé aux administrateurs">🔒</span>
                     )}
                   </td>
                 </tr>

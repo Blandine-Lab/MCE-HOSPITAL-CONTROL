@@ -1,7 +1,7 @@
 // frontend/src/pages/consultations/PharmacistPrescriptionList.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../axios'; // ? Instance avec intercepteur
+import api from '../../axios';
 import { FaPills, FaCheckCircle, FaEye } from 'react-icons/fa';
 
 const PharmacistPrescriptionList = () => {
@@ -10,20 +10,6 @@ const PharmacistPrescriptionList = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
-  const [userRole, setUserRole] = useState(null); // ? Prt pour l'avenir
-
-  // ? Rcuprer le rle depuis le token JWT
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUserRole(payload.role);
-      } catch (e) {
-        console.error('Erreur dcodage token', e);
-      }
-    }
-  }, []);
 
   const showToast = (msg, type = 'success') => {
     setToast(msg);
@@ -34,17 +20,17 @@ const PharmacistPrescriptionList = () => {
   const fetchData = () => {
     setLoading(true);
     Promise.all([
-      api.get('/prescriptions?status=pending'),
-      api.get('/prescriptions')
+      api.get('/prescriptions?statut=en_attente'), // ✅ filtre par statut
+      api.get('/prescriptions?statut=servie')      // ✅ pour l'historique
     ])
-      .then(([pendingRes, allRes]) => {
+      .then(([pendingRes, servedRes]) => {
         setPending(pendingRes.data);
-        setHistory(allRes.data.filter(p => p.status === 'served'));
+        setHistory(servedRes.data);
         setLoading(false);
       })
       .catch(err => {
         console.error('Erreur chargement prescriptions:', err);
-        showToast('Erreur chargement des donnes', 'error');
+        showToast('Erreur de chargement des données', 'error');
         setLoading(false);
       });
   };
@@ -54,34 +40,34 @@ const PharmacistPrescriptionList = () => {
   }, []);
 
   const handleServe = async (id) => {
-    if (!window.confirm('? Confirmer la dlivrance de cette ordonnance ?')) return;
+    if (!window.confirm('✅ Confirmer la délivrance de cette ordonnance ?')) return;
     try {
-      await api.put(`/prescriptions/${id}/serve`);
-      showToast('? Prescription servie avec succs !');
-      fetchData();
+      await api.put(`/prescriptions/${id}`, { statut: 'servie' });
+      showToast('✅ Prescription servie avec succès !');
+      fetchData(); // recharger les listes
     } catch (err) {
       const message = err.response?.data?.error || err.message;
-      showToast('? Erreur : ' + message, 'error');
+      showToast('❌ Erreur : ' + message, 'error');
     }
   };
 
   if (loading) {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        justifyContent: 'center', 
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
         alignItems: 'center',
         background: 'linear-gradient(135deg, #1e3a8a 0%, #312e81 100%)'
       }}>
-        <div style={{ color: 'white', fontSize: '24px' }}>? Chargement...</div>
+        <div style={{ color: 'white', fontSize: '24px' }}>⏳ Chargement...</div>
       </div>
     );
   }
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div style={{
+      minHeight: '100vh',
       background: 'linear-gradient(135deg, #1e3a8a 0%, #312e81 100%)',
       padding: '32px'
     }}>
@@ -102,7 +88,7 @@ const PharmacistPrescriptionList = () => {
         </div>
       )}
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* En-tte */}
+        {/* En-tête */}
         <div style={{
           background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
           borderRadius: '20px',
@@ -110,9 +96,9 @@ const PharmacistPrescriptionList = () => {
           marginBottom: '32px',
           boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
         }}>
-          <h1 style={{ 
-            fontSize: '36px', 
-            fontWeight: 'bold', 
+          <h1 style={{
+            fontSize: '36px',
+            fontWeight: 'bold',
             color: 'white',
             margin: 0,
             display: 'flex',
@@ -124,17 +110,17 @@ const PharmacistPrescriptionList = () => {
           </h1>
           <div style={{ display: 'flex', gap: '24px', marginTop: '12px', flexWrap: 'wrap' }}>
             <span style={{ color: '#fbbf24', fontWeight: '500', fontSize: '18px' }}>
-              ? En attente : {pending.length}
+              ⏳ En attente : {pending.length}
             </span>
             <span style={{ color: '#6ee7b7', fontWeight: '500', fontSize: '18px' }}>
-              ? Servies : {history.length}
+              ✅ Servies : {history.length}
             </span>
           </div>
         </div>
 
         {/* Section en attente */}
         <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#fbbf24', marginBottom: '16px' }}>
-          ? Ordonnances  servir
+          ⏳ Ordonnances à servir
         </h2>
         {pending.length === 0 ? (
           <div style={{
@@ -146,13 +132,13 @@ const PharmacistPrescriptionList = () => {
             border: '1px solid rgba(255,255,255,0.1)',
             marginBottom: '40px'
           }}>
-            <p style={{ color: '#e2e8f0', fontSize: '18px' }}>? Aucune ordonnance en attente.</p>
+            <p style={{ color: '#e2e8f0', fontSize: '18px' }}>✅ Aucune ordonnance en attente.</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '20px', marginBottom: '40px' }}>
             {pending.map((p) => (
-              <div 
-                key={p.id} 
+              <div
+                key={p.id}
                 style={{
                   backgroundColor: 'rgba(255,255,255,0.08)',
                   backdropFilter: 'blur(8px)',
@@ -177,17 +163,17 @@ const PharmacistPrescriptionList = () => {
                       {p.patient_prenom} {p.patient_nom}
                     </p>
                     <p style={{ fontSize: '15px', color: '#cbd5e1', margin: '4px 0' }}>
-                      ???FC??? Mdecin : {p.doctor_prenom} {p.doctor_nom}
+                      👨‍⚕️ Médecin : {p.medecin_prenom} {p.medecin_nom}
                     </p>
                     <p style={{ fontSize: '15px', color: '#94a3b8', margin: '4px 0' }}>
-                      ?? {new Date(p.date_creation).toLocaleString('fr-FR')}
+                      📅 {new Date(p.created_at).toLocaleString('fr-FR')}
                     </p>
                     <p style={{ fontSize: '15px', color: '#e2e8f0', marginTop: '8px' }}>
-                      ?? {p.items?.map(i => i.medicament).join(', ')}
+                      💊 {p.items?.map(i => i.medicament_nom || i.medicament).join(', ')}
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button 
+                    <button
                       onClick={() => handleServe(p.id)}
                       style={{
                         backgroundColor: '#10b981',
@@ -215,10 +201,10 @@ const PharmacistPrescriptionList = () => {
                     >
                       <FaCheckCircle /> Servir
                     </button>
-                    <Link 
-                      to={`/prescription/${p.id}`} 
-                      style={{ 
-                        color: '#93c5fd', 
+                    <Link
+                      to={`/prescriptions/${p.id}`}
+                      style={{
+                        color: '#93c5fd',
                         textDecoration: 'none',
                         fontWeight: '500',
                         display: 'flex',
@@ -226,7 +212,7 @@ const PharmacistPrescriptionList = () => {
                         gap: '6px'
                       }}
                     >
-                      <FaEye /> Dtails
+                      <FaEye /> Détails
                     </Link>
                   </div>
                 </div>
@@ -237,7 +223,7 @@ const PharmacistPrescriptionList = () => {
 
         {/* Historique */}
         <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#6ee7b7', marginBottom: '16px' }}>
-          ?? Historique des ordonnances servies
+          📜 Historique des ordonnances servies
         </h2>
         {history.length === 0 ? (
           <div style={{
@@ -260,21 +246,21 @@ const PharmacistPrescriptionList = () => {
           }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ 
+                <tr style={{
                   backgroundColor: 'rgba(0,0,0,0.3)',
                   borderBottom: '2px solid rgba(255,255,255,0.1)'
                 }}>
                   <th style={{ padding: '16px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Patient</th>
-                  <th style={{ padding: '16px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Mdecin</th>
+                  <th style={{ padding: '16px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Médecin</th>
                   <th style={{ padding: '16px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Servie le</th>
                   <th style={{ padding: '16px 24px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {history.map((p, index) => (
-                  <tr 
-                    key={p.id} 
-                    style={{ 
+                  <tr
+                    key={p.id}
+                    style={{
                       borderBottom: index === history.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
                       backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)'
                     }}
@@ -283,16 +269,16 @@ const PharmacistPrescriptionList = () => {
                       {p.patient_prenom} {p.patient_nom}
                     </td>
                     <td style={{ padding: '14px 24px', color: '#cbd5e1' }}>
-                      {p.doctor_prenom} {p.doctor_nom}
+                      {p.medecin_prenom} {p.medecin_nom}
                     </td>
                     <td style={{ padding: '14px 24px', color: '#cbd5e1' }}>
-                      {p.date_served ? new Date(p.date_served).toLocaleDateString('fr-FR') : '-'}
+                      {p.updated_at ? new Date(p.updated_at).toLocaleDateString('fr-FR') : '-'}
                     </td>
                     <td style={{ padding: '14px 24px' }}>
-                      <Link 
-                        to={`/prescription/${p.id}`} 
-                        style={{ 
-                          color: '#93c5fd', 
+                      <Link
+                        to={`/prescriptions/${p.id}`}
+                        style={{
+                          color: '#93c5fd',
                           textDecoration: 'none',
                           display: 'flex',
                           alignItems: 'center',

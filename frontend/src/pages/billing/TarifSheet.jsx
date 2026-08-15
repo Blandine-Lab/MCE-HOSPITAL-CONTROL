@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import api from '../../axios'; // ? Instance avec intercepteur
-import { FaPrint, FaSearch, FaFileInvoice } from 'react-icons/fa';
+import api from '../../axios';
+import { FaPrint, FaSearch, FaFileInvoice, FaDownload } from 'react-icons/fa';
+import html2pdf from 'html2pdf.js';
 
 const TarifSheet = () => {
   const [prestations, setPrestations] = useState([]);
@@ -9,6 +10,7 @@ const TarifSheet = () => {
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   useEffect(() => {
     api.get('/billing/prestations')
@@ -20,7 +22,7 @@ const TarifSheet = () => {
         setLoaded(true);
       })
       .catch(err => {
-        console.error('? Erreur chargement tarifs:', err);
+        console.error('❌ Erreur chargement tarifs:', err);
         setToast('Erreur chargement des prestations');
         setTimeout(() => setToast(null), 3000);
         setLoading(false);
@@ -29,6 +31,18 @@ const TarifSheet = () => {
 
   const handlePrint = () => window.print();
 
+  const handleDownloadPDF = () => {
+    const element = document.getElementById('tarif-sheet-print');
+    const opt = {
+      margin: 0.5,
+      filename: 'fiche_tarifaire.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, letterRendering: true },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+  };
+
   const filteredByCat = (cat) => {
     return prestations.filter(p => 
       p.categorie === cat && 
@@ -36,6 +50,10 @@ const TarifSheet = () => {
        p.libelle?.toLowerCase().includes(search.toLowerCase()))
     );
   };
+
+  const displayedCategories = selectedCategory 
+    ? categories.filter(c => c === selectedCategory)
+    : categories;
 
   const containerStyle = {
     minHeight: '100vh',
@@ -58,10 +76,13 @@ const TarifSheet = () => {
     color: '#4b5563',
     marginBottom: '24px'
   };
-  const searchBarStyle = {
+  const toolbarStyle = {
     display: 'flex',
+    flexWrap: 'wrap',
     justifyContent: 'center',
-    marginBottom: '32px'
+    gap: '12px',
+    marginBottom: '32px',
+    alignItems: 'center'
   };
   const searchInputStyle = {
     padding: '10px 16px',
@@ -69,6 +90,13 @@ const TarifSheet = () => {
     border: '1px solid #ccc',
     borderRadius: '8px',
     fontSize: '14px'
+  };
+  const selectStyle = {
+    padding: '10px 16px',
+    border: '1px solid #ccc',
+    borderRadius: '8px',
+    fontSize: '14px',
+    minWidth: '180px'
   };
   const cardStyle = {
     backgroundColor: 'white',
@@ -99,24 +127,18 @@ const TarifSheet = () => {
     padding: '10px',
     borderBottom: '1px solid #e2e8f0'
   };
-  const printButtonStyle = {
-    position: 'fixed',
-    bottom: '20px',
-    right: '20px',
-    backgroundColor: '#2563eb',
-    color: 'white',
-    padding: '12px 20px',
-    borderRadius: '50px',
+  const actionButtonStyle = {
+    padding: '8px 16px',
+    borderRadius: '8px',
     border: 'none',
     cursor: 'pointer',
-    display: 'flex',
+    display: 'inline-flex',
     alignItems: 'center',
-    gap: '8px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-    zIndex: 1000
+    gap: '6px',
+    fontWeight: 'bold'
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>? Chargement...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>⏳ Chargement...</div>;
 
   return (
     <div style={containerStyle}>
@@ -134,50 +156,62 @@ const TarifSheet = () => {
           {toast}
         </div>
       )}
-      <h1 style={titleStyle}>?? Fiche tarifaire des prestations</h1>
-      <p style={subtitleStyle}>Tarifs CCAM, NGAP et actes hospitaliers</p>
-      <div style={searchBarStyle}>
-        <input
-          type="text"
-          placeholder="Rechercher par code ou libellï..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={searchInputStyle}
-        />
-      </div>
-      {categories.length === 0 && (
-        <p style={{ textAlign: 'center', color: '#6b7280' }}>Aucune catïgorie trouvïe.</p>
-      )}
-      {categories.map(cat => {
-        const filtered = filteredByCat(cat);
-        if (filtered.length === 0) return null;
-        return (
-          <div key={cat} style={cardStyle}>
-            <h2 style={catTitleStyle}>{cat}</h2>
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>Code</th>
-                  <th style={thStyle}>Libellï</th>
-                  <th style={thStyle}>Prix unitaire (FC)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(p => (
-                  <tr key={p.id}>
-                    <td style={tdStyle}>{p.code}</td>
-                    <td style={tdStyle}>{p.libelle}</td>
-                    <td style={tdStyle}>{parseFloat(p.prix_unitaire).toFixed(2)}</td>
+      <div id="tarif-sheet-print">
+        <h1 style={titleStyle}>📋 Fiche tarifaire des prestations</h1>
+        <p style={subtitleStyle}>Tarifs CCAM, NGAP et actes hospitaliers</p>
+
+        <div style={toolbarStyle}>
+          <input
+            type="text"
+            placeholder="Rechercher par code ou libellé..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={searchInputStyle}
+          />
+          <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} style={selectStyle}>
+            <option value="">Toutes catégories</option>
+            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+          <button onClick={handlePrint} style={{ ...actionButtonStyle, backgroundColor: '#2563eb', color: 'white' }}>
+            <FaPrint /> Imprimer
+          </button>
+          <button onClick={handleDownloadPDF} style={{ ...actionButtonStyle, backgroundColor: '#dc2626', color: 'white' }}>
+            <FaDownload /> PDF
+          </button>
+        </div>
+
+        {displayedCategories.length === 0 && (
+          <p style={{ textAlign: 'center', color: '#6b7280' }}>Aucune catégorie trouvée.</p>
+        )}
+        {displayedCategories.map(cat => {
+          const filtered = filteredByCat(cat);
+          if (filtered.length === 0) return null;
+          return (
+            <div key={cat} style={cardStyle}>
+              <h2 style={catTitleStyle}>{cat}</h2>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Code</th>
+                    <th style={thStyle}>Libellé</th>
+                    <th style={thStyle}>Prix unitaire (FC)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-      })}
-      <button style={printButtonStyle} onClick={handlePrint} className="print-button">
-        <FaPrint /> Imprimer la fiche tarifaire
-      </button>
+                </thead>
+                <tbody>
+                  {filtered.map(p => (
+                    <tr key={p.id}>
+                      <td style={tdStyle}>{p.code}</td>
+                      <td style={tdStyle}>{p.libelle}</td>
+                      <td style={tdStyle}>{parseFloat(p.prix_unitaire).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+      </div>
+
       <style>{`
         @media print {
           body * {
@@ -186,8 +220,11 @@ const TarifSheet = () => {
           #root, #root * {
             visibility: visible;
           }
+          .no-print {
+            display: none !important;
+          }
           .print-button {
-            display: none;
+            display: none !important;
           }
         }
       `}</style>
