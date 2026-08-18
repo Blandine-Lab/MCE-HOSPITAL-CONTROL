@@ -8,6 +8,11 @@ const AdmissionForm = () => {
   const [lits, setLits] = useState([]);
   const [services, setServices] = useState([]);
   const [medecins, setMedecins] = useState([]);
+  const [admissions, setAdmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingAdmissions, setLoadingAdmissions] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [toast, setToast] = useState(null);
   const [form, setForm] = useState({
     patient_id: '',
     lit_id: '',
@@ -15,9 +20,6 @@ const AdmissionForm = () => {
     motif: '',
     medecin_referent_id: ''
   });
-  const [loading, setLoading] = useState(true);
-  const [loaded, setLoaded] = useState(false);
-  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -37,9 +39,23 @@ const AdmissionForm = () => {
       })
       .catch(err => {
         console.error('Erreur de chargement des données :', err);
-        setLoading(false); // ✅ empêche le spinner infini
+        setLoading(false);
         setToast('Impossible de charger les données. Veuillez réessayer.');
         setTimeout(() => setToast(null), 4000);
+      });
+  }, []);
+
+  // Chargement de l'historique des admissions
+  useEffect(() => {
+    api.get('/consultations/admissions')
+      .then(res => {
+        // On s'attend à ce que l'API retourne les données avec jointures (patient_nom, date_sortie, mode_sortie, etc.)
+        setAdmissions(res.data);
+        setLoadingAdmissions(false);
+      })
+      .catch(err => {
+        console.error('Erreur chargement admissions :', err);
+        setLoadingAdmissions(false);
       });
   }, []);
 
@@ -61,7 +77,6 @@ const AdmissionForm = () => {
     }
   };
 
-  // Styles (inchangés, mais conservés)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#f0fdf4',
@@ -199,6 +214,47 @@ const AdmissionForm = () => {
               </button>
             </div>
           </form>
+
+          {/* 🔽 NOUVEAU : Section Historique des hospitalisations */}
+          <div style={{ marginTop: '40px', borderTop: '2px solid #e5e7eb', paddingTop: '24px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#166534', marginBottom: '16px' }}>
+              📋 Historique des hospitalisations
+            </h2>
+            {loadingAdmissions ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>Chargement...</div>
+            ) : admissions.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#6b7280' }}>Aucune admission enregistrée</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f3f4f6' }}>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Patient</th>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Date entrée</th>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Motif</th>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Date sortie</th>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Mode sortie</th>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {admissions.map(adm => (
+                      <tr key={adm.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>{adm.patient_nom || 'Patient inconnu'}</td>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>{adm.date_admission ? new Date(adm.date_admission).toLocaleDateString() : '-'}</td>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>{adm.motif || '-'}</td>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>{adm.date_sortie ? new Date(adm.date_sortie).toLocaleDateString() : '-'}</td>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>{adm.mode_sortie || '-'}</td>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>
+                          {adm.date_sortie ? '✅ Sorti(e)' : '🟡 En cours'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <style>{`

@@ -6,6 +6,8 @@ const SortieForm = () => {
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [admissions, setAdmissions] = useState([]);
+  const [sorties, setSorties] = useState([]);        // ⬅️ NOUVEAU : historique des sorties
+  const [loadingSorties, setLoadingSorties] = useState(true); // ⬅️ NOUVEAU
   const [form, setForm] = useState({
     patient_id: '',
     admission_id: '',
@@ -23,20 +25,25 @@ const SortieForm = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Chargement des patients, admissions en cours, ET historique des sorties
   useEffect(() => {
     Promise.all([
       api.get('/consultations/patients/hospitalises'),
-      api.get('/consultations/admissions/en_cours')
+      api.get('/consultations/admissions/en_cours'),
+      api.get('/consultations/sorties')             // ⬅️ NOUVEAU : appel pour l'historique
     ])
-      .then(([patRes, admRes]) => {
+      .then(([patRes, admRes, sortiesRes]) => {
         setPatients(patRes.data);
         setAdmissions(admRes.data);
+        setSorties(sortiesRes.data);                // ⬅️ NOUVEAU
+        setLoadingSorties(false);                   // ⬅️ NOUVEAU
         setLoading(false);
         setLoaded(true);
       })
       .catch(err => {
         console.error('Erreur chargement :', err);
         setLoading(false);
+        setLoadingSorties(false);
         showToast('Erreur de chargement des données', 'error');
       });
   }, []);
@@ -53,7 +60,6 @@ const SortieForm = () => {
         showToast('Erreur chargement des admissions', 'error');
       }
     } else {
-      // Si aucun patient sélectionné, on recharge la liste complète des admissions en cours
       try {
         const res = await api.get('/consultations/admissions/en_cours');
         setAdmissions(res.data);
@@ -68,6 +74,15 @@ const SortieForm = () => {
     try {
       await api.post('/consultations/sorties', form);
       showToast('✅ Sortie enregistrée avec succès', 'success');
+
+      // Recharger l'historique des sorties après l'enregistrement
+      try {
+        const res = await api.get('/consultations/sorties');
+        setSorties(res.data);
+      } catch (err) {
+        console.error('Erreur recharge historique sorties', err);
+      }
+
       setTimeout(() => navigate('/patients'), 1500);
     } catch (err) {
       console.error('Erreur sortie :', err);
@@ -76,7 +91,7 @@ const SortieForm = () => {
     }
   };
 
-  // Styles
+  // Styles (inchangés)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#fef2f2',
@@ -84,7 +99,7 @@ const SortieForm = () => {
     fontFamily: 'system-ui, -apple-system, sans-serif',
   };
   const innerStyle = {
-    maxWidth: '800px',
+    maxWidth: '1000px',
     margin: '0 auto',
   };
   const titleStyle = {
@@ -252,6 +267,43 @@ const SortieForm = () => {
               </button>
             </div>
           </form>
+
+          {/* 🔽 NOUVEAU : Section Historique des sorties */}
+          <div style={{ marginTop: '40px', borderTop: '2px solid #e5e7eb', paddingTop: '24px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#991b1b', marginBottom: '16px' }}>
+              📜 Historique des sorties
+            </h2>
+            {loadingSorties ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>Chargement...</div>
+            ) : sorties.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#6b7280' }}>Aucune sortie enregistrée</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f3f4f6' }}>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Patient</th>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Date sortie</th>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Mode</th>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Remarques</th>
+                      <th style={{ padding: '8px', border: '1px solid #d1d5db', textAlign: 'left' }}>Admission ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sorties.map(s => (
+                      <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>{s.patient_nom || 'Patient inconnu'}</td>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>{s.date_sortie ? new Date(s.date_sortie).toLocaleDateString() : '-'}</td>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>{s.mode_sortie || '-'}</td>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>{s.remarques || '-'}</td>
+                        <td style={{ padding: '8px', border: '1px solid #d1d5db' }}>{s.admission_id || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <style>{`

@@ -103,6 +103,7 @@ app.use(morgan('dev'));
 // ========== CONFIGURATION CORS EXPLICITE ==========
 const corsOptions = {
   origin: [
+    'https://mce-hospital-control-frontend.vercel.app',   // ✅ AJOUT DE L'URL VERCEL
     'https://mce-hospital-control.netlify.app',
     'http://localhost:5173',
     'http://localhost:3000',

@@ -5,7 +5,7 @@ import {
   FaSearch, FaEdit, FaTrash, FaEye, FaHospitalUser,
   FaDownload, FaPlusCircle, FaFileExcel, FaPrint,
   FaCalendarDay, FaCalendarWeek, FaCalendarAlt,
-  FaSort, FaSortUp, FaSortDown
+  FaSort, FaSortUp, FaSortDown, FaToggleOn, FaToggleOff
 } from 'react-icons/fa';
 import api from '../../axios';
 
@@ -21,8 +21,9 @@ const PatientsList = () => {
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
   const [userRole, setUserRole] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('actif'); // 'actif', 'inactif', 'tous'
 
-  const itemsPerPage = 10; // ← AJOUTÉ
+  const itemsPerPage = 10;
 
   // Récupérer le rôle depuis le token JWT
   useEffect(() => {
@@ -37,21 +38,26 @@ const PatientsList = () => {
     }
   }, []);
 
+  const fetchPatients = async () => {
+    setLoading(true);
+    try {
+      let url = '/patients';
+      if (filterStatus === 'actif') url += '?actif=true';
+      else if (filterStatus === 'inactif') url += '?actif=false';
+      const res = await api.get(url);
+      setPatients(res.data);
+      setFilteredPatients(res.data);
+    } catch (err) {
+      console.error('Erreur chargement patients:', err);
+      showToast('Erreur chargement des patients', 'error');
+    }
+    setLoading(false);
+    setLoaded(true);
+  };
+
   useEffect(() => {
-    console.log('PatientsList monté - appel API');
-    api.get('/patients')
-      .then(res => {
-        setPatients(res.data);
-        setFilteredPatients(res.data);
-        setLoading(false);
-        setLoaded(true);
-      })
-      .catch(err => {
-        console.error('Erreur chargement patients:', err);
-        setLoading(false);
-        setLoaded(true);
-      });
-  }, []);
+    fetchPatients();
+  }, [filterStatus]);
 
   // Statistiques admissions
   const today = new Date(); today.setHours(0,0,0,0);
@@ -96,6 +102,7 @@ const PatientsList = () => {
         'Téléphone': p.telephone || '',
         'Email': p.email || '',
         'Adresse': p.adresse || '',
+        'Statut': p.actif ? 'Actif' : 'Inactif',
         'Personne à prévenir 1': `${p.personne_a_prevenir_nom1||''} ${p.personne_a_prevenir_tel1||''}`,
         'Personne à prévenir 2': `${p.personne_a_prevenir_nom2||''} ${p.personne_a_prevenir_tel2||''}`,
         'Antécédents': p.antecedents || '',
@@ -113,10 +120,11 @@ const PatientsList = () => {
 
   const exportToCSV = async () => {
     try {
-      const csvRows = [['IPP','Nom','Prénom','Téléphone','Email','Adresse','Personne à prévenir 1','Personne à prévenir 2','Antécédents','Allergies','Traitements','Consentement']];
+      const csvRows = [['IPP','Nom','Prénom','Téléphone','Email','Adresse','Statut','Personne à prévenir 1','Personne à prévenir 2','Antécédents','Allergies','Traitements','Consentement']];
       for (const p of filteredPatients) {
         csvRows.push([
           p.ipp||'', p.nom||'', p.prenom||'', p.telephone||'', p.email||'', p.adresse||'',
+          p.actif ? 'Actif' : 'Inactif',
           `${p.personne_a_prevenir_nom1||''} ${p.personne_a_prevenir_tel1||''}`,
           `${p.personne_a_prevenir_nom2||''} ${p.personne_a_prevenir_tel2||''}`,
           (p.antecedents||'').replace(/,/g,';'),
@@ -143,7 +151,7 @@ const PatientsList = () => {
     }
     try {
       await api.delete(`/patients/${id}`);
-      setPatients(patients.filter(p => p.id !== id));
+      fetchPatients();
       showToast('Patient supprimé avec succès');
     } catch (err) {
       if (err.response?.status === 403) {
@@ -154,9 +162,22 @@ const PatientsList = () => {
     }
   };
 
-  const isAdmin = userRole === 'admin';
+  const handleToggleActif = async (patient) => {
+    const newStatus = !patient.actif;
+    try {
+      await api.put(`/patients/${patient.id}/toggle-actif`, { actif: newStatus });
+      // Mettre à jour localement pour éviter un rechargement complet
+      setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, actif: newStatus } : p));
+      showToast(`Patient ${newStatus ? 'activé' : 'désactivé'} avec succès`);
+    } catch (err) {
+      showToast('Erreur lors du changement de statut', 'error');
+      console.error(err);
+    }
+  };
 
-  // Styles inline
+  const isAdmin = userRole === 'admin' || userRole === 'gestionnaire';
+
+  // Styles
   const containerStyle = {
     minHeight: '100vh',
     background: 'linear-gradient(135deg, #1e3a8a 0%, #312e81 100%)',
@@ -253,6 +274,17 @@ const PatientsList = () => {
     fontSize: '16px',
     outline: 'none',
   };
+  const filterSelectStyle = {
+    padding: '10px 16px',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    backgroundColor: '#f1f5f9',
+    color: '#1e293b',
+    cursor: 'pointer',
+    outline: 'none',
+  };
   const resultBadgeStyle = {
     backgroundColor: '#3b82f6',
     color: 'white',
@@ -290,6 +322,22 @@ const PatientsList = () => {
     padding: '16px',
     backgroundColor: '#f1f5f9',
     borderTop: '1px solid #cbd5e1',
+  };
+  const badgeActif = {
+    backgroundColor: '#dcfce7',
+    color: '#166534',
+    padding: '4px 10px',
+    borderRadius: '20px',
+    fontWeight: 'bold',
+    fontSize: '12px',
+  };
+  const badgeInactif = {
+    backgroundColor: '#fee2e2',
+    color: '#991b1b',
+    padding: '4px 10px',
+    borderRadius: '20px',
+    fontWeight: 'bold',
+    fontSize: '12px',
   };
 
   const SortIcon = ({ field }) => {
@@ -355,6 +403,11 @@ const PatientsList = () => {
             <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input type="text" placeholder="Rechercher par nom, prénom ou IPP..." value={search} onChange={e=>setSearch(e.target.value)} style={{ ...searchInputStyle, paddingLeft: '40px' }} />
           </div>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={filterSelectStyle}>
+            <option value="actif">✅ Actifs</option>
+            <option value="inactif">⛔ Inactifs</option>
+            <option value="tous">📋 Tous</option>
+          </select>
           <div style={resultBadgeStyle}>🔍 Résultats : {filteredPatients.length}</div>
         </div>
 
@@ -362,17 +415,17 @@ const PatientsList = () => {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['ipp','nom','prenom','telephone','email','adresse','personne_a_prevenir_nom1','personne_a_prevenir_nom2','antecedents','allergies','traitements','consentements','actions'].map(field => (
-                  <th key={field} style={thStyle} onClick={() => field !== 'actions' && (setSortField(field), setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'))}>
-                    {field === 'ipp' ? 'IPP' : field === 'nom' ? 'Nom' : field === 'prenom' ? 'Prénom' : field === 'telephone' ? 'Téléphone' : field === 'email' ? 'Email' : field === 'adresse' ? 'Adresse' : field === 'personne_a_prevenir_nom1' ? 'Personne 1' : field === 'personne_a_prevenir_nom2' ? 'Personne 2' : field === 'antecedents' ? 'Antécédents' : field === 'allergies' ? 'Allergies' : field === 'traitements' ? 'Traitements' : field === 'consentements' ? 'Consent.' : 'Actions'}
-                    {field !== 'actions' && <SortIcon field={field} />}
+                {['ipp','nom','prenom','telephone','email','adresse','personne_a_prevenir_nom1','personne_a_prevenir_nom2','antecedents','allergies','traitements','consentements','statut','actions'].map(field => (
+                  <th key={field} style={thStyle} onClick={() => field !== 'actions' && field !== 'statut' && (setSortField(field), setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'))}>
+                    {field === 'ipp' ? 'IPP' : field === 'nom' ? 'Nom' : field === 'prenom' ? 'Prénom' : field === 'telephone' ? 'Téléphone' : field === 'email' ? 'Email' : field === 'adresse' ? 'Adresse' : field === 'personne_a_prevenir_nom1' ? 'Personne 1' : field === 'personne_a_prevenir_nom2' ? 'Personne 2' : field === 'antecedents' ? 'Antécédents' : field === 'allergies' ? 'Allergies' : field === 'traitements' ? 'Traitements' : field === 'consentements' ? 'Consent.' : field === 'statut' ? 'Statut' : 'Actions'}
+                    {field !== 'actions' && field !== 'statut' && <SortIcon field={field} />}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {paginated.length === 0 ? (
-                <tr><td colSpan="13" style={{ textAlign: 'center', padding: '48px', color: '#64748b' }}>📭 Aucun patient enregistré</td></tr>
+                <tr><td colSpan="14" style={{ textAlign: 'center', padding: '48px', color: '#64748b' }}>📭 Aucun patient enregistré</td></tr>
               ) : (
                 paginated.map((p, idx) => (
                   <tr key={p.id} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
@@ -389,9 +442,19 @@ const PatientsList = () => {
                     <td style={tdStyle}>{p.traitements || '-'}</td>
                     <td style={{...tdStyle, textAlign: 'center'}}>{p.consentements ? '✅' : '❌'}</td>
                     <td style={tdStyle}>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={p.actif ? badgeActif : badgeInactif}>
+                        {p.actif ? '✅ Actif' : '⛔ Inactif'}
+                      </span>
+                    </td>
+                    <td style={tdStyle}>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <Link to={`/patients/${p.id}`} style={{ color: '#3b82f6' }} title="Voir"><FaEye /></Link>
                         <Link to={`/patients/edit/${p.id}`} style={{ color: '#22c55e' }} title="Modifier"><FaEdit /></Link>
+                        {isAdmin && (
+                          <button onClick={() => handleToggleActif(p)} style={{ color: p.actif ? '#f59e0b' : '#10b981', background: 'none', border: 'none', cursor: 'pointer' }} title={p.actif ? 'Désactiver' : 'Activer'}>
+                            {p.actif ? <FaToggleOn style={{ fontSize: '20px' }} /> : <FaToggleOff style={{ fontSize: '20px' }} />}
+                          </button>
+                        )}
                         {isAdmin ? (
                           <button onClick={() => handleDelete(p.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }} title="Supprimer (admin)"><FaTrash /></button>
                         ) : (
