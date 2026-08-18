@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaExchangeAlt, FaBed, FaStethoscope, FaClipboardList, FaSave } from 'react-icons/fa';
+import { FaExchangeAlt, FaBed, FaStethoscope, FaClipboardList, FaSave, FaHistory } from 'react-icons/fa';
 import api from '../../axios';
 
 const TransfertForm = () => {
@@ -8,16 +8,18 @@ const TransfertForm = () => {
   const [patients, setPatients] = useState([]);
   const [litsDispo, setLitsDispo] = useState([]);
   const [services, setServices] = useState([]);
+  const [transferts, setTransferts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingTransferts, setLoadingTransferts] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [toastType, setToastType] = useState('success');
   const [form, setForm] = useState({
     patient_id: '',
     nouveau_lit_id: '',
     nouveau_service_id: '',
     motif: ''
   });
-  const [loading, setLoading] = useState(true);
-  const [loaded, setLoaded] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [toastType, setToastType] = useState('success');
 
   const showToast = (msg, type = 'success') => {
     setToast(msg);
@@ -25,22 +27,38 @@ const TransfertForm = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const loadTransferts = async () => {
+    try {
+      const res = await api.get('/consultations/transferts');
+      setTransferts(res.data);
+    } catch (err) {
+      console.error('Erreur chargement historique des transferts:', err);
+      showToast('Erreur chargement historique', 'error');
+    } finally {
+      setLoadingTransferts(false);
+    }
+  };
+
   useEffect(() => {
     Promise.all([
       api.get('/consultations/patients/hospitalises'),
       api.get('/consultations/lits/disponibles'),
-      api.get('/consultations/services')
+      api.get('/consultations/services'),
+      api.get('/consultations/transferts')
     ])
-      .then(([patRes, litRes, servRes]) => {
+      .then(([patRes, litRes, servRes, transRes]) => {
         setPatients(patRes.data);
         setLitsDispo(litRes.data);
         setServices(servRes.data);
+        setTransferts(transRes.data);
         setLoading(false);
         setLoaded(true);
+        setLoadingTransferts(false);
       })
       .catch(err => {
         console.error('Erreur chargement :', err);
         setLoading(false);
+        setLoadingTransferts(false);
         showToast('Erreur de chargement des données', 'error');
       });
   }, []);
@@ -50,6 +68,15 @@ const TransfertForm = () => {
     try {
       await api.post('/consultations/transferts', form);
       showToast('✅ Transfert effectué avec succès', 'success');
+      // Recharger l'historique après un transfert réussi
+      await loadTransferts();
+      // Réinitialiser le formulaire (sauf patient)
+      setForm({
+        ...form,
+        nouveau_lit_id: '',
+        nouveau_service_id: '',
+        motif: ''
+      });
       setTimeout(() => navigate('/patients'), 1500);
     } catch (err) {
       console.error('Erreur transfert :', err);
@@ -66,7 +93,7 @@ const TransfertForm = () => {
     fontFamily: 'system-ui, -apple-system, sans-serif',
   };
   const innerStyle = {
-    maxWidth: '800px',
+    maxWidth: '1000px',
     margin: '0 auto',
   };
   const titleStyle = {
@@ -83,6 +110,7 @@ const TransfertForm = () => {
     backgroundColor: 'white',
     borderRadius: '20px',
     padding: '32px',
+    marginBottom: '32px',
     boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
   };
   const labelStyle = {
@@ -132,6 +160,27 @@ const TransfertForm = () => {
     marginRight: '12px',
     transition: 'background-color 0.2s',
   };
+  const tableContainerStyle = {
+    overflowX: 'auto',
+    borderRadius: '12px',
+    border: '1px solid #e2e8f0',
+  };
+  const tableStyle = {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '14px',
+  };
+  const thStyle = {
+    backgroundColor: '#f1f5f9',
+    padding: '12px 8px',
+    textAlign: 'left',
+    borderBottom: '2px solid #e2e8f0',
+    fontWeight: 'bold',
+  };
+  const tdStyle = {
+    padding: '10px 8px',
+    borderBottom: '1px solid #e2e8f0',
+  };
 
   if (loading) {
     return (
@@ -161,6 +210,8 @@ const TransfertForm = () => {
       )}
       <div style={innerStyle}>
         <h1 style={titleStyle}>🔄 Transfert de patient</h1>
+
+        {/* Formulaire */}
         <div style={cardStyle}>
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>
@@ -170,8 +221,6 @@ const TransfertForm = () => {
                 onChange={e => setForm({ ...form, patient_id: e.target.value })}
                 style={inputStyle}
                 required
-                onFocus={e => e.target.style.borderColor = '#3b82f6'}
-                onBlur={e => e.target.style.borderColor = '#cbd5e1'}
               >
                 <option value="">-- Sélectionner un patient --</option>
                 {patients.map(p => (
@@ -230,21 +279,58 @@ const TransfertForm = () => {
                 type="button"
                 style={cancelButtonStyle}
                 onClick={() => navigate('/consultations')}
-                onMouseEnter={e => e.target.style.backgroundColor = '#d1d5db'}
-                onMouseLeave={e => e.target.style.backgroundColor = '#e5e7eb'}
               >
                 Annuler
               </button>
               <button
                 type="submit"
                 style={buttonStyle}
-                onMouseEnter={e => e.target.style.backgroundColor = '#2563eb'}
-                onMouseLeave={e => e.target.style.backgroundColor = '#3b82f6'}
               >
                 <FaExchangeAlt /> Transférer
               </button>
             </div>
           </form>
+        </div>
+
+        {/* Historique des transferts */}
+        <div style={cardStyle}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e3a8a', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FaHistory /> Historique des transferts
+          </h2>
+          {loadingTransferts ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>Chargement...</div>
+          ) : transferts.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#6b7280' }}>Aucun transfert enregistré</div>
+          ) : (
+            <div style={tableContainerStyle}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Patient</th>
+                    <th style={thStyle}>Date</th>
+                    <th style={thStyle}>Ancien lit</th>
+                    <th style={thStyle}>Nouveau lit</th>
+                    <th style={thStyle}>Ancien service</th>
+                    <th style={thStyle}>Nouveau service</th>
+                    <th style={thStyle}>Motif</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transferts.map((t, idx) => (
+                    <tr key={t.admission_id || idx} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                      <td style={tdStyle}>{t.patient_nom || 'N/A'}</td>
+                      <td style={tdStyle}>{t.date_transfert ? new Date(t.date_transfert).toLocaleDateString('fr-FR') : 'N/A'}</td>
+                      <td style={tdStyle}>{t.ancien_lit_numero || 'N/A'}</td>
+                      <td style={tdStyle}>{t.nouveau_lit_numero || 'N/A'}</td>
+                      <td style={tdStyle}>{t.ancien_service_nom || 'N/A'}</td>
+                      <td style={tdStyle}>{t.nouveau_service_nom || 'N/A'}</td>
+                      <td style={tdStyle}>{t.motif || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
       <style>{`

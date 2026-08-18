@@ -529,6 +529,30 @@ router.post('/sorties', authenticate, async (req, res) => {
   }
 });
 
+// ---------- LISTE COMPLÈTE DES SORTIES (HISTORIQUE) ----------
+router.get('/sorties', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT 
+        s.id,
+        s.admission_id,
+        s.date_sortie,
+        s.mode_sortie,
+        s.remarques,
+        p.nom || ' ' || p.prenom AS patient_nom,
+        a.patient_id
+      FROM "public"."sorties" s
+      LEFT JOIN "public"."admissions" a ON s.admission_id = a.id
+      LEFT JOIN "public"."patients" p ON a.patient_id = p.id
+      ORDER BY s.date_sortie DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ GET /sorties :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---------- SERVICES & MÉDECINS (public) ----------
 router.get('/services', async (req, res) => {
   try {
@@ -932,6 +956,70 @@ router.delete('/admissions/:id', authenticate, requireAdmin, async (req, res) =>
     console.error('❌ DELETE /admissions/:id :', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ---------- HISTORIQUE COMPLET DES SORTIES ----------
+router.get('/sorties', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT 
+        s.id,
+        s.admission_id,
+        s.date_sortie,
+        s.mode_sortie,
+        s.remarques,
+        p.nom || ' ' || p.prenom AS patient_nom,
+        a.patient_id
+      FROM "public"."sorties" s
+      LEFT JOIN "public"."admissions" a ON s.admission_id = a.id
+      LEFT JOIN "public"."patients" p ON a.patient_id = p.id
+      ORDER BY s.date_sortie DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ GET /sorties :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ---------- HISTORIQUE DES TRANSFERTS ----------
+router.get('/transferts', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT
+        a.id AS admission_id,
+        a.date_admission AS date_transfert,
+        a.motif,
+        a.service_id AS nouveau_service_id,
+        a.source_service_id AS ancien_service_id,
+        a.lit_id AS nouveau_lit_id,
+        (SELECT lit_id FROM admissions WHERE patient_id = a.patient_id AND date_admission < a.date_admission ORDER BY date_admission DESC LIMIT 1) AS ancien_lit_id,
+        p.id AS patient_id,
+        p.nom || ' ' || p.prenom AS patient_nom,
+        s1.nom AS ancien_service_nom,
+        s2.nom AS nouveau_service_nom,
+        l1.numero AS ancien_lit_numero,
+        l2.numero AS nouveau_lit_numero
+      FROM admissions a
+      JOIN patients p ON a.patient_id = p.id
+      LEFT JOIN services s1 ON a.source_service_id = s1.id
+      LEFT JOIN services s2 ON a.service_id = s2.id
+      LEFT JOIN lits l1 ON (SELECT lit_id FROM admissions WHERE patient_id = a.patient_id AND date_admission < a.date_admission ORDER BY date_admission DESC LIMIT 1) = l1.id
+      LEFT JOIN lits l2 ON a.lit_id = l2.id
+      WHERE a.type = 'transfert'
+      ORDER BY a.date_admission DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ GET /transferts :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------- ROUTE DE DÉBOGAGE ----------
+router.get('/test', authenticate, (req, res) => {
+  res.json({ message: 'Route consultations/test fonctionne !', user: req.user });
 });
 
 module.exports = router;

@@ -11,41 +11,29 @@ pool.on('connect', () => console.log('✅ Patients route : connecté à PostgreS
 
 const toNull = (val) => (val === '' || val === undefined || val === null) ? null : val;
 
-// ============================================================
-//  PROTECTION
-// ============================================================
 router.use(authenticate);
 
-// ============================================================
-//  GET / – Liste des patients
-// ============================================================
+// ---------- GET / – Liste des patients avec filtrage ----------
 router.get('/', async (req, res) => {
   try {
-    const { rows } = await pool.query(`
+    const { actif } = req.query;
+    let query = `
       SELECT 
-        id,
-        ipp,
-        nom,
-        prenom,
-        telephone,
-        email,
-        adresse,
-        date_naissance,
-        date_admission,
-        personne_a_prevenir_nom1,
-        personne_a_prevenir_tel1,
-        personne_a_prevenir_adresse1,
-        personne_a_prevenir_nom2,
-        personne_a_prevenir_tel2,
-        personne_a_prevenir_adresse2,
-        antecedents,
-        allergies,
-        traitements,
-        consentements,
-        genre
+        id, ipp, nom, prenom, telephone, email, adresse,
+        date_naissance, date_admission,
+        personne_a_prevenir_nom1, personne_a_prevenir_tel1, personne_a_prevenir_adresse1,
+        personne_a_prevenir_nom2, personne_a_prevenir_tel2, personne_a_prevenir_adresse2,
+        antecedents, allergies, traitements, consentements, genre,
+        actif
       FROM patients
-      ORDER BY nom
-    `);
+    `;
+    const params = [];
+    if (actif !== undefined) {
+      query += ` WHERE actif = $1`;
+      params.push(actif === 'true');
+    }
+    query += ` ORDER BY nom`;
+    const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET patients:', err);
@@ -53,33 +41,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ============================================================
-//  GET /:id – Détail d'un patient
-// ============================================================
+// ---------- GET /:id – Détail d'un patient ----------
 router.get('/:id', async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT 
-        id,
-        ipp,
-        nom,
-        prenom,
-        telephone,
-        email,
-        adresse,
-        date_naissance,
-        date_admission,
-        personne_a_prevenir_nom1,
-        personne_a_prevenir_tel1,
-        personne_a_prevenir_adresse1,
-        personne_a_prevenir_nom2,
-        personne_a_prevenir_tel2,
-        personne_a_prevenir_adresse2,
-        antecedents,
-        allergies,
-        traitements,
-        consentements,
-        genre
+        id, ipp, nom, prenom, telephone, email, adresse,
+        date_naissance, date_admission,
+        personne_a_prevenir_nom1, personne_a_prevenir_tel1, personne_a_prevenir_adresse1,
+        personne_a_prevenir_nom2, personne_a_prevenir_tel2, personne_a_prevenir_adresse2,
+        antecedents, allergies, traitements, consentements, genre,
+        actif
       FROM patients
       WHERE id = $1
     `, [req.params.id]);
@@ -91,9 +63,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// ============================================================
-//  POST / – Créer un patient
-// ============================================================
+// ---------- POST / – Créer un patient ----------
 router.post('/', requirePermission('manage_patients'), async (req, res) => {
   const {
     nom, prenom, date_naissance, telephone, email, adresse, ipp,
@@ -119,8 +89,8 @@ router.post('/', requirePermission('manage_patients'), async (req, res) => {
         personne_a_prevenir_nom1, personne_a_prevenir_tel1, personne_a_prevenir_adresse1,
         personne_a_prevenir_nom2, personne_a_prevenir_tel2, personne_a_prevenir_adresse2,
         antecedents, allergies, traitements, consentements, date_admission,
-        genre, password
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+        genre, password, actif
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,true)
       RETURNING *
     `, [
       nom, prenom, date_naissance, toNull(telephone), toNull(email), toNull(adresse), toNull(ipp),
@@ -129,10 +99,10 @@ router.post('/', requirePermission('manage_patients'), async (req, res) => {
       toNull(antecedents), toNull(allergies), toNull(traitements), consentements === true,
       admissionDate,
       genre || null,
-      ''  // password par défaut
+      '',
     ]);
     const result = rows[0];
-    const response = {
+    res.status(201).json({
       id: result.id,
       ipp: result.ipp,
       nom: result.nom,
@@ -152,18 +122,16 @@ router.post('/', requirePermission('manage_patients'), async (req, res) => {
       allergies: result.allergies,
       traitements: result.traitements,
       consentements: result.consentements,
-      genre: result.genre
-    };
-    res.status(201).json(response);
+      genre: result.genre,
+      actif: result.actif
+    });
   } catch (err) {
     console.error("❌ Erreur POST patient:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ============================================================
-//  PUT /:id – Modifier un patient
-// ============================================================
+// ---------- PUT /:id – Modifier un patient ----------
 router.put('/:id', requirePermission('manage_patients'), async (req, res) => {
   const {
     nom, prenom, date_naissance, telephone, email, adresse, ipp,
@@ -176,25 +144,12 @@ router.put('/:id', requirePermission('manage_patients'), async (req, res) => {
   try {
     const result = await pool.query(`
       UPDATE patients SET
-        nom = $1,
-        prenom = $2,
-        date_naissance = $3,
-        telephone = $4,
-        email = $5,
-        adresse = $6,
-        ipp = $7,
-        personne_a_prevenir_nom1 = $8,
-        personne_a_prevenir_tel1 = $9,
-        personne_a_prevenir_adresse1 = $10,
-        personne_a_prevenir_nom2 = $11,
-        personne_a_prevenir_tel2 = $12,
-        personne_a_prevenir_adresse2 = $13,
-        antecedents = $14,
-        allergies = $15,
-        traitements = $16,
-        consentements = $17,
-        date_admission = $18,
-        genre = $19
+        nom = $1, prenom = $2, date_naissance = $3,
+        telephone = $4, email = $5, adresse = $6, ipp = $7,
+        personne_a_prevenir_nom1 = $8, personne_a_prevenir_tel1 = $9, personne_a_prevenir_adresse1 = $10,
+        personne_a_prevenir_nom2 = $11, personne_a_prevenir_tel2 = $12, personne_a_prevenir_adresse2 = $13,
+        antecedents = $14, allergies = $15, traitements = $16,
+        consentements = $17, date_admission = $18, genre = $19
       WHERE id = $20
     `, [
       nom, prenom, date_naissance, toNull(telephone), toNull(email), toNull(adresse), toNull(ipp),
@@ -213,28 +168,34 @@ router.put('/:id', requirePermission('manage_patients'), async (req, res) => {
   }
 });
 
-// ============================================================
-//  DELETE /:id – Supprimer un patient (admin) – AVEC TRANSACTION ET VÉRIFICATION
-// ============================================================
+// ---------- PUT /:id/toggle-actif – Activer / Désactiver ----------
+router.put('/:id/toggle-actif', requirePermission('manage_patients'), async (req, res) => {
+  const patientId = req.params.id;
+  const { actif } = req.body;
+  try {
+    const result = await pool.query(`
+      UPDATE patients SET actif = $1 WHERE id = $2 RETURNING id, actif
+    `, [actif, patientId]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Patient non trouvé' });
+    res.json({ id: result.rows[0].id, actif: result.rows[0].actif });
+  } catch (err) {
+    console.error('❌ Erreur toggle-actif:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------- DELETE /:id – Suppression physique (admin) ----------
 router.delete('/:id', requireAdmin, async (req, res) => {
   const patientId = req.params.id;
   const client = await pool.connect();
-
   try {
     await client.query('BEGIN');
-
-    // 1. Supprimer les paiements liés aux factures du patient
     await client.query(`
       DELETE FROM paiements
-      WHERE facture_id IN (
-        SELECT id FROM factures WHERE patient_id = $1
-      )
+      WHERE facture_id IN (SELECT id FROM factures WHERE patient_id = $1)
     `, [patientId]);
-
-    // 2. Supprimer les factures du patient
     await client.query('DELETE FROM factures WHERE patient_id = $1', [patientId]);
 
-    // 3. Supprimer les autres dépendances
     const tables = [
       'urgences', 'rendez_vous', 'admissions', 'soins', 'interventions',
       'ordonnances', 'prescriptions', 'sejours', 'sorties', 'examens',
@@ -242,63 +203,50 @@ router.delete('/:id', requireAdmin, async (req, res) => {
     ];
 
     for (const table of tables) {
-      // Vérifier si la colonne patient_id existe dans cette table
-      const checkQuery = `
+      const check = await client.query(`
         SELECT EXISTS (
           SELECT 1 FROM information_schema.columns 
           WHERE table_name = $1 AND column_name = 'patient_id'
         )
-      `;
-      const checkResult = await client.query(checkQuery, [table]);
-      const hasPatientId = checkResult.rows[0].exists;
-      if (hasPatientId) {
+      `, [table]);
+      if (check.rows[0].exists) {
         await client.query(`DELETE FROM ${table} WHERE patient_id = $1`, [patientId]);
-      } else {
-        console.log(`⚠️ Table ${table} n'a pas de colonne patient_id, ignorée`);
       }
     }
 
-    // 4. Supprimer le patient lui-même
     const result = await client.query('DELETE FROM patients WHERE id = $1 RETURNING id', [patientId]);
-
     if (result.rowCount === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Patient non trouvé' });
     }
-
     await client.query('COMMIT');
     res.sendStatus(204);
-
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('❌ Erreur DELETE patient avec transaction :', err);
+    console.error('❌ Erreur DELETE patient:', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
   }
 });
 
-// ============================================================
-//  GET /:id/visits – Historique des visites
-// ============================================================
+// ---------- GET /:id/visits – Historique des visites ----------
 router.get('/:id/visits', async (req, res) => {
   const patientId = req.params.id;
   try {
-    const query = `
+    const { rows } = await pool.query(`
       (SELECT a.date_admission AS date, 'Hospitalisation' AS type, a.motif AS motif, NULL AS medecin
        FROM admissions a WHERE a.patient_id = $1)
       UNION
       (SELECT i.date_prevue AS date, 'Intervention chirurgicale' AS type, NULL AS motif,
               m.nom || ' ' || m.prenom AS medecin
-       FROM interventions i
-       LEFT JOIN medecins m ON i.medecin_id = m.id
+       FROM interventions i LEFT JOIN medecins m ON i.medecin_id = m.id
        WHERE i.patient_id = $1)
       UNION
       (SELECT u.heure_arrivee AS date, 'Urgence' AS type, u.motif, NULL AS medecin
        FROM urgences u WHERE u.patient_id = $1)
       ORDER BY date DESC
-    `;
-    const { rows } = await pool.query(query, [patientId]);
+    `, [patientId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /:id/visits:', err);
