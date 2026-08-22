@@ -196,7 +196,7 @@ const ResultatForm = () => {
     }
   };
 
-  // Impression PDF - avec window.open (contourne le Service Worker)
+  // Impression PDF - URL absolue vers Fly.io (contourne Vercel)
   const handlePrint = () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -204,7 +204,7 @@ const ResultatForm = () => {
       return;
     }
     const encodedToken = encodeURIComponent(token);
-    const url = `/api/examens/${id}/pdf?token=${encodedToken}&_=${Date.now()}`;
+    const url = `https://mce-logiciel-de-gestion-de-l-hopital.fly.dev/api/examens/${id}/pdf?token=${encodedToken}&_=${Date.now()}`;
     window.open(url, '_blank');
   };
 
