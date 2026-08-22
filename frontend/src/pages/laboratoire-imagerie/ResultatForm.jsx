@@ -196,39 +196,16 @@ const ResultatForm = () => {
     }
   };
 
-  // Impression PDF - version corrigée avec fetch et gestion d'erreur
-  const handlePrint = async () => {
+  // Impression PDF - avec window.open (contourne le Service Worker)
+  const handlePrint = () => {
     const token = localStorage.getItem('token');
     if (!token) {
       alert('Vous devez être connecté pour imprimer le PDF.');
       return;
     }
-
-    try {
-      const response = await api.get(`/examens/${id}/pdf`, {
-        responseType: 'blob',
-        headers: { Authorization: `Bearer ${token}` },
-        params: { _t: Date.now() } // anti-cache
-      });
-
-      // Vérifier le type de contenu
-      const contentType = response.headers['content-type'] || '';
-      if (!contentType.includes('application/pdf')) {
-        // Lire le texte d'erreur éventuel
-        const text = await response.data.text();
-        console.error('Réponse non-PDF :', text);
-        alert('Le serveur a renvoyé une erreur. Voir console.');
-        return;
-      }
-
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
-    } catch (error) {
-      console.error('Erreur lors de la génération du PDF :', error);
-      alert('Impossible de générer le PDF. Veuillez réessayer.');
-    }
+    const encodedToken = encodeURIComponent(token);
+    const url = `/api/examens/${id}/pdf?token=${encodedToken}&_=${Date.now()}`;
+    window.open(url, '_blank');
   };
 
   // Vérifier les valeurs critiques (seulement pour les quantitatifs)
