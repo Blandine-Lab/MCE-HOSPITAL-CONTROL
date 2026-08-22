@@ -194,41 +194,10 @@ const ResultatForm = () => {
     }
   };
 
-  // Impression PDF - Récupération avec fetch + blob, ouverture dans une nouvelle fenêtre
-  const handlePrint = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Vous devez être connecté pour imprimer le PDF.');
-      return;
-    }
-
-    try {
-      const url = `https://mce-logiciel-de-gestion-de-l-hopital.fly.dev/api/examens/${id}/pdf?token=${encodeURIComponent(token)}&_=${Date.now()}`;
-      const response = await fetch(url, {
-        // Si votre backend accepte l'en-tête Authorization, utilisez-le à la place du token dans l'URL
-        // headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        alert(`Erreur ${response.status} : ${errorText}`);
-        return;
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/pdf')) {
-        alert('Le serveur n\'a pas renvoyé un PDF valide (Content-Type incorrect).');
-        return;
-      }
-
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank');
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-    } catch (error) {
-      console.error('Erreur de chargement du PDF :', error);
-      alert('Impossible de charger le PDF. Vérifiez votre connexion.');
-    }
+  // Impression : ouverture de la page d'impression HTML (route React)
+  const handlePrint = () => {
+    // On ouvre la page dédiée à l'impression dans un nouvel onglet
+    window.open(`/impression/examen/${id}`, '_blank');
   };
 
   // Vérifier les valeurs critiques (seulement pour les quantitatifs)
@@ -324,7 +293,7 @@ const ResultatForm = () => {
                 fontSize: '20px',
                 cursor: 'pointer'
               }}
-              title="Imprimer PDF"
+              title="Imprimer / Aperçu"
             >
               <FaPrint />
             </button>
