@@ -196,7 +196,7 @@ const ResultatForm = () => {
     }
   };
 
-  // Impression PDF - URL absolue vers Fly.io (contourne Vercel)
+  // Impression PDF - URL absolue vers Fly.io avec redirection directe
   const handlePrint = () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -205,7 +205,7 @@ const ResultatForm = () => {
     }
     const encodedToken = encodeURIComponent(token);
     const url = `https://mce-logiciel-de-gestion-de-l-hopital.fly.dev/api/examens/${id}/pdf?token=${encodedToken}&_=${Date.now()}`;
-    window.open(url, '_blank');
+    window.location.href = url;
   };
 
   // Vérifier les valeurs critiques (seulement pour les quantitatifs)
