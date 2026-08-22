@@ -39,17 +39,28 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 🔥 IGNORER TOUTES LES REQUÊTES API
+// 🔥 Gestion des requêtes avec correction pour les réponses partielles (206)
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  // 1. Ignorer toutes les requêtes API (elles restent gérées par le navigateur)
   if (url.pathname.startsWith('/api/')) {
-    return; // Le navigateur gère directement
+    return;
   }
 
+  // 2. Si la requête contient un en-tête 'Range', ne pas la mettre en cache
+  //    (réponses partielles = status 206, non supporté par Cache API)
+  if (event.request.headers.has('range')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // 3. Stratégie cache-first avec mise à jour en arrière-plan
   event.respondWith(
     caches.match(event.request)
       .then((cached) => {
         if (cached) {
+          // Mise à jour en arrière-plan (seulement si la réponse est OK)
           fetch(event.request).then((response) => {
             if (response && response.status === 200) {
               caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response));
@@ -57,11 +68,19 @@ self.addEventListener('fetch', (event) => {
           }).catch(() => {});
           return cached;
         }
+
+        // Pas de cache : on va chercher sur le réseau
         return fetch(event.request).then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          // On ne met en cache que les réponses avec un statut 200
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
           return response;
-        }).catch(() => new Response('Contenu indisponible hors ligne', { status: 404 }));
+        }).catch(() => {
+          // En cas d'échec réseau, retourner une page d'erreur hors ligne
+          return new Response('Contenu indisponible hors ligne', { status: 404 });
+        });
       })
   );
 });
