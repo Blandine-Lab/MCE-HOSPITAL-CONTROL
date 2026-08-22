@@ -50,25 +50,9 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // ✅ NE PAS INTERCEPTER les requêtes PDF (Network Only)
-  if (url.pathname.startsWith('/api/examens/') && url.pathname.endsWith('/pdf')) {
-    event.respondWith(fetch(request));
-    return;
-  }
-
-  // Ne pas intercepter les requêtes API
+  // ✅ IGNORER toutes les requêtes API (les laisser passer sans interception)
   if (url.pathname.startsWith('/api/')) {
-    // Stratégie : Network First (priorité réseau)
-    event.respondWith(
-      fetch(request)
-        .catch(() => {
-          // En cas d'échec, retourner une erreur
-          return new Response(
-            JSON.stringify({ error: 'Mode hors ligne - API non disponible' }),
-            { status: 503, headers: { 'Content-Type': 'application/json' } }
-          );
-        })
-    );
+    // Ne pas appeler event.respondWith → le navigateur gère directement
     return;
   }
 
@@ -77,7 +61,7 @@ self.addEventListener('fetch', (event) => {
     caches.match(request)
       .then((cachedResponse) => {
         if (cachedResponse) {
-          // Mettre à jour le cache en arrière-plan
+          // Mettre à jour le cache en arrière‑plan
           fetch(request).then((response) => {
             if (response && response.status === 200) {
               caches.open(CACHE_NAME).then((cache) => {
@@ -102,7 +86,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Synchronisation en arrière-plan
+// Synchronisation en arrière‑plan
 self.addEventListener('sync', (event) => {
   console.log('🔄 Service Worker : Sync', event.tag);
   if (event.tag === 'sync-data') {
@@ -114,17 +98,10 @@ self.addEventListener('sync', (event) => {
 async function syncData() {
   console.log('🔄 Début synchronisation...');
   try {
-    // Envoyer un message au client pour lancer la synchronisation
     const clients = await self.clients.matchAll();
     clients.forEach(client => {
-      client.postMessage({
-        type: 'SYNC_START'
-      });
+      client.postMessage({ type: 'SYNC_START' });
     });
-
-    // La synchronisation réelle est gérée par le client (React)
-    // car IndexedDB est plus facilement accessible depuis le main thread
-
     return true;
   } catch (error) {
     console.error('❌ Erreur synchronisation:', error);
