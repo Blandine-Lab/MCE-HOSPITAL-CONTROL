@@ -633,6 +633,23 @@ router.get('/medecins/all', authenticate, async (req, res) => {
   }
 });
 
+// ---------- ROUTE RÉCUPÉRER UN MÉDECIN PAR USER_ID ----------
+router.get('/medecins/by-user/:userId', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, nom, prenom, specialite, email FROM medecins WHERE user_id = $1',
+      [req.params.userId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Médecin non trouvé' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('❌ GET /medecins/by-user/:userId :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/medecins', authenticate, requireRole(['admin']), async (req, res) => {
   const { nom, prenom, specialite, email } = req.body;
   if (!nom || !prenom) return res.status(400).json({ error: 'Nom et prénom requis' });
@@ -982,7 +999,6 @@ router.get('/sorties', authenticate, async (req, res) => {
   }
 });
 
-
 // ---------- HISTORIQUE DES TRANSFERTS ----------
 router.get('/transferts', authenticate, async (req, res) => {
   try {
@@ -1020,6 +1036,123 @@ router.get('/transferts', authenticate, async (req, res) => {
 // ---------- ROUTE DE DÉBOGAGE ----------
 router.get('/test', authenticate, (req, res) => {
   res.json({ message: 'Route consultations/test fonctionne !', user: req.user });
+});
+
+// ---------- COMPTER LES CONSULTATIONS D'UN PATIENT ----------
+router.get('/count/:patientId', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT COUNT(*) AS total FROM consultations WHERE patient_id = $1',
+      [req.params.patientId]
+    );
+    res.json(parseInt(rows[0]?.total || 0));
+  } catch (err) {
+    console.error('❌ GET /count/:patientId :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------- CONSULTATIONS (POST - Créer ou mettre à jour) ----------
+router.post('/', authenticate, requireRole(['medecin', 'admin']), async (req, res) => {
+  const {
+    patient_id,
+    medecin_id,
+    numero_dossier,
+    plainte_principale,
+    historique,
+    antecedents,
+    complement_anamnese,
+    examen_physique,
+    ccl,
+    bilan,
+    cat,
+    medecin_consultant
+  } = req.body;
+
+  if (!patient_id) {
+    return res.status(400).json({ error: 'patient_id est requis' });
+  }
+
+  try {
+    // Vérifier si une consultation existe déjà pour ce patient
+    const existing = await pool.query(
+      'SELECT id FROM consultations WHERE patient_id = $1 ORDER BY date DESC LIMIT 1',
+      [patient_id]
+    );
+
+    let result;
+    if (existing.rows.length > 0) {
+      // Mise à jour de la consultation existante
+      const { rows } = await pool.query(`
+        UPDATE consultations SET
+          medecin_id = COALESCE($1, medecin_id),
+          numero_dossier = COALESCE($2, numero_dossier),
+          plainte_principale = COALESCE($3, plainte_principale),
+          historique = COALESCE($4, historique),
+          antecedents = COALESCE($5, antecedents),
+          complement_anamnese = COALESCE($6, complement_anamnese),
+          examen_physique = COALESCE($7, examen_physique),
+          ccl = COALESCE($8, ccl),
+          bilan = COALESCE($9, bilan),
+          cat = COALESCE($10, cat),
+          medecin_consultant = COALESCE($11, medecin_consultant),
+          updated_at = NOW()
+        WHERE id = $12
+        RETURNING *
+      `, [
+        medecin_id || null,
+        numero_dossier || null,
+        plainte_principale || null,
+        historique || null,
+        antecedents || null,
+        complement_anamnese || null,
+        examen_physique || null,
+        ccl || null,
+        bilan || null,
+        cat || null,
+        medecin_consultant || null,
+        existing.rows[0].id
+      ]);
+      result = rows[0];
+    } else {
+      // Nouvelle consultation
+      const { rows } = await pool.query(`
+        INSERT INTO consultations (
+          patient_id,
+          medecin_id,
+          numero_dossier,
+          plainte_principale,
+          historique,
+          antecedents,
+          complement_anamnese,
+          examen_physique,
+          ccl,
+          bilan,
+          cat,
+          medecin_consultant
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING *
+      `, [
+        patient_id,
+        medecin_id || null,
+        numero_dossier || null,
+        plainte_principale || null,
+        historique || null,
+        antecedents || null,
+        complement_anamnese || null,
+        examen_physique || null,
+        ccl || null,
+        bilan || null,
+        cat || null,
+        medecin_consultant || null
+      ]);
+      result = rows[0];
+    }
+    res.status(201).json(result);
+  } catch (err) {
+    console.error('❌ POST /consultations :', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

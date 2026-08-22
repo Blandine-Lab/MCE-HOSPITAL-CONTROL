@@ -58,7 +58,6 @@ import PrescriptionCreation from './pages/consultations/PrescriptionCreation';
 import DoctorPrescriptionList from './pages/consultations/DoctorPrescriptionList';
 import PharmacistPrescriptionList from './pages/consultations/PharmacistPrescriptionList';
 import PrescriptionDetail from './pages/consultations/PrescriptionDetail';
-// ✅ NOUVEL IMPORT POUR L'IMPRESSION
 import PrescriptionPrint from './pages/consultations/PrescriptionPrint';
 
 // ========== IMPORTS DME ==========
@@ -70,6 +69,8 @@ import MedicalAdmissionForm from './pages/medical/AdmissionForm';
 import MedicalBedManagement from './pages/medical/BedManagement';
 import AdmissionDetail from './pages/medical/AdmissionDetail';
 import AdmissionEdit from './pages/medical/AdmissionEdit';
+// 👇 NOUVEL IMPORT POUR LE DÉTAIL DE CONSULTATION
+import ConsultationDetail from './pages/medical/ConsultationDetail';
 
 // ========== IMPORTS MODULE PARAMÉDICAL & SOINS ==========
 import ParamedicalModule from './pages/paramedical/ParamedicalModule';
@@ -105,9 +106,7 @@ import CongeForm from './pages/rh-planning/CongeForm';
 import AbsencesList from './pages/rh-planning/AbsencesList';
 import AbsenceForm from './pages/rh-planning/AbsenceForm';
 import StatsRH from './pages/rh-planning/StatsRH';
-// NOUVEAU : Demandes de congé & formation
 import DemandesConge from './pages/rh-planning/DemandesConge';
-// Contrats
 import ContratsList from './pages/rh-planning/ContratsList';
 import ContratForm from './pages/rh-planning/ContratForm';
 import ContratDetail from './pages/rh-planning/ContratDetail';
@@ -130,7 +129,7 @@ import PaiementsList from './pages/finances/PaiementsList';
 import PaiementForm from './pages/finances/PaiementForm';
 import RapportsFinanciers from './pages/finances/RapportsFinanciers';
 
-// ========== IMPORTS MODULE STOCK & APPROVISIONNEMENT (AVEC ALIAS) ==========
+// ========== IMPORTS MODULE STOCK & APPROVISIONNEMENT ==========
 import StockModule from './pages/stock/StockModule';
 import DashboardStock from './pages/stock/DashboardStock';
 import ProduitsList from './pages/stock/ProduitsList';
@@ -683,7 +682,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                       </ProtectedRoute>
                     }
                   />
-                  {/* ✅ AJOUT DE LA ROUTE MANQUANTE POUR /prescriptions/new (avec S) */}
                   <Route
                     path="/prescriptions/new"
                     element={
@@ -821,9 +819,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="suivi/:patientId" element={<PatientSuivi />} />
                   </Route>
 
-                  {/* ============================================================ */}
-                  {/* MODULE LABORATOIRE & IMAGERIE - ROUTES COMPLÈTES             */}
-                  {/* ============================================================ */}
+                  {/* MODULE LABORATOIRE & IMAGERIE */}
                   <Route
                     path="/laboratoire"
                     element={
@@ -847,9 +843,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </Route>
                   <Route path="/laboratory" element={<Navigate to="/laboratoire" replace />} />
 
-                  {/* ============================================================ */}
-                  {/* MODULE RH (RESSOURCES HUMAINES & PLANNING) - ROUTES COMPLÈTES */}
-                  {/* ============================================================ */}
+                  {/* MODULE RH (RESSOURCES HUMAINES & PLANNING) */}
                   <Route
                     path="/rh"
                     element={
@@ -878,22 +872,20 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="absences" element={<AbsencesList />} />
                     <Route path="absences/nouveau" element={<AbsenceForm />} />
                     <Route path="absences/:id" element={<AbsenceForm />} />
-                    {/* Routes pour les contrats */}
                     <Route path="contrats" element={<ContratsList />} />
                     <Route path="contrats/nouveau" element={<ContratForm />} />
                     <Route path="contrats/:id" element={<ContratDetail />} />
                     <Route path="contrats/edit/:id" element={<ContratForm />} />
                     <Route path="contrats/print/:id" element={<ContratPrint />} />
                     <Route path="contrats/generer" element={<GenerationContrat />} />
-                    {/* La route demandes-conge a été déplacée hors du module RH */}
                     <Route path="stats" element={<StatsRH />} />
                   </Route>
                   <Route path="/hr" element={<Navigate to="/rh" replace />} />
 
-                  {/* ===== NOUVELLE ROUTE INDÉPENDANTE POUR LES DEMANDES ===== */}
+                  {/* Demandes de congé */}
                   <Route path="/demandes-conge" element={<DemandesConge />} />
 
-                  {/* MODULE FINANCES (comptabilité) */}
+                  {/* MODULE FINANCES */}
                   <Route
                     path="/finance"
                     element={
@@ -919,7 +911,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="budgets/:id/edit" element={<BudgetForm />} />
                     <Route path="paiements" element={<PaiementsList />} />
                     <Route path="paiements/nouveau" element={<PaiementForm />} />
-                    {/* ✅ AJOUT DE LA ROUTE MANQUANTE POUR /finance/paiements/:id */}
                     <Route path="paiements/:id" element={<Navigate to="/finance/paiements" replace />} />
                     <Route path="rapports" element={<RapportsFinanciers />} />
                   </Route>
@@ -1047,7 +1038,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </Route>
                   <Route path="/interop" element={<Navigate to="/interoperabilite" replace />} />
 
-                  {/* ========== MODULE BLOC OPÉRATOIRE ========== */}
+                  {/* MODULE BLOC OPÉRATOIRE */}
                   <Route
                     path="/bloc"
                     element={
@@ -1065,6 +1056,18 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="salles" element={<SallesList />} />
                     <Route path="stats" element={<BlocStats />} />
                   </Route>
+
+                  {/* 👇 NOUVELLE ROUTE POUR LE DÉTAIL D'UNE CONSULTATION */}
+                  <Route
+                    path="/consultation/:id"
+                    element={
+                      <ProtectedRoute>
+                        <PermissionRoute permission="view_consultations">
+                          <ConsultationDetail />
+                        </PermissionRoute>
+                      </ProtectedRoute>
+                    }
+                  />
 
                 </Route> {/* fin du Layout */}
 

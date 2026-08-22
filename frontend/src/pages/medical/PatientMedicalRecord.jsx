@@ -1,13 +1,14 @@
 // src/pages/medical/PatientMedicalRecord.jsx
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../axios';
 import { 
   FaArrowLeft, FaUser, FaCalendar, FaPhone, FaFileMedical, 
   FaPrescription, FaStethoscope, FaFlask, FaFileInvoice,
   FaHospital, FaClipboardList, FaExclamationTriangle,
-  FaInfoCircle, FaHistory, FaPills
+  FaInfoCircle, FaHistory, FaPills, FaEdit, FaChevronDown, FaChevronUp
 } from 'react-icons/fa';
+import ConsultationForm from './ConsultationForm';
 
 const PatientMedicalRecord = () => {
   const { id } = useParams();
@@ -15,24 +16,42 @@ const PatientMedicalRecord = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('info');
+  const [medecinId, setMedecinId] = useState(null);
 
-  // Données cliniques
   const [consultations, setConsultations] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
   const [examens, setExamens] = useState([]);
   const [ordonnances, setOrdonnances] = useState([]);
   const [admissions, setAdmissions] = useState([]);
-  const [loadingData, setLoadingData] = useState({});
+  const [expandedConsultation, setExpandedConsultation] = useState(null);
+
+  // Récupérer l'ID du médecin connecté (optionnel)
+  useEffect(() => {
+    const fetchMedecinId = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const userId = payload.id;
+          const res = await api.get(`/medecins/by-user/${userId}`);
+          if (res.data && res.data.id) {
+            setMedecinId(res.data.id);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Impossible de récupérer l\'ID du médecin connecté', err);
+      }
+    };
+    fetchMedecinId();
+  }, []);
 
   useEffect(() => {
     const fetchPatientData = async () => {
       try {
         setLoading(true);
-        // Patient
         const patientRes = await api.get(`/patients/${id}`);
         setPatient(patientRes.data);
 
-        // Charger les données associées
         await Promise.all([
           fetchConsultations(id),
           fetchPrescriptions(id),
@@ -64,7 +83,6 @@ const PatientMedicalRecord = () => {
 
   const fetchPrescriptions = async (patientId) => {
     try {
-      // Correction : ajout du préfixe /consultations/
       const res = await api.get(`/consultations/prescriptions/patient/${patientId}`);
       setPrescriptions(res.data || []);
     } catch (err) {
@@ -85,7 +103,6 @@ const PatientMedicalRecord = () => {
 
   const fetchOrdonnances = async (patientId) => {
     try {
-      // Correction : ajout du préfixe /consultations/
       const res = await api.get(`/consultations/ordonnances/patient/${patientId}`);
       setOrdonnances(res.data || []);
     } catch (err) {
@@ -102,6 +119,10 @@ const PatientMedicalRecord = () => {
       console.warn('⚠️ Erreur admissions :', err.message);
       setAdmissions([]);
     }
+  };
+
+  const toggleConsultationDetails = (consultationId) => {
+    setExpandedConsultation(expandedConsultation === consultationId ? null : consultationId);
   };
 
   const getStatusBadge = (statut) => {
@@ -174,7 +195,6 @@ const PatientMedicalRecord = () => {
     );
   }
 
-  // Calcul des totaux pour les onglets
   const counts = {
     consultations: consultations.filter(c => c.statut !== 'annulé').length,
     prescriptions: prescriptions.length,
@@ -185,7 +205,6 @@ const PatientMedicalRecord = () => {
 
   return (
     <div>
-      {/* En-tête avec retour */}
       <div style={{ marginBottom: '24px' }}>
         <Link 
           to="/medical/patients" 
@@ -202,7 +221,6 @@ const PatientMedicalRecord = () => {
         </Link>
       </div>
 
-      {/* Carte patient */}
       <div style={{ 
         backgroundColor: 'white', 
         borderRadius: '12px', 
@@ -270,7 +288,6 @@ const PatientMedicalRecord = () => {
         )}
       </div>
 
-      {/* Onglets */}
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -287,9 +304,9 @@ const PatientMedicalRecord = () => {
         <TabButton tab="examens" label="Examens" icon={FaFlask} count={counts.examens} />
         <TabButton tab="ordonnances" label="Ordonnances" icon={FaFileInvoice} count={counts.ordonnances} />
         <TabButton tab="admissions" label="Hospitalisations" icon={FaHospital} count={counts.admissions} />
+        <TabButton tab="consultationForm" label="Fiche consultation" icon={FaEdit} />
       </div>
 
-      {/* Contenu des onglets */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '0 0 12px 12px',
@@ -297,7 +314,6 @@ const PatientMedicalRecord = () => {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         minHeight: '200px',
       }}>
-        {/* Onglet Informations */}
         {activeTab === 'info' && (
           <div>
             <h3 style={{ marginTop: 0, color: '#0f172a' }}>Informations générales</h3>
@@ -343,7 +359,6 @@ const PatientMedicalRecord = () => {
           </div>
         )}
 
-        {/* Onglet Consultations */}
         {activeTab === 'consultations' && (
           <div>
             <h3 style={{ marginTop: 0, color: '#0f172a' }}>Historique des consultations</h3>
@@ -358,20 +373,82 @@ const PatientMedicalRecord = () => {
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Médecin</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Motif</th>
                       <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e2e8f0' }}>Statut</th>
+                      <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e2e8f0' }}>Détails</th>
                     </tr>
                   </thead>
                   <tbody>
                     {consultations.map((c, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '10px' }}>{new Date(c.date || c.date_rdv).toLocaleDateString('fr-FR')}</td>
-                        <td style={{ padding: '10px' }}>{c.medecin_nom || c.medecin || '-'}</td>
-                        <td style={{ padding: '10px' }}>{c.motif || c.raison || '-'}</td>
-                        <td style={{ padding: '10px', textAlign: 'center' }}>
-                          <span style={getStatusBadge(c.statut || c.status || 'planifié')}>
-                            {c.statut || c.status || 'Planifié'}
-                          </span>
-                        </td>
-                      </tr>
+                      <React.Fragment key={idx}>
+                        <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '10px' }}>{new Date(c.date || c.date_rdv).toLocaleDateString('fr-FR')}</td>
+                          <td style={{ padding: '10px' }}>{c.medecin_nom || c.medecin || '-'}</td>
+                          <td style={{ padding: '10px' }}>{c.motif || c.raison || '-'}</td>
+                          <td style={{ padding: '10px', textAlign: 'center' }}>
+                            <span style={getStatusBadge(c.statut || c.status || 'planifié')}>
+                              {c.statut || c.status || 'Planifié'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px', textAlign: 'center' }}>
+                            <button
+                              onClick={() => toggleConsultationDetails(c.id)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#3b82f6',
+                                fontSize: '14px'
+                              }}
+                            >
+                              {expandedConsultation === c.id ? <FaChevronUp /> : <FaChevronDown />}
+                              {expandedConsultation === c.id ? ' Masquer' : ' Voir détails'}
+                            </button>
+                          </td>
+                        </tr>
+                        {expandedConsultation === c.id && (
+                          <tr>
+                            <td colSpan="5" style={{ padding: '16px', backgroundColor: '#f9fafb' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div>
+                                  <strong>Plainte principale :</strong>
+                                  <p style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>{c.plainte_principale || 'Non renseigné'}</p>
+                                </div>
+                                <div>
+                                  <strong>Historique :</strong>
+                                  <p style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>{c.historique || 'Non renseigné'}</p>
+                                </div>
+                                <div>
+                                  <strong>Antécédents :</strong>
+                                  <p style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>{c.antecedents || 'Non renseigné'}</p>
+                                </div>
+                                <div>
+                                  <strong>Complément d'anamnèse :</strong>
+                                  <p style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>{c.complement_anamnese || 'Non renseigné'}</p>
+                                </div>
+                                <div>
+                                  <strong>Examen physique :</strong>
+                                  <p style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>{c.examen_physique || 'Non renseigné'}</p>
+                                </div>
+                                <div>
+                                  <strong>Conclusion (CCL) :</strong>
+                                  <p style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>{c.ccl || 'Non renseigné'}</p>
+                                </div>
+                                <div>
+                                  <strong>Bilan :</strong>
+                                  <p style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>{c.bilan || 'Non renseigné'}</p>
+                                </div>
+                                <div>
+                                  <strong>Conduite à tenir (CAT) :</strong>
+                                  <p style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>{c.cat || 'Non renseigné'}</p>
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <strong>Médecin consultant :</strong>
+                                  <p style={{ margin: '4px 0' }}>{c.medecin_consultant || c.medecin_nom || 'Non renseigné'}</p>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -380,7 +457,6 @@ const PatientMedicalRecord = () => {
           </div>
         )}
 
-        {/* Onglet Prescriptions */}
         {activeTab === 'prescriptions' && (
           <div>
             <h3 style={{ marginTop: 0, color: '#0f172a' }}>Prescriptions</h3>
@@ -425,7 +501,6 @@ const PatientMedicalRecord = () => {
           </div>
         )}
 
-        {/* Onglet Examens */}
         {activeTab === 'examens' && (
           <div>
             <h3 style={{ marginTop: 0, color: '#0f172a' }}>Examens & résultats</h3>
@@ -466,7 +541,6 @@ const PatientMedicalRecord = () => {
           </div>
         )}
 
-        {/* Onglet Ordonnances */}
         {activeTab === 'ordonnances' && (
           <div>
             <h3 style={{ marginTop: 0, color: '#0f172a' }}>Ordonnances</h3>
@@ -505,7 +579,6 @@ const PatientMedicalRecord = () => {
           </div>
         )}
 
-        {/* Onglet Hospitalisations */}
         {activeTab === 'admissions' && (
           <div>
             <h3 style={{ marginTop: 0, color: '#0f172a' }}>Historique des hospitalisations</h3>
@@ -535,9 +608,21 @@ const PatientMedicalRecord = () => {
             )}
           </div>
         )}
+
+        {activeTab === 'consultationForm' && (
+          <div>
+            <h3 style={{ marginTop: 0, color: '#0f172a' }}>📄 Fiche de consultation</h3>
+            <ConsultationForm 
+              patientId={patient.id} 
+              medecinId={null} 
+              onSave={() => {
+                fetchConsultations(patient.id);
+              }}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Actions rapides */}
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '24px' }}>
         <Link 
           to={`/admission?patient=${patient.id}`}
@@ -572,7 +657,7 @@ const PatientMedicalRecord = () => {
           <FaPrescription /> Prescrire
         </Link>
         <Link 
-          to={`/rendezvous/new?patient=${patient.id}`}
+          to={`/consultations`}
           style={{
             backgroundColor: '#10b981',
             color: 'white',
@@ -585,7 +670,7 @@ const PatientMedicalRecord = () => {
             gap: '6px'
           }}
         >
-          <FaStethoscope /> Nouvelle consultation
+          <FaStethoscope /> Consultations
         </Link>
         <Link 
           to={`/examen/new?patient=${patient.id}`}
