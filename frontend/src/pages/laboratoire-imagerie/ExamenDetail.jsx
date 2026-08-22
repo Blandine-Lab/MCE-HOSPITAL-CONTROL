@@ -39,8 +39,8 @@ const ExamenDetail = () => {
 
   const permissions = user?.permissions || [];
   const canManage = permissions.includes('manage_laboratory') || user?.role === 'laborantin';
-  // ✅ Permettre à l'administrateur de valider également
   const canValidate = permissions.includes('validate_laboratory') || user?.role === 'biologiste' || user?.role === 'admin';
+  const canEdit = user?.role === 'laborantin' || user?.role === 'biologiste' || user?.role === 'admin';
 
   // Chargement des données
   useEffect(() => {
@@ -236,6 +236,8 @@ const ExamenDetail = () => {
     );
   }
 
+  const hasResults = examen.parametres && examen.parametres.length > 0;
+
   return (
     <div>
       {/* Navigation */}
@@ -250,7 +252,90 @@ const ExamenDetail = () => {
         }}>
           <FaArrowLeft /> Retour à la liste
         </Link>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Bouton Modifier (informations générales) */}
+          {canEdit && (
+            <Link
+              to={`/laboratoire/examen/edit/${examen.id}`}
+              style={{
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              <FaEdit /> Modifier
+            </Link>
+          )}
+
+          {/* Bouton Saisir résultats (pour les examens sans résultats ou en attente) */}
+          {(examen.statut === 'en_attente' || examen.statut === 'en_cours') && canManage && (
+            <Link
+              to={`/laboratoire/resultats/${examen.id}`}
+              style={{
+                backgroundColor: '#8b5cf6',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: '500'
+              }}
+            >
+              <FaEdit /> Saisir résultats
+            </Link>
+          )}
+
+          {/* Bouton Modifier les résultats (si des résultats existent déjà) */}
+          {hasResults && canEdit && (
+            <Link
+              to={`/laboratoire/resultats/${examen.id}`}
+              style={{
+                backgroundColor: '#8b5cf6',
+                color: 'white',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              <FaEdit /> Modifier les résultats
+            </Link>
+          )}
+
+          {/* Bouton Valider (pour biologiste/admin) */}
+          {examen.statut === 'realise' && canValidate && !examen.date_validation && (
+            <Link
+              to={`/laboratoire/validation/${examen.id}`}
+              style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: '500'
+              }}
+            >
+              <FaClipboardCheck /> Valider
+            </Link>
+          )}
+
+          {/* Imprimer */}
           <button
             onClick={handleImprimer}
             style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '18px', cursor: 'pointer', padding: '8px' }}
@@ -258,6 +343,8 @@ const ExamenDetail = () => {
           >
             <FaPrint />
           </button>
+
+          {/* Historique */}
           <button
             onClick={handleLoadHistorique}
             style={{ background: 'none', border: 'none', color: '#8b5cf6', fontSize: '18px', cursor: 'pointer', padding: '8px' }}
@@ -265,6 +352,8 @@ const ExamenDetail = () => {
           >
             <FaHistory />
           </button>
+
+          {/* Annuler (soft delete) */}
           {examen.statut !== 'annule' && canManage && (
             <button
               onClick={handleAnnuler}
@@ -310,42 +399,6 @@ const ExamenDetail = () => {
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             {getStatusBadge(examen.statut)}
-            {(examen.statut === 'en_attente' || examen.statut === 'en_cours') && canManage && (
-              <Link
-                to={`/laboratoire/resultats/${examen.id}`}
-                style={{
-                  backgroundColor: '#8b5cf6',
-                  color: 'white',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontWeight: '500'
-                }}
-              >
-                <FaEdit /> Saisir résultats
-              </Link>
-            )}
-            {examen.statut === 'realise' && canValidate && !examen.date_validation && (
-              <Link
-                to={`/laboratoire/validation/${examen.id}`}
-                style={{
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontWeight: '500'
-                }}
-              >
-                <FaClipboardCheck /> Valider
-              </Link>
-            )}
           </div>
         </div>
 
@@ -365,7 +418,6 @@ const ExamenDetail = () => {
           {examen.instructions_preparation && (
             <InfoBlock icon={<FaFileMedical />} label="Instructions" value={examen.instructions_preparation} />
           )}
-          {/* Affichage du technicien et de la date de saisie */}
           {examen.technicien_nom && (
             <InfoBlock icon={<FaUserMd />} label="Saisi par" value={`${examen.technicien_prenom || ''} ${examen.technicien_nom}`} />
           )}
@@ -388,8 +440,8 @@ const ExamenDetail = () => {
         )}
       </div>
 
-      {/* Résultats (s'il y en a) */}
-      {examen.parametres && examen.parametres.length > 0 && (
+      {/* Résultats */}
+      {hasResults && (
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
@@ -417,9 +469,9 @@ const ExamenDetail = () => {
                 return (
                   <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '8px', fontWeight: '500' }}>{p.parametre_nom || p.nom}</td>
-                    <td style={{ padding: '8px' }}>{p.valeur}</td>
-                    <td style={{ padding: '8px' }}>{p.unite}</td>
-                    <td style={{ padding: '8px' }}>{p.ref_min} - {p.ref_max}</td>
+                    <td style={{ padding: '8px' }}>{p.valeur_qualitative || p.valeur || '-'}</td>
+                    <td style={{ padding: '8px' }}>{p.unite || '-'}</td>
+                    <td style={{ padding: '8px' }}>{p.ref_min || '-'} - {p.ref_max || '-'}</td>
                     <td style={{ padding: '8px' }}>
                       {p.interpretation && (
                         <span style={{

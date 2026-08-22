@@ -434,7 +434,17 @@ const ExamensList = ({ initialFilter = {} }) => {
                       >
                         <FaEye />
                       </Link>
-                      {/* Icône Saisir résultats (crayon) – visible pour en_attente ou en_cours */}
+                      {/* 🔧 Modification de l'examen (ajouté) */}
+                      {canManage && e.statut !== 'annule' && (
+                        <Link
+                          to={`/laboratoire/examen/edit/${e.id}`}
+                          style={{ color: '#f59e0b', textDecoration: 'none' }}
+                          title="Modifier l'examen"
+                        >
+                          <FaEdit />
+                        </Link>
+                      )}
+                      {/* Saisir résultats (crayon) – visible pour en_attente ou en_cours */}
                       {canManage && (e.statut === 'en_attente' || e.statut === 'en_cours') && (
                         <Link
                           to={`/laboratoire/resultats/${e.id}`}
@@ -444,7 +454,7 @@ const ExamensList = ({ initialFilter = {} }) => {
                           <FaEdit />
                         </Link>
                       )}
-                      {/* Bouton Valider – visible pour biologiste/admin et statut realise */}
+                      {/* Valider – visible pour biologiste/admin et statut realise */}
                       {canValidate && e.statut === 'realise' && (
                         <Link
                           to={`/laboratoire/validation/${e.id}`}
