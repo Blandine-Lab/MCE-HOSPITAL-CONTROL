@@ -23,72 +23,85 @@ const ResultatForm = () => {
   const [parametres, setParametres] = useState([]);
   const [commentaireGlobal, setCommentaireGlobal] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingResultats, setLoadingResultats] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [existingParametres, setExistingParametres] = useState([]);
 
   const permissions = user?.permissions || [];
   const isBiologiste = permissions.includes('validate_laboratory') || user?.role === 'biologiste' || user?.role === 'admin';
 
-  // Chargement des données
+  // 1. Charger l'examen
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchExamen = async () => {
       setLoading(true);
       setError('');
       try {
-        // 1. Récupérer l'examen (avec les paramètres initiaux ou les résultats déjà saisis)
-        const examenRes = await api.get(`/examens/${id}`);
-        const examenData = examenRes.data;
-        setExamen(examenData);
-
-        // 2. Récupérer les paramètres
-        let params = [];
-
-        // Si l'examen a déjà des paramètres structurés (array non vide) – cela peut venir soit des paramètres initiaux du médecin, soit des résultats saisis
-        if (examenData.parametres && Array.isArray(examenData.parametres) && examenData.parametres.length > 0) {
-          params = examenData.parametres;
-        } else if (examenData.type_examen_id) {
-          // Sinon, charger depuis le type d'examen (paramètres par défaut)
-          try {
-            const typeRes = await api.get(`/types-examens/${examenData.type_examen_id}`);
-            const defauts = typeRes.data.parametres_defaut;
-            if (defauts && Array.isArray(defauts) && defauts.length > 0) {
-              params = defauts.map(p => ({
-                ...p,
-                valeur: '',
-                commentaire: '',
-                interpretation: ''
-              }));
-            } else {
-              console.warn('Le type d\'examen n\'a pas de paramètres définis.');
-            }
-          } catch (typeErr) {
-            console.warn('Impossible de charger les paramètres du type d\'examen', typeErr);
-          }
-        } else {
-          console.warn('Aucun type_examen_id défini pour cet examen.');
-        }
-
-        setParametres(params);
-        setCommentaireGlobal(examenData.commentaire_global || '');
-
+        const res = await api.get(`/examens/${id}`);
+        setExamen(res.data);
+        setCommentaireGlobal(res.data.commentaire_global || '');
       } catch (err) {
-        console.error('Erreur chargement données :', err);
-        setError('Erreur de chargement des données');
+        console.error('Erreur chargement examen :', err);
+        setError('Erreur de chargement de l\'examen');
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchExamen();
   }, [id]);
+
+  // 2. Charger les paramètres (existants ou par défaut)
+  useEffect(() => {
+    if (!examen) return;
+
+    const loadParametres = async () => {
+      setLoadingResultats(true);
+      try {
+        if (examen.parametres && Array.isArray(examen.parametres) && examen.parametres.length > 0) {
+          setExistingParametres(examen.parametres);
+          setParametres(examen.parametres);
+        } else if (examen.type_examen_id) {
+          const typeRes = await api.get(`/types-examens/${examen.type_examen_id}`);
+          const defauts = typeRes.data.parametres_defaut;
+          if (defauts && Array.isArray(defauts) && defauts.length > 0) {
+            const paramsParDefaut = defauts.map(p => ({
+              ...p,
+              valeur: '',
+              commentaire: '',
+              interpretation: '',
+              // S'assurer que le type est présent (par défaut quantitatif)
+              type_parametre: p.type_parametre || 'quantitatif'
+            }));
+            setParametres(paramsParDefaut);
+            setExistingParametres([]);
+          } else {
+            console.warn('Le type d\'examen n\'a pas de paramètres définis.');
+            setParametres([]);
+          }
+        } else {
+          console.warn('Aucun type_examen_id défini pour cet examen.');
+          setParametres([]);
+        }
+      } catch (err) {
+        console.error('Erreur chargement paramètres :', err);
+        setError('Erreur lors du chargement des paramètres');
+      } finally {
+        setLoadingResultats(false);
+      }
+    };
+
+    loadParametres();
+  }, [examen]);
 
   // Gestion des changements de valeur
   const handleParamChange = (index, field, value) => {
     const newParams = [...parametres];
     newParams[index][field] = value;
 
-    // Auto-interprétation si valeur, ref_min et ref_max sont définis
-    if (field === 'valeur' && newParams[index].ref_min && newParams[index].ref_max) {
+    // Auto-interprétation uniquement pour les quantitatifs
+    const isQuantitatif = newParams[index].type_parametre === 'quantitatif';
+    if (field === 'valeur' && isQuantitatif && newParams[index].ref_min && newParams[index].ref_max) {
       const val = parseFloat(value);
       const min = parseFloat(newParams[index].ref_min);
       const max = parseFloat(newParams[index].ref_max);
@@ -99,6 +112,9 @@ const ResultatForm = () => {
       } else {
         newParams[index].interpretation = '';
       }
+    } else if (field === 'valeur' && !isQuantitatif) {
+      // Pour les qualitatifs, on efface l'interprétation automatique
+      newParams[index].interpretation = '';
     }
     setParametres(newParams);
   };
@@ -144,7 +160,7 @@ const ResultatForm = () => {
     try {
       const response = await api.put(`/examens/${id}/resultats`, {
         parametres,
-        statut: 'realise', // Utiliser 'realise' directement pour correspondre à la base
+        statut: 'realise',
         commentaire_global: commentaireGlobal
       });
       console.log('✅ [handleFinalize] Réponse serveur:', response);
@@ -183,7 +199,7 @@ const ResultatForm = () => {
     }
   };
 
-  // Impression PDF avec token encodé dans l'URL
+  // Impression PDF
   const handlePrint = () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -194,9 +210,10 @@ const ResultatForm = () => {
     window.open(`/api/examens/${id}/pdf?token=${encodedToken}`, '_blank');
   };
 
-  // Vérifier s'il y a des valeurs critiques
+  // Vérifier les valeurs critiques (seulement pour les quantitatifs)
   const hasCritical = useMemo(() => {
     return parametres.some(p => {
+      if (p.type_parametre !== 'quantitatif') return false;
       const val = parseFloat(p.valeur);
       const min = parseFloat(p.ref_min);
       const max = parseFloat(p.ref_max);
@@ -207,7 +224,7 @@ const ResultatForm = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>⏳ Chargement...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement de l'examen...</div>
       </div>
     );
   }
@@ -223,7 +240,14 @@ const ResultatForm = () => {
     );
   }
 
-  // ✅ Correction des conditions d'état
+  if (loadingResultats) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement des paramètres...</div>
+      </div>
+    );
+  }
+
   const isSaisieTerminee = examen?.statut === 'realise' || examen?.statut === 'validé' || examen?.statut === 'terminé';
   const isValide = examen?.statut === 'realise' && examen?.date_validation;
 
@@ -339,35 +363,56 @@ const ResultatForm = () => {
               </thead>
               <tbody>
                 {parametres.map((p, idx) => {
+                  const isQuantitatif = p.type_parametre === 'quantitatif';
                   const val = parseFloat(p.valeur);
                   const min = parseFloat(p.ref_min);
                   const max = parseFloat(p.ref_max);
                   const isNormal = p.interpretation === 'normal';
                   const isAbnormal = p.interpretation === 'haut' || p.interpretation === 'bas';
-                  const isCritical = !isNaN(val) && !isNaN(min) && !isNaN(max) && (val < min * 0.5 || val > max * 1.5);
+                  const isCritical = isQuantitatif && !isNaN(val) && !isNaN(min) && !isNaN(max) && (val < min * 0.5 || val > max * 1.5);
+
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
                       <td style={{ padding: '8px', fontWeight: '500' }}>{p.nom || p.parametre_nom}</td>
                       <td style={{ padding: '8px' }}>
-                        <input
-                          type="number"
-                          step="any"
-                          value={p.valeur || ''}
-                          onChange={(e) => handleParamChange(idx, 'valeur', e.target.value)}
-                          disabled={isSaisieTerminee}
-                          style={{
-                            width: '100px',
-                            padding: '6px',
-                            border: `2px solid ${isCritical ? '#dc2626' : isAbnormal ? '#f59e0b' : isNormal ? '#10b981' : '#e2e8f0'}`,
-                            borderRadius: '4px',
-                            fontSize: '14px'
-                          }}
-                        />
+                        {isQuantitatif ? (
+                          <input
+                            type="number"
+                            step="any"
+                            value={p.valeur || ''}
+                            onChange={(e) => handleParamChange(idx, 'valeur', e.target.value)}
+                            disabled={isSaisieTerminee}
+                            style={{
+                              width: '100px',
+                              padding: '6px',
+                              border: `2px solid ${isCritical ? '#dc2626' : isAbnormal ? '#f59e0b' : isNormal ? '#10b981' : '#e2e8f0'}`,
+                              borderRadius: '4px',
+                              fontSize: '14px'
+                            }}
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={p.valeur || ''}
+                            onChange={(e) => handleParamChange(idx, 'valeur', e.target.value)}
+                            disabled={isSaisieTerminee}
+                            style={{
+                              width: '150px',
+                              padding: '6px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '4px',
+                              fontSize: '14px'
+                            }}
+                            placeholder="Saisir le résultat"
+                          />
+                        )}
                       </td>
-                      <td style={{ padding: '8px' }}>{p.unite}</td>
-                      <td style={{ padding: '8px' }}>{p.ref_min} - {p.ref_max}</td>
+                      <td style={{ padding: '8px' }}>{p.unite || '-'}</td>
                       <td style={{ padding: '8px' }}>
-                        {p.interpretation && (
+                        {isQuantitatif ? `${p.ref_min || ''} - ${p.ref_max || ''}` : '-'}
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        {p.interpretation && isQuantitatif && (
                           <span
                             style={{
                               color: p.interpretation === 'normal' ? '#10b981' : p.interpretation === 'haut' ? '#ef4444' : '#f59e0b',
@@ -376,6 +421,9 @@ const ResultatForm = () => {
                           >
                             {p.interpretation === 'normal' ? '✅ Normal' : p.interpretation === 'haut' ? '⬆ Haut' : '⬇ Bas'}
                           </span>
+                        )}
+                        {!isQuantitatif && p.interpretation && (
+                          <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{p.interpretation}</span>
                         )}
                       </td>
                       <td style={{ padding: '8px' }}>
