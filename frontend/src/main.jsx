@@ -834,6 +834,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="examens" element={<ExamensList />} />
                     <Route path="urgents" element={<ExamensList initialFilter={{ priorite: 'urgent' }} />} />
                     <Route path="examen/nouveau" element={<ExamenForm />} />
+                    {/* 👇 NOUVELLE ROUTE POUR L'ÉDITION D'UN EXAMEN */}
+                    <Route path="examen/edit/:id" element={<ExamenForm />} />
                     <Route path="examen/:id" element={<ExamenDetail />} />
                     <Route path="resultats/:id" element={<ResultatForm />} />
                     <Route path="validation/:id" element={<ValidationForm />} />
