@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../axios';
+import SignesVitauxForm from '../consultations/SignesVitauxForm';
 
 const RendezVousList = () => {
   const [rdvs, setRdvs] = useState([]);
@@ -19,6 +20,8 @@ const RendezVousList = () => {
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
+  const [selectedPatientId, setSelectedPatientId] = useState(null); // pour le formulaire
+  const [selectedPatientFromList, setSelectedPatientFromList] = useState(null); // pour le bouton dans le tableau
 
   const showToast = (msg, type = 'success') => {
     setToast(msg);
@@ -26,7 +29,6 @@ const RendezVousList = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Chargement initial
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -59,7 +61,6 @@ const RendezVousList = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // ✅ Transformer les chaînes vides en null pour les clés étrangères
       const payload = {
         patient_id: form.patient_id || null,
         medecin_id: form.medecin_id || null,
@@ -82,6 +83,7 @@ const RendezVousList = () => {
         categorie: 'ambulatoire',
         prix: 50.00,
       });
+      setSelectedPatientId(null);
       await fetchRdvs();
       showToast('Rendez-vous ajouté avec succès');
     } catch (err) {
@@ -104,7 +106,7 @@ const RendezVousList = () => {
     }
   };
 
-  // Styles
+  // Styles (inchangés)
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#f0f9ff',
@@ -195,7 +197,6 @@ const RendezVousList = () => {
     transition: 'opacity 0.2s',
   });
 
-  // Fonction pour obtenir le nom du service (même si le backend ne joint pas)
   const getServiceName = (rdv) => {
     if (rdv.service_nom) return rdv.service_nom;
     if (rdv.service_id) {
@@ -225,8 +226,14 @@ const RendezVousList = () => {
       )}
       <div style={innerStyle}>
         <h1 style={titleStyle}>📅 Planification des rendez-vous</h1>
+
+        {/* FORMULAIRE DE RENDEZ-VOUS */}
         <form onSubmit={handleSubmit} style={formStyle}>
-          <select required value={form.patient_id} onChange={e => setForm({...form, patient_id: e.target.value})} style={inputStyle}>
+          <select required value={form.patient_id} onChange={e => {
+            const val = e.target.value;
+            setForm({...form, patient_id: val});
+            setSelectedPatientId(val || null);
+          }} style={inputStyle}>
             <option value="">Patient</option>
             {patients.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
           </select>
@@ -269,6 +276,18 @@ const RendezVousList = () => {
           </button>
         </form>
 
+        {/* AFFICHAGE DES SIGNES VITAUX SI UN PATIENT EST SÉLECTIONNÉ DANS LE FORMULAIRE */}
+        {selectedPatientId && (
+          <div style={{ marginTop: 20, marginBottom: 30 }}>
+            <SignesVitauxForm 
+              patientId={parseInt(selectedPatientId)} 
+              consultationId={null}
+              onSuccess={() => console.log('Signes vitaux mis à jour')}
+            />
+          </div>
+        )}
+
+        {/* TABLEAU DES RENDEZ-VOUS */}
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
             <thead>
@@ -308,12 +327,55 @@ const RendezVousList = () => {
                         </button>
                       </>
                     )}
+                    {/* 👇 NOUVEAU BOUTON : Signes vitaux */}
+                    <button 
+                      onClick={() => setSelectedPatientFromList(r.patient_id)}
+                      style={{
+                        backgroundColor: '#8b5cf6',
+                        color: 'white',
+                        border: 'none',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        marginLeft: '6px'
+                      }}
+                    >
+                      📊 Signes vitaux
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
+        {/* AFFICHAGE DES SIGNES VITAUX POUR LE PATIENT SÉLECTIONNÉ DEPUIS LE TABLEAU */}
+        {selectedPatientFromList && (
+          <div style={{ marginTop: 30, padding: '20px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0 }}>📊 Signes vitaux du patient</h3>
+              <button 
+                onClick={() => setSelectedPatientFromList(null)}
+                style={{
+                  backgroundColor: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                ✕ Fermer
+              </button>
+            </div>
+            <SignesVitauxForm 
+              patientId={parseInt(selectedPatientFromList)} 
+              consultationId={null}
+              onSuccess={() => console.log('Signes vitaux mis à jour')}
+            />
+          </div>
+        )}
       </div>
       <style>{`
         @keyframes slideIn {
