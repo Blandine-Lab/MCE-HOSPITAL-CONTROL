@@ -683,7 +683,7 @@ const FactureForm = () => {
                           checked={selectedExamensIds.includes(ex.id)}
                           onChange={() => toggleExamenSelection(ex.id)}
                         />
-                        <span>{ex.type_examen} <span style={{ fontSize: '12px', color: '#6b7280' }}>({ex.categorie})</span></span>
+                        <span>{ex.type_examen || ex.type_nom || 'Examen'} <span style={{ fontSize: '12px', color: '#6b7280' }}>({ex.categorie})</span></span>
                         <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 'bold' }}>{ex.prix} FC</span>
                       </label>
                     ))}
