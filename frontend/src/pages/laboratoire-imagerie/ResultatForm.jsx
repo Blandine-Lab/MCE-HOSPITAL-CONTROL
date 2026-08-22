@@ -28,6 +28,9 @@ const ResultatForm = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [existingParametres, setExistingParametres] = useState([]);
+  
+  // État pour l'URL du PDF à afficher dans l'iframe
+  const [pdfUrl, setPdfUrl] = useState(null);
 
   const permissions = user?.permissions || [];
   const isBiologiste = permissions.includes('validate_laboratory') || user?.role === 'biologiste' || user?.role === 'admin';
@@ -196,7 +199,7 @@ const ResultatForm = () => {
     }
   };
 
-  // Impression PDF - Récupération avec fetch + blob pour éviter les problèmes de type de fichier
+  // Impression PDF - Récupération avec fetch + blob et affichage dans un iframe
   const handlePrint = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -204,9 +207,14 @@ const ResultatForm = () => {
       return;
     }
 
+    // Fermer un éventuel iframe précédent
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
+
     try {
       // Construire l'URL avec le token dans la query string (si votre backend l'exige)
-      // Vous pouvez aussi utiliser l'en-tête Authorization : décommentez la ligne ci-dessous et commentez l'URL avec token
       const url = `https://mce-logiciel-de-gestion-de-l-hopital.fly.dev/api/examens/${id}/pdf?token=${encodeURIComponent(token)}&_=${Date.now()}`;
       
       // Alternative avec Authorization header (si votre backend l'accepte)
@@ -231,8 +239,7 @@ const ResultatForm = () => {
 
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank');
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      setPdfUrl(blobUrl);
     } catch (error) {
       console.error('Erreur de chargement du PDF :', error);
       alert('Impossible de charger le PDF. Vérifiez votre connexion.');
@@ -573,6 +580,41 @@ const ResultatForm = () => {
             )}
           </div>
         </form>
+
+        {/* Affichage du PDF dans un iframe si disponible */}
+        {pdfUrl && (
+          <div style={{ marginTop: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h3 style={{ margin: 0, color: '#0f172a' }}>Aperçu du PDF</h3>
+              <button
+                onClick={() => {
+                  URL.revokeObjectURL(pdfUrl);
+                  setPdfUrl(null);
+                }}
+                style={{
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Fermer
+              </button>
+            </div>
+            <iframe
+              src={pdfUrl}
+              style={{
+                width: '100%',
+                height: '700px',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px'
+              }}
+              title="Aperçu du PDF"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
