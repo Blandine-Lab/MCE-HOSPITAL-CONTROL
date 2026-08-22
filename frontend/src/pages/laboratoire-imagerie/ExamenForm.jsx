@@ -12,7 +12,6 @@ const ExamenForm = () => {
   const isEdit = !!id;
   const { user } = useAuth();
 
-  // Champs communs
   const [formData, setFormData] = useState({
     patient_id: '',
     consultation_id: '',
@@ -22,7 +21,6 @@ const ExamenForm = () => {
     date_demande: new Date().toISOString().split('T')[0],
   });
 
-  // Liste des examens (une ligne par examen)
   const [examens, setExamens] = useState([
     {
       type_examen_id: '',
@@ -34,7 +32,9 @@ const ExamenForm = () => {
       date_prelevement: '',
       preleveur_id: '',
       notes: '',
-      parametres: [] // { nom, valeur, unite, ref_min, ref_max, interpretation }
+      parametres: [],
+      statut: 'en_attente',
+      prix: null
     }
   ]);
 
@@ -42,33 +42,30 @@ const ExamenForm = () => {
   const [typesExamens, setTypesExamens] = useState([]);
   const [services, setServices] = useState([]);
   const [consultations, setConsultations] = useState([]);
-  const [employes, setEmployes] = useState([]);
   const [medecins, setMedecins] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [errors, setErrors] = useState({});
+  const [loadingExamen, setLoadingExamen] = useState(false);
 
-  // Chargement initial
+  // Chargement initial des données de référence
   useEffect(() => {
     const fetchData = async () => {
       setLoadingData(true);
       setError('');
       try {
-        const [patientsRes, typesRes, servicesRes, employesRes, medecinsRes] = await Promise.all([
+        const [patientsRes, typesRes, servicesRes, medecinsRes] = await Promise.all([
           api.get('/patients').catch(() => ({ data: [] })),
           api.get('/types-examens').catch(() => ({ data: [] })),
           api.get('/services').catch(() => ({ data: [] })),
-          api.get('/employes').catch(() => ({ data: [] })),
           api.get('/consultations/medecins/all').catch(() => ({ data: [] }))
         ]);
         setPatients(patientsRes.data || []);
         setTypesExamens(typesRes.data || []);
         setServices(servicesRes.data || []);
-        setEmployes(employesRes.data || []);
         setMedecins(medecinsRes.data || []);
-        console.log('📋 Types d\'examens chargés :', typesRes.data);
       } catch (err) {
         console.error('Erreur chargement données', err);
         setError('Erreur de chargement des données');
@@ -78,6 +75,51 @@ const ExamenForm = () => {
     };
     fetchData();
   }, []);
+
+  // Si édition, charger l'examen
+  useEffect(() => {
+    if (isEdit) {
+      setLoadingExamen(true);
+      api.get(`/examens/${id}`)
+        .then(res => {
+          const examen = res.data;
+          setFormData({
+            patient_id: examen.patient_id || '',
+            consultation_id: examen.consultation_id || '',
+            service_id: examen.service_id || '',
+            medecin_prescripteur: examen.medecin_prescripteur || '',
+            priorite: examen.priorite || 'normal',
+            date_demande: examen.date_demande ? new Date(examen.date_demande).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          });
+          // S'assurer que chaque paramètre a un type_parametre (défaut 'quantitatif') et une valeur_texte
+          const params = (examen.parametres || []).map(p => ({
+            ...p,
+            type_parametre: p.type_parametre || 'quantitatif',
+            valeur_texte: p.valeur_texte || ''   // conserver la valeur texte existante
+          }));
+          setExamens([{
+            type_examen_id: examen.type_examen_id || '',
+            categorie: examen.categorie || 'laboratoire',
+            description: examen.description || '',
+            date_prevue: examen.date_prevue ? new Date(examen.date_prevue).toISOString().split('T')[0] : '',
+            instructions_preparation: examen.instructions_preparation || '',
+            type_prelevement: examen.type_prelevement || '',
+            date_prelevement: examen.date_prelevement ? new Date(examen.date_prelevement).toISOString().split('T')[0] : '',
+            preleveur_id: examen.preleveur_id || '',
+            notes: examen.notes || '',
+            parametres: params,
+            statut: examen.statut || 'en_attente',
+            prix: examen.prix || null
+          }]);
+          setLoadingExamen(false);
+        })
+        .catch(err => {
+          console.error('Erreur chargement examen pour édition', err);
+          setError('Impossible de charger l\'examen pour modification');
+          setLoadingExamen(false);
+        });
+    }
+  }, [isEdit, id]);
 
   // Chargement des consultations du patient
   useEffect(() => {
@@ -99,6 +141,7 @@ const ExamenForm = () => {
 
   // Gestion des lignes d'examens
   const addExamen = () => {
+    if (isEdit) return;
     setExamens([
       ...examens,
       {
@@ -117,22 +160,19 @@ const ExamenForm = () => {
   };
 
   const removeExamen = (index) => {
+    if (isEdit) return;
     if (examens.length <= 1) return;
     setExamens(examens.filter((_, i) => i !== index));
   };
 
-  // 🔧 FONCTION MODIFIÉE : charge automatiquement les paramètres par défaut du type sélectionné
   const updateExamen = (index, field, value) => {
     const newExamens = [...examens];
     newExamens[index][field] = value;
 
-    // Si le type d'examen change, on met à jour la catégorie et on charge les paramètres
     if (field === 'type_examen_id') {
       const type = typesExamens.find(t => t.id === parseInt(value));
       if (type) {
-        newExamens[index].categorie = type.categorie;
-
-        // Charger les paramètres par défaut seulement si la liste est vide
+        newExamens[index].categorie = type.categorie || newExamens[index].categorie;
         if (!newExamens[index].parametres || newExamens[index].parametres.length === 0) {
           let defaultParams = type.parametres_defaut;
           if (typeof defaultParams === 'string') {
@@ -142,23 +182,33 @@ const ExamenForm = () => {
             newExamens[index].parametres = defaultParams.map(p => ({
               nom: p.nom || '',
               valeur: p.valeur || '',
+              valeur_texte: p.valeur_texte || '',   // ajout
               unite: p.unite || '',
               ref_min: p.ref_min || '',
               ref_max: p.ref_max || '',
-              interpretation: p.interpretation || ''
+              interpretation: p.interpretation || '',
+              type_parametre: p.type_parametre || 'quantitatif'
             }));
           }
         }
       }
     }
-
     setExamens(newExamens);
   };
 
-  // Gestion des paramètres par ligne
+  // Gestion des paramètres
   const addParametre = (index) => {
     const newExamens = [...examens];
-    newExamens[index].parametres.push({ nom: '', valeur: '', unite: '', ref_min: '', ref_max: '', interpretation: '' });
+    newExamens[index].parametres.push({
+      nom: '',
+      valeur: '',
+      valeur_texte: '',    // nouveau champ texte
+      unite: '',
+      ref_min: '',
+      ref_max: '',
+      interpretation: '',
+      type_parametre: 'quantitatif'
+    });
     setExamens(newExamens);
   };
 
@@ -174,14 +224,12 @@ const ExamenForm = () => {
     setExamens(newExamens);
   };
 
-  // Validation simplifiée
+  // Validation
   const validateForm = () => {
     const newErrors = {};
     if (!formData.patient_id) newErrors.patient_id = 'Patient requis';
-    // Vérifier qu'au moins un examen a un type sélectionné
     const hasValidExamen = examens.some(e => e.type_examen_id);
     if (!hasValidExamen) newErrors.examens = 'Au moins un examen doit être sélectionné';
-    // Vérifier que chaque examen a un type
     examens.forEach((e, idx) => {
       if (!e.type_examen_id) {
         newErrors[`examen_${idx}_type`] = 'Type requis';
@@ -196,9 +244,7 @@ const ExamenForm = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Filtrer les examens vides (sans type)
     const validExamens = examens.filter(ex => ex.type_examen_id);
-
     if (validExamens.length === 0) {
       setError('Veuillez ajouter au moins un examen valide.');
       return;
@@ -209,41 +255,68 @@ const ExamenForm = () => {
     setSuccess('');
 
     try {
-      // Préparer le payload pour la route /groupe
-      const payload = {
-        patient_id: formData.patient_id,
-        consultation_id: formData.consultation_id || null,
-        service_id: formData.service_id || null,
-        medecin_prescripteur: formData.medecin_prescripteur || null,
-        priorite: formData.priorite,
-        examens: validExamens.map(ex => ({
-          type_examen_id: ex.type_examen_id,
-          categorie: ex.categorie,
-          description: ex.description,
-          date_prevue: ex.date_prevue || null,
-          instructions_preparation: ex.instructions_preparation || null,
-          type_prelevement: ex.type_prelevement || null,
-          date_prelevement: ex.date_prelevement || null,
-          preleveur_id: ex.preleveur_id || null,
-          notes: ex.notes || null,
-          parametres: ex.parametres || []
-        }))
-      };
-
-      const res = await api.post('/examens/groupe', payload);
-      setSuccess(`${res.data.examensIds.length} examen(s) créé(s) avec succès`);
-      setTimeout(() => navigate('/laboratoire'), 2000);
+      if (isEdit) {
+        // Édition : mettre à jour l'examen existant
+        const examen = validExamens[0];
+        const payload = {
+          patient_id: formData.patient_id,
+          consultation_id: formData.consultation_id || null,
+          service_id: formData.service_id || null,
+          medecin_prescripteur: formData.medecin_prescripteur || null,
+          priorite: formData.priorite,
+          date_demande: formData.date_demande || new Date().toISOString().split('T')[0],
+          type_examen_id: examen.type_examen_id,
+          categorie: examen.categorie,
+          description: examen.description,
+          date_prevue: examen.date_prevue || null,
+          instructions_preparation: examen.instructions_preparation || null,
+          type_prelevement: examen.type_prelevement || null,
+          date_prelevement: examen.date_prelevement || null,
+          preleveur_id: examen.preleveur_id || null,
+          notes: examen.notes || null,
+          parametres: examen.parametres || [],
+          statut: examen.statut || 'en_attente'
+        };
+        await api.put(`/examens/${id}`, payload);
+        setSuccess('Examen mis à jour avec succès');
+        setTimeout(() => navigate(`/laboratoire/examen/${id}`), 1500);
+      } else {
+        // Création
+        const payload = {
+          patient_id: formData.patient_id,
+          consultation_id: formData.consultation_id || null,
+          service_id: formData.service_id || null,
+          medecin_prescripteur: formData.medecin_prescripteur || null,
+          priorite: formData.priorite,
+          examens: validExamens.map(ex => ({
+            type_examen_id: ex.type_examen_id,
+            categorie: ex.categorie,
+            description: ex.description,
+            date_prevue: ex.date_prevue || null,
+            instructions_preparation: ex.instructions_preparation || null,
+            type_prelevement: ex.type_prelevement || null,
+            date_prelevement: ex.date_prelevement || null,
+            preleveur_id: ex.preleveur_id || null,
+            notes: ex.notes || null,
+            parametres: ex.parametres || []
+          }))
+        };
+        const res = await api.post('/examens/groupe', payload);
+        setSuccess(`${res.data.examensIds.length} examen(s) créé(s) avec succès`);
+        setTimeout(() => navigate('/laboratoire'), 2000);
+      }
     } catch (err) {
       console.error('Erreur sauvegarde :', err);
       setError(err.response?.data?.error || 'Erreur lors de l\'enregistrement');
+    } finally {
       setLoading(false);
     }
   };
 
-  if (loadingData) {
+  if (loadingData || loadingExamen) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>⏳ Chargement des données...</div>
+        <div style={{ fontSize: '24px' }}>⏳ Chargement...</div>
       </div>
     );
   }
@@ -251,14 +324,14 @@ const ExamenForm = () => {
   return (
     <div>
       <div style={{ marginBottom: '24px' }}>
-        <Link to="/laboratoire" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#3b82f6', textDecoration: 'none', fontWeight: '500' }}>
-          <FaArrowLeft /> Retour
+        <Link to={isEdit ? `/laboratoire/examen/${id}` : "/laboratoire"} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#3b82f6', textDecoration: 'none', fontWeight: '500' }}>
+          <FaArrowLeft /> {isEdit ? 'Retour au détail' : 'Retour'}
         </Link>
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <h2 style={{ marginTop: 0, color: '#0f172a' }}>
-          Nouvelle demande d'examens
+          {isEdit ? 'Modifier l\'examen' : 'Nouvelle demande d\'examens'}
         </h2>
 
         {error && (
@@ -282,6 +355,7 @@ const ExamenForm = () => {
                 value={formData.patient_id}
                 onChange={handleCommonChange}
                 required
+                disabled={isEdit}
                 style={{ width: '100%', padding: '10px 14px', border: `1px solid ${errors.patient_id ? '#ef4444' : '#e2e8f0'}`, borderRadius: '8px', fontSize: '16px' }}
               >
                 <option value="">Sélectionner un patient</option>
@@ -299,7 +373,7 @@ const ExamenForm = () => {
                 value={formData.consultation_id}
                 onChange={handleCommonChange}
                 style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '16px' }}
-                disabled={!formData.patient_id}
+                disabled={!formData.patient_id || isEdit}
               >
                 <option value="">Sélectionner une consultation</option>
                 {consultations.map(c => (
@@ -364,14 +438,18 @@ const ExamenForm = () => {
 
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, color: '#0f172a' }}>Examens demandés</h3>
-              <button
-                type="button"
-                onClick={addExamen}
-                style={{ backgroundColor: '#3b82f6', color: 'white', padding: '6px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <FaPlus /> Ajouter un examen
-              </button>
+              <h3 style={{ margin: 0, color: '#0f172a' }}>
+                {isEdit ? 'Examen' : 'Examens demandés'}
+              </h3>
+              {!isEdit && (
+                <button
+                  type="button"
+                  onClick={addExamen}
+                  style={{ backgroundColor: '#3b82f6', color: 'white', padding: '6px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <FaPlus /> Ajouter un examen
+                </button>
+              )}
             </div>
             {errors.examens && <div style={{ color: '#ef4444', fontSize: '14px', marginTop: '8px' }}>{errors.examens}</div>}
           </div>
@@ -381,7 +459,7 @@ const ExamenForm = () => {
             <div key={idx} style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '20px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <h4 style={{ margin: 0, color: '#1e293b' }}>Examen #{idx + 1}</h4>
-                {examens.length > 1 && (
+                {!isEdit && examens.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeExamen(idx)}
@@ -403,6 +481,7 @@ const ExamenForm = () => {
                         value="laboratoire"
                         checked={ex.categorie === 'laboratoire'}
                         onChange={() => updateExamen(idx, 'categorie', 'laboratoire')}
+                        disabled={isEdit}
                       />
                       <FaFlask style={{ color: '#8b5cf6' }} /> Laboratoire
                     </label>
@@ -413,6 +492,7 @@ const ExamenForm = () => {
                         value="imagerie"
                         checked={ex.categorie === 'imagerie'}
                         onChange={() => updateExamen(idx, 'categorie', 'imagerie')}
+                        disabled={isEdit}
                       />
                       <FaXRay style={{ color: '#3b82f6' }} /> Imagerie
                     </label>
@@ -425,6 +505,7 @@ const ExamenForm = () => {
                     value={ex.type_examen_id}
                     onChange={(e) => updateExamen(idx, 'type_examen_id', e.target.value)}
                     required
+                    disabled={isEdit}
                     style={{ width: '100%', padding: '8px', border: `1px solid ${errors[`examen_${idx}_type`] ? '#ef4444' : '#e2e8f0'}`, borderRadius: '6px' }}
                   >
                     <option value="">Sélectionner</option>
@@ -518,10 +599,10 @@ const ExamenForm = () => {
                 />
               </div>
 
-              {/* Paramètres libres pour cet examen */}
+              {/* Paramètres avec deux champs de valeur : numérique et texte */}
               <div style={{ marginTop: '16px', borderTop: '1px dashed #cbd5e1', paddingTop: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ fontWeight: '500', color: '#334155' }}>Paramètres libres</label>
+                  <label style={{ fontWeight: '500', color: '#334155' }}>Paramètres</label>
                   <button
                     type="button"
                     onClick={() => addParametre(idx)}
@@ -533,62 +614,82 @@ const ExamenForm = () => {
                 {ex.parametres.length === 0 && (
                   <div style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', padding: '8px' }}>Aucun paramètre</div>
                 )}
-                {ex.parametres.map((p, pIdx) => (
-                  <div key={pIdx} style={{ display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <input
-                      type="text"
-                      placeholder="Nom"
-                      value={p.nom || ''}
-                      onChange={(e) => updateParametre(idx, pIdx, 'nom', e.target.value)}
-                      style={{ flex: '1 1 100px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Valeur"
-                      value={p.valeur || ''}
-                      onChange={(e) => updateParametre(idx, pIdx, 'valeur', e.target.value)}
-                      style={{ flex: '1 1 80px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Unité"
-                      value={p.unite || ''}
-                      onChange={(e) => updateParametre(idx, pIdx, 'unite', e.target.value)}
-                      style={{ flex: '1 1 80px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Réf. min"
-                      value={p.ref_min || ''}
-                      onChange={(e) => updateParametre(idx, pIdx, 'ref_min', e.target.value)}
-                      style={{ flex: '1 1 70px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Réf. max"
-                      value={p.ref_max || ''}
-                      onChange={(e) => updateParametre(idx, pIdx, 'ref_max', e.target.value)}
-                      style={{ flex: '1 1 70px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                    />
-                    <select
-                      value={p.interpretation || ''}
-                      onChange={(e) => updateParametre(idx, pIdx, 'interpretation', e.target.value)}
-                      style={{ flex: '1 1 100px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                    >
-                      <option value="">Interprétation</option>
-                      <option value="normal">Normal</option>
-                      <option value="haut">Haut</option>
-                      <option value="bas">Bas</option>
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => removeParametre(idx, pIdx)}
-                      style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
-                ))}
+                {ex.parametres.map((p, pIdx) => {
+                  return (
+                    <div key={pIdx} style={{ display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        type="text"
+                        placeholder="Nom"
+                        value={p.nom || ''}
+                        onChange={(e) => updateParametre(idx, pIdx, 'nom', e.target.value)}
+                        style={{ flex: '1 1 100px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                      />
+                      <select
+                        value={p.type_parametre || 'quantitatif'}
+                        onChange={(e) => updateParametre(idx, pIdx, 'type_parametre', e.target.value)}
+                        style={{ flex: '1 1 80px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                      >
+                        <option value="quantitatif">Quantitatif</option>
+                        <option value="qualitatif">Qualitatif</option>
+                      </select>
+                      {/* Champ numérique (toujours visible) */}
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="Valeur num."
+                        value={p.valeur || ''}
+                        onChange={(e) => updateParametre(idx, pIdx, 'valeur', e.target.value)}
+                        style={{ flex: '1 1 80px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                      />
+                      {/* Champ texte (toujours visible) */}
+                      <input
+                        type="text"
+                        placeholder="Résultat texte"
+                        value={p.valeur_texte || ''}
+                        onChange={(e) => updateParametre(idx, pIdx, 'valeur_texte', e.target.value)}
+                        style={{ flex: '1 1 100px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Unité"
+                        value={p.unite || ''}
+                        onChange={(e) => updateParametre(idx, pIdx, 'unite', e.target.value)}
+                        style={{ flex: '1 1 80px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Réf. min"
+                        value={p.ref_min || ''}
+                        onChange={(e) => updateParametre(idx, pIdx, 'ref_min', e.target.value)}
+                        style={{ flex: '1 1 70px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Réf. max"
+                        value={p.ref_max || ''}
+                        onChange={(e) => updateParametre(idx, pIdx, 'ref_max', e.target.value)}
+                        style={{ flex: '1 1 70px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                      />
+                      <select
+                        value={p.interpretation || ''}
+                        onChange={(e) => updateParametre(idx, pIdx, 'interpretation', e.target.value)}
+                        style={{ flex: '1 1 100px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                      >
+                        <option value="">Interprétation</option>
+                        <option value="normal">Normal</option>
+                        <option value="haut">Haut</option>
+                        <option value="bas">Bas</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => removeParametre(idx, pIdx)}
+                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -611,7 +712,7 @@ const ExamenForm = () => {
               gap: '8px'
             }}
           >
-            <FaSave /> {loading ? 'Enregistrement...' : 'Demander les examens'}
+            <FaSave /> {loading ? 'Enregistrement...' : (isEdit ? 'Mettre à jour' : 'Demander les examens')}
           </button>
         </form>
       </div>
