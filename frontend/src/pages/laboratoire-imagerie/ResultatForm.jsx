@@ -70,7 +70,6 @@ const ResultatForm = () => {
               valeur: '',
               commentaire: '',
               interpretation: '',
-              // S'assurer que le type est présent (par défaut quantitatif)
               type_parametre: p.type_parametre || 'quantitatif'
             }));
             setParametres(paramsParDefaut);
@@ -99,7 +98,6 @@ const ResultatForm = () => {
     const newParams = [...parametres];
     newParams[index][field] = value;
 
-    // Auto-interprétation uniquement pour les quantitatifs
     const isQuantitatif = newParams[index].type_parametre === 'quantitatif';
     if (field === 'valeur' && isQuantitatif && newParams[index].ref_min && newParams[index].ref_max) {
       const val = parseFloat(value);
@@ -113,7 +111,6 @@ const ResultatForm = () => {
         newParams[index].interpretation = '';
       }
     } else if (field === 'valeur' && !isQuantitatif) {
-      // Pour les qualitatifs, on efface l'interprétation automatique
       newParams[index].interpretation = '';
     }
     setParametres(newParams);
@@ -199,15 +196,39 @@ const ResultatForm = () => {
     }
   };
 
-  // Impression PDF
-  const handlePrint = () => {
+  // Impression PDF - version corrigée avec fetch et gestion d'erreur
+  const handlePrint = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
       alert('Vous devez être connecté pour imprimer le PDF.');
       return;
     }
-    const encodedToken = encodeURIComponent(token);
-    window.open(`/api/examens/${id}/pdf?token=${encodedToken}`, '_blank');
+
+    try {
+      const response = await api.get(`/examens/${id}/pdf`, {
+        responseType: 'blob',
+        headers: { Authorization: `Bearer ${token}` },
+        params: { _t: Date.now() } // anti-cache
+      });
+
+      // Vérifier le type de contenu
+      const contentType = response.headers['content-type'] || '';
+      if (!contentType.includes('application/pdf')) {
+        // Lire le texte d'erreur éventuel
+        const text = await response.data.text();
+        console.error('Réponse non-PDF :', text);
+        alert('Le serveur a renvoyé une erreur. Voir console.');
+        return;
+      }
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF :', error);
+      alert('Impossible de générer le PDF. Veuillez réessayer.');
+    }
   };
 
   // Vérifier les valeurs critiques (seulement pour les quantitatifs)
