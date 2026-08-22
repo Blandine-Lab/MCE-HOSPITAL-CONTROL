@@ -1,10 +1,7 @@
 // frontend/public/sw.js
-
-// Version du cache
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `mce-cache-${CACHE_VERSION}`;
 
-// Fichiers à mettre en cache
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -12,12 +9,10 @@ const STATIC_ASSETS = [
   '/logo.png',
   '/logo.jpeg',
   '/favicon.ico',
-  // Les fichiers JS et CSS seront ajoutés dynamiquement
 ];
 
-// Installation : mise en cache des assets
 self.addEventListener('install', (event) => {
-  console.log('📦 Service Worker : Installation');
+  console.log('📦 Service Worker : Installation v3');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -28,16 +23,15 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activation : nettoyage des anciens caches
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker : Activation');
+  console.log('🚀 Service Worker : Activation v3');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
           .filter((name) => name !== CACHE_NAME)
           .map((name) => {
-            console.log(`🗑️ Suppression de l\'ancien cache : ${name}`);
+            console.log(`🗑️ Suppression de l'ancien cache : ${name}`);
             return caches.delete(name);
           })
       );
@@ -45,73 +39,46 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Interception des requêtes
+// 🔥 IGNORER TOUTES LES REQUÊTES API
 self.addEventListener('fetch', (event) => {
-  const request = event.request;
-  const url = new URL(request.url);
-
-  // ✅ IGNORER toutes les requêtes API (les laisser passer sans interception)
+  const url = new URL(event.request.url);
   if (url.pathname.startsWith('/api/')) {
-    // Ne pas appeler event.respondWith → le navigateur gère directement
-    return;
+    return; // Le navigateur gère directement
   }
 
-  // Pour les assets statiques : Cache First
   event.respondWith(
-    caches.match(request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          // Mettre à jour le cache en arrière‑plan
-          fetch(request).then((response) => {
+    caches.match(event.request)
+      .then((cached) => {
+        if (cached) {
+          fetch(event.request).then((response) => {
             if (response && response.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(request, response);
-              });
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response));
             }
           }).catch(() => {});
-          return cachedResponse;
+          return cached;
         }
-        // Si pas en cache, aller chercher sur le réseau
-        return fetch(request).then((response) => {
-          const clonedResponse = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, clonedResponse);
-          });
+        return fetch(event.request).then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           return response;
-        }).catch(() => {
-          // Fallback si tout échoue
-          return new Response('Contenu indisponible hors ligne', { status: 404 });
-        });
+        }).catch(() => new Response('Contenu indisponible hors ligne', { status: 404 }));
       })
   );
 });
 
-// Synchronisation en arrière‑plan
 self.addEventListener('sync', (event) => {
-  console.log('🔄 Service Worker : Sync', event.tag);
   if (event.tag === 'sync-data') {
     event.waitUntil(syncData());
   }
 });
 
-// Fonction de synchronisation
 async function syncData() {
-  console.log('🔄 Début synchronisation...');
-  try {
-    const clients = await self.clients.matchAll();
-    clients.forEach(client => {
-      client.postMessage({ type: 'SYNC_START' });
-    });
-    return true;
-  } catch (error) {
-    console.error('❌ Erreur synchronisation:', error);
-    return false;
-  }
+  console.log('🔄 Synchronisation...');
+  const clients = await self.clients.matchAll();
+  clients.forEach(client => client.postMessage({ type: 'SYNC_START' }));
 }
 
-// Gestion des messages du client
 self.addEventListener('message', (event) => {
-  console.log('📨 Message reçu SW:', event.data);
   if (event.data && event.data.type === 'PING') {
     event.ports[0].postMessage({ type: 'PONG' });
   }
