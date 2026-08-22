@@ -50,6 +50,12 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
+  // ✅ NE PAS INTERCEPTER les requêtes PDF (Network Only)
+  if (url.pathname.startsWith('/api/examens/') && url.pathname.endsWith('/pdf')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   // Ne pas intercepter les requêtes API
   if (url.pathname.startsWith('/api/')) {
     // Stratégie : Network First (priorité réseau)
