@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import SignesVitauxForm from '../consultations/SignesVitauxForm'; // 👈 AJOUT
 
 const PatientProfile = () => {
   const { id } = useParams();
@@ -63,7 +64,7 @@ const PatientProfile = () => {
         </div>
       </div>
 
-      {/* Informations patient – uniquement les champs existants */}
+      {/* Informations patient */}
       <div className="bg-gray-50 p-4 rounded border mb-6">
         {patient.date_naissance && (
           <p><strong>Date de naissance :</strong> {new Date(patient.date_naissance).toLocaleDateString()}</p>
@@ -72,8 +73,14 @@ const PatientProfile = () => {
         <p><strong>Email :</strong> {patient.email || 'Non renseigné'}</p>
         <p><strong>Adresse :</strong> {patient.adresse || 'Non renseignée'}</p>
         {patient.genre && <p><strong>Genre :</strong> {patient.genre}</p>}
-        {/* Ajoutez ici d’autres champs si votre table en contient (ex: date_admission) */}
       </div>
+
+      {/* 👇 NOUVEAU : Formulaire des signes vitaux */}
+      <SignesVitauxForm 
+          patientId={parseInt(id)} 
+          consultationId={null}
+          onSuccess={() => console.log('✅ Signes vitaux mis à jour')}
+      />
     </div>
   );
 };

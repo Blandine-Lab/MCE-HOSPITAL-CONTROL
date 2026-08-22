@@ -85,6 +85,9 @@ const securityRoutes = require('./src/routes/securityRoutes');
 const interoperabiliteRoutes = require('./src/routes/interoperabiliteRoutes');
 const blocRoutes = require('./src/routes/blocRoutes');
 
+// NOUVEAU : routes pour les signes vitaux
+const signesVitauxRoutes = require('./src/routes/signesVitauxRoutes');
+
 const { authenticate, requireRole } = require('./src/middleware/auth');
 
 // ========== APPLICATION EXPRESS ==========
@@ -103,7 +106,7 @@ app.use(morgan('dev'));
 // ========== CONFIGURATION CORS EXPLICITE ==========
 const corsOptions = {
   origin: [
-    'https://mce-hospital-control-frontend.vercel.app',   // ✅ AJOUT DE L'URL VERCEL
+    'https://mce-hospital-control-frontend.vercel.app',
     'https://mce-hospital-control.netlify.app',
     'http://localhost:5173',
     'http://localhost:3000',
@@ -153,7 +156,6 @@ app.use('/api/plannings', planningsRoutes);
 app.use('/api/conges', congesRoutes);
 app.use('/api/absences', absencesRoutes);
 app.use('/api/contrats', contratsRoutes);
-// NOUVELLE ROUTE : demandes de congé & formation
 app.use('/api/demandes', demandesRoutes);
 
 app.use('/api/comptes', comptesRoutes);
@@ -182,6 +184,9 @@ app.use('/api/bi', biRoutes);
 app.use('/api/security', securityRoutes.router);
 app.use('/api/interoperabilite', interoperabiliteRoutes);
 app.use('/api/bloc', blocRoutes);
+
+// NOUVEAU : routes pour les signes vitaux
+app.use('/api/signes-vitaux', signesVitauxRoutes);
 
 // ========== 4bis. Route spécifique pour /admin/patients (legacy) ==========
 app.get('/api/admin/patients', authenticate, requireRole(['admin', 'pharmacien']), async (req, res) => {
