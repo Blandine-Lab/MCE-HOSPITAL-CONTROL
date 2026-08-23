@@ -1,5 +1,5 @@
 // src/pages/laboratoire-imagerie/ExamensList.jsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../axios';
 import { useAuth } from '../../context/AuthContext';
@@ -15,7 +15,10 @@ import {
   FaExclamationTriangle,
   FaCheckCircle,
   FaClock,
-  FaTimesCircle
+  FaTimesCircle,
+  FaUserMd,
+  FaSearch,
+  FaSpinner
 } from 'react-icons/fa';
 
 const ExamensList = ({ initialFilter = {} }) => {
@@ -38,14 +41,16 @@ const ExamensList = ({ initialFilter = {} }) => {
     }
   }, []);
 
-  // Lire le paramètre statut depuis l'URL
-  const [searchParams] = useSearchParams();
+  // Lecture du paramètre statut depuis l'URL
+  const [searchParams, setSearchParams] = useSearchParams();
   const statutFromURL = searchParams.get('statut');
 
   const [examens, setExamens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [services, setServices] = useState([]);
+  const [medecins, setMedecins] = useState([]);
+  const [typesExamens, setTypesExamens] = useState([]);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
 
@@ -55,35 +60,52 @@ const ExamensList = ({ initialFilter = {} }) => {
   const [sortOrder, setSortOrder] = useState('DESC');
 
   const [filters, setFilters] = useState({
-    statut: 'tous',
+    statut: statutFromURL || 'tous',
     service_id: '',
     categorie: 'tous',
     priorite: initialFilter.priorite || 'tous',
     search: '',
     date_debut: '',
     date_fin: '',
+    medecin: '',
+    type_examen_id: '',
     ...initialFilter
   });
 
-  // Appliquer le filtre statut depuis l'URL
+  // Appliquer le filtre statut depuis l'URL (si changement)
   useEffect(() => {
-    if (statutFromURL) {
+    if (statutFromURL && statutFromURL !== filters.statut) {
       setFilters(prev => ({ ...prev, statut: statutFromURL }));
+      setPage(1);
     }
   }, [statutFromURL]);
 
-  const showToast = (msg, type = 'success') => {
+  const showToast = useCallback((msg, type = 'success') => {
     setToast(msg);
     setToastType(type);
     setTimeout(() => setToast(null), 3000);
-  };
-
-  useEffect(() => {
-    api.get('/services')
-      .then(res => setServices(res.data))
-      .catch(err => console.error('Erreur chargement services', err));
   }, []);
 
+  // Chargement des données de référence (services, médecins, types)
+  useEffect(() => {
+    const fetchRefs = async () => {
+      try {
+        const [servicesRes, medecinsRes, typesRes] = await Promise.all([
+          api.get('/services').catch(() => ({ data: [] })),
+          api.get('/consultations/medecins/all').catch(() => ({ data: [] })),
+          api.get('/types-examens').catch(() => ({ data: [] }))
+        ]);
+        setServices(servicesRes.data || []);
+        setMedecins(medecinsRes.data || []);
+        setTypesExamens(typesRes.data || []);
+      } catch (err) {
+        console.error('Erreur chargement références', err);
+      }
+    };
+    fetchRefs();
+  }, []);
+
+  // Chargement des examens avec les filtres
   useEffect(() => {
     const fetchExamens = async () => {
       setLoading(true);
@@ -99,7 +121,9 @@ const ExamensList = ({ initialFilter = {} }) => {
           ...(filters.priorite !== 'tous' && { priorite: filters.priorite }),
           ...(filters.search && { search: filters.search }),
           ...(filters.date_debut && { date_debut: filters.date_debut }),
-          ...(filters.date_fin && { date_fin: filters.date_fin })
+          ...(filters.date_fin && { date_fin: filters.date_fin }),
+          ...(filters.medecin && { medecin: filters.medecin }),
+          ...(filters.type_examen_id && { type_examen_id: filters.type_examen_id })
         };
         const res = await api.get('/examens', { params });
         setExamens(res.data.rows || res.data);
@@ -112,15 +136,15 @@ const ExamensList = ({ initialFilter = {} }) => {
       }
     };
     fetchExamens();
-  }, [page, limit, sortField, sortOrder, filters]);
+  }, [page, limit, sortField, sortOrder, filters, showToast]);
 
-  // Statistiques adaptées aux statuts de la base
+  // Statistiques adaptées aux statuts
   const stats = useMemo(() => {
     const totalCount = total;
     const demandes = examens.filter(e => e.statut === 'en_attente').length;
     const encours = examens.filter(e => e.statut === 'en_cours').length;
     const termines = examens.filter(e => e.statut === 'realise').length;
-    const valides = examens.filter(e => e.statut === 'realise').length;
+    const valides = examens.filter(e => e.statut === 'valide' || e.date_validation).length;
     return { totalCount, demandes, encours, termines, valides };
   }, [examens, total]);
 
@@ -131,6 +155,7 @@ const ExamensList = ({ initialFilter = {} }) => {
       setSortField(field);
       setSortOrder('ASC');
     }
+    setPage(1);
   };
 
   const handleFilterChange = (key, value) => {
@@ -138,7 +163,22 @@ const ExamensList = ({ initialFilter = {} }) => {
     setPage(1);
   };
 
-  // Annulation (soft delete) – accessible à canManage
+  // Réinitialiser tous les filtres
+  const resetFilters = () => {
+    setFilters({
+      statut: 'tous',
+      service_id: '',
+      categorie: 'tous',
+      priorite: 'tous',
+      search: '',
+      date_debut: '',
+      date_fin: '',
+      medecin: '',
+      type_examen_id: ''
+    });
+    setPage(1);
+  };
+
   const handleAnnuler = async (id) => {
     if (!window.confirm('Confirmer l\'annulation de cet examen ?')) return;
     try {
@@ -151,7 +191,6 @@ const ExamensList = ({ initialFilter = {} }) => {
     }
   };
 
-  // Suppression définitive (hard delete) – réservée aux administrateurs
   const handleDeleteDefinitive = async (id) => {
     if (!window.confirm('Supprimer définitivement cet examen ? Cette action est irréversible.')) return;
     try {
@@ -179,6 +218,7 @@ const ExamensList = ({ initialFilter = {} }) => {
       'en_cours': { bg: '#fef3c7', color: '#92400e', icon: <FaClock />, label: 'En cours' },
       'realise': { bg: '#d1fae5', color: '#065f46', icon: <FaCheckCircle />, label: 'Réalisé' },
       'annule': { bg: '#fee2e2', color: '#991b1b', icon: <FaTimesCircle />, label: 'Annulé' },
+      'valide': { bg: '#ede9fe', color: '#5b21b6', icon: <FaCheckCircle />, label: 'Validé' }
     };
     const config = configs[statut] || configs['en_attente'];
     return (
@@ -200,16 +240,19 @@ const ExamensList = ({ initialFilter = {} }) => {
 
   const isAdmin = userRole === 'admin';
 
+  // Affichage du chargement initial
   if (loading && examens.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '24px' }}>⏳ Chargement des examens...</div>
+        <FaSpinner className="spinner" style={{ fontSize: '48px', color: '#f472b6', animation: 'spin 1s linear infinite' }} />
+        <div style={{ fontSize: '20px', marginTop: '16px' }}>Chargement des examens...</div>
       </div>
     );
   }
 
   return (
     <div>
+      {/* Toast */}
       {toast && (
         <div style={{
           position: 'fixed',
@@ -226,10 +269,12 @@ const ExamensList = ({ initialFilter = {} }) => {
           {toast}
         </div>
       )}
+
       {/* En-tête */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <h1 style={{ fontSize: '28px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <FaFlask style={{ color: '#f472b6' }} /> Examens
+          <span style={{ fontSize: '18px', fontWeight: '400', color: '#94a3b8' }}>({total})</span>
         </h1>
         {canManage && (
           <Link
@@ -282,6 +327,7 @@ const ExamensList = ({ initialFilter = {} }) => {
         alignItems: 'center'
       }}>
         <FaFilter style={{ color: '#64748b', marginRight: '4px' }} />
+        
         <input
           type="text"
           placeholder="Rechercher (patient, type...)"
@@ -289,6 +335,7 @@ const ExamensList = ({ initialFilter = {} }) => {
           onChange={(e) => handleFilterChange('search', e.target.value)}
           style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px', flex: '1 1 200px' }}
         />
+
         <select
           value={filters.statut}
           onChange={(e) => handleFilterChange('statut', e.target.value)}
@@ -299,16 +346,19 @@ const ExamensList = ({ initialFilter = {} }) => {
           <option value="en_cours">En cours</option>
           <option value="realise">Réalisé</option>
           <option value="annule">Annulé</option>
+          <option value="valide">Validé</option>
         </select>
+
         <select
           value={filters.categorie}
           onChange={(e) => handleFilterChange('categorie', e.target.value)}
           style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
         >
           <option value="tous">Toutes catégories</option>
-          <option value="laboratoire">Laboratoire</option>
-          <option value="imagerie">Imagerie</option>
+          <option value="laboratoire">🧪 Laboratoire</option>
+          <option value="imagerie">🖥️ Imagerie</option>
         </select>
+
         <select
           value={filters.priorite}
           onChange={(e) => handleFilterChange('priorite', e.target.value)}
@@ -316,8 +366,9 @@ const ExamensList = ({ initialFilter = {} }) => {
         >
           <option value="tous">Toutes priorités</option>
           <option value="normal">Normal</option>
-          <option value="urgent">Urgent</option>
+          <option value="urgent">⚠️ Urgent</option>
         </select>
+
         <select
           value={filters.service_id}
           onChange={(e) => handleFilterChange('service_id', e.target.value)}
@@ -328,21 +379,49 @@ const ExamensList = ({ initialFilter = {} }) => {
             <option key={s.id} value={s.id}>{s.nom}</option>
           ))}
         </select>
-        <input
-          type="date"
-          value={filters.date_debut}
-          onChange={(e) => handleFilterChange('date_debut', e.target.value)}
-          style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
-        />
-        <span style={{ color: '#94a3b8' }}>→</span>
-        <input
-          type="date"
-          value={filters.date_fin}
-          onChange={(e) => handleFilterChange('date_fin', e.target.value)}
-          style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
-        />
+
+        <select
+          value={filters.medecin}
+          onChange={(e) => handleFilterChange('medecin', e.target.value)}
+          style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+        >
+          <option value="">Tous médecins</option>
+          {medecins.map(m => (
+            <option key={m.id} value={`${m.nom} ${m.prenom}`}>
+              {m.nom} {m.prenom} {m.specialite ? `(${m.specialite})` : ''}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.type_examen_id}
+          onChange={(e) => handleFilterChange('type_examen_id', e.target.value)}
+          style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+        >
+          <option value="">Tous types</option>
+          {typesExamens.map(t => (
+            <option key={t.id} value={t.id}>{t.nom}</option>
+          ))}
+        </select>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <input
+            type="date"
+            value={filters.date_debut}
+            onChange={(e) => handleFilterChange('date_debut', e.target.value)}
+            style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+          />
+          <span style={{ color: '#94a3b8' }}>→</span>
+          <input
+            type="date"
+            value={filters.date_fin}
+            onChange={(e) => handleFilterChange('date_fin', e.target.value)}
+            style={{ padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+          />
+        </div>
+
         <button
-          onClick={() => setFilters({ statut: 'tous', service_id: '', categorie: 'tous', priorite: 'tous', search: '', date_debut: '', date_fin: '' })}
+          onClick={resetFilters}
           style={{ padding: '8px 16px', backgroundColor: '#e2e8f0', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
         >
           Réinitialiser
@@ -356,7 +435,7 @@ const ExamensList = ({ initialFilter = {} }) => {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         overflow: 'auto'
       }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1100px' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
               <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('patient_nom')}>
@@ -374,8 +453,8 @@ const ExamensList = ({ initialFilter = {} }) => {
               <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('date_demande')}>
                 Date demande {sortField === 'date_demande' && (sortOrder === 'ASC' ? '↑' : '↓')}
               </th>
-              <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('date_prevue')}>
-                Date prévue {sortField === 'date_prevue' && (sortOrder === 'ASC' ? '↑' : '↓')}
+              <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('date_validation')}>
+                Date validation {sortField === 'date_validation' && (sortOrder === 'ASC' ? '↑' : '↓')}
               </th>
               <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: '600', color: '#475569', cursor: 'pointer' }} onClick={() => handleSort('statut')}>
                 Statut {sortField === 'statut' && (sortOrder === 'ASC' ? '↑' : '↓')}
@@ -413,7 +492,7 @@ const ExamensList = ({ initialFilter = {} }) => {
                     {e.priorite === 'urgent' ? (
                       <span style={{ color: '#dc2626', fontWeight: 'bold' }}>⚠️ Urgent</span>
                     ) : (
-                      <span style={{ color: '#64748b' }}>✅ Normal</span>
+                      <span style={{ color: '#64748b' }}>Normal</span>
                     )}
                   </td>
                   <td style={{ padding: '12px 16px', color: '#475569' }}>{e.service_nom || '-'}</td>
@@ -422,7 +501,7 @@ const ExamensList = ({ initialFilter = {} }) => {
                     {new Date(e.date_demande).toLocaleDateString('fr-FR')}
                   </td>
                   <td style={{ padding: '12px 16px', color: '#475569' }}>
-                    {e.date_prevue ? new Date(e.date_prevue).toLocaleDateString('fr-FR') : '-'}
+                    {e.date_validation ? new Date(e.date_validation).toLocaleDateString('fr-FR') : '-'}
                   </td>
                   <td style={{ padding: '12px 16px' }}>{getStatusBadge(e.statut)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
@@ -434,7 +513,6 @@ const ExamensList = ({ initialFilter = {} }) => {
                       >
                         <FaEye />
                       </Link>
-                      {/* 🔧 Modification de l'examen (ajouté) */}
                       {canManage && e.statut !== 'annule' && (
                         <Link
                           to={`/laboratoire/examen/edit/${e.id}`}
@@ -444,7 +522,6 @@ const ExamensList = ({ initialFilter = {} }) => {
                           <FaEdit />
                         </Link>
                       )}
-                      {/* Saisir résultats (crayon) – visible pour en_attente ou en_cours */}
                       {canManage && (e.statut === 'en_attente' || e.statut === 'en_cours') && (
                         <Link
                           to={`/laboratoire/resultats/${e.id}`}
@@ -454,7 +531,6 @@ const ExamensList = ({ initialFilter = {} }) => {
                           <FaEdit />
                         </Link>
                       )}
-                      {/* Valider – visible pour biologiste/admin et statut realise */}
                       {canValidate && e.statut === 'realise' && (
                         <Link
                           to={`/laboratoire/validation/${e.id}`}
@@ -464,7 +540,6 @@ const ExamensList = ({ initialFilter = {} }) => {
                           <FaCheckCircle />
                         </Link>
                       )}
-                      {/* Annulation (soft delete) accessible à canManage */}
                       {e.statut !== 'annule' && e.statut !== 'realise' && canManage && (
                         <button
                           onClick={() => handleAnnuler(e.id)}
@@ -474,7 +549,6 @@ const ExamensList = ({ initialFilter = {} }) => {
                           <FaTimesCircle />
                         </button>
                       )}
-                      {/* Suppression définitive (hard delete) réservée aux administrateurs */}
                       {isAdmin && e.statut !== 'realise' && (
                         <button
                           onClick={() => handleDeleteDefinitive(e.id)}
@@ -514,7 +588,7 @@ const ExamensList = ({ initialFilter = {} }) => {
         <span style={{ color: '#64748b', fontSize: '14px' }}>
           Affichage de {examens.length} sur {total} examens
         </span>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
@@ -552,6 +626,10 @@ const ExamensList = ({ initialFilter = {} }) => {
         @keyframes slideIn {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

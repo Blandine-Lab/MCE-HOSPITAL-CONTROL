@@ -88,6 +88,9 @@ const blocRoutes = require('./src/routes/blocRoutes');
 // NOUVEAU : routes pour les signes vitaux
 const signesVitauxRoutes = require('./src/routes/signesVitauxRoutes');
 
+// NOUVEAU : routes pour les paramètres du laboratoire
+const parametresLaboRoutes = require('./src/routes/parametresLaboRoutes');
+
 const { authenticate, requireRole } = require('./src/middleware/auth');
 
 // ========== APPLICATION EXPRESS ==========
@@ -187,6 +190,9 @@ app.use('/api/bloc', blocRoutes);
 
 // NOUVEAU : routes pour les signes vitaux
 app.use('/api/signes-vitaux', signesVitauxRoutes);
+
+// NOUVEAU : routes pour les paramètres du laboratoire
+app.use('/api/parametres-references', parametresLaboRoutes);
 
 // ========== 4bis. Route spécifique pour /admin/patients (legacy) ==========
 app.get('/api/admin/patients', authenticate, requireRole(['admin', 'pharmacien']), async (req, res) => {

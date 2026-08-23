@@ -98,15 +98,9 @@ const ValidationForm = () => {
     }
   };
 
-  // Impression PDF avec token dans l'URL
+  // Impression - ouverture de la page HTML imprimable
   const handlePrint = () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Vous devez être connecté pour imprimer le PDF.');
-      return;
-    }
-    const encodedToken = encodeURIComponent(token);
-    window.open(`/api/examens/${id}/pdf?token=${encodedToken}`, '_blank');
+    window.open(`/impression/examen/${id}`, '_blank');
   };
 
   // Rendu du statut (avec 'realise')

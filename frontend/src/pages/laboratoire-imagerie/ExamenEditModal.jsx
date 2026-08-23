@@ -14,7 +14,16 @@ const ExamenEditModal = ({ examenId, onClose, onSuccess }) => {
     const fetchExamen = async () => {
       try {
         const res = await api.get(`/examens/${examenId}`);
-        setExamen(res.data);
+        // Normalisation : utiliser 'nom' et assurer type_parametre
+        const data = res.data;
+        if (data.parametres && Array.isArray(data.parametres)) {
+          data.parametres = data.parametres.map(p => ({
+            ...p,
+            nom: p.nom || p.parametre_nom || '',
+            type_parametre: p.type_parametre || (p.ref_min || p.ref_max ? 'quantitatif' : 'qualitatif')
+          }));
+        }
+        setExamen(data);
         setLoading(false);
       } catch (err) {
         setError('Erreur chargement : ' + (err.response?.data?.error || err.message));
@@ -36,7 +45,16 @@ const ExamenEditModal = ({ examenId, onClose, onSuccess }) => {
 
   const addParam = () => {
     const params = examen.parametres || [];
-    params.push({ parametre_nom: '', valeur: '', unite: '', ref_min: '', ref_max: '', interpretation: '' });
+    params.push({
+      nom: '',
+      valeur: '',
+      unite: '',
+      ref_min: '',
+      ref_max: '',
+      interpretation: '',
+      type_parametre: 'quantitatif',
+      valeurs_possibles: ''
+    });
     setExamen({ ...examen, parametres: params });
   };
 
@@ -52,7 +70,6 @@ const ExamenEditModal = ({ examenId, onClose, onSuccess }) => {
     setError('');
     setSuccessMessage('');
     try {
-      // Mise à jour des résultats (paramètres et statut)
       await api.put(`/examens/${examenId}/resultats`, {
         parametres: examen.parametres || [],
         statut: examen.statut || 'en_attente',
@@ -163,7 +180,7 @@ const ExamenEditModal = ({ examenId, onClose, onSuccess }) => {
               </div>
               <div>
                 <label style={labelStyle}>Type d'examen</label>
-                <input type="text" value={examen.type_examen || examen.type_examen_nom || ''} readOnly style={{ ...inputStyle, backgroundColor: '#f3f4f6' }} />
+                <input type="text" value={examen.type_examen || ''} readOnly style={{ ...inputStyle, backgroundColor: '#f3f4f6' }} />
               </div>
               <div>
                 <label style={labelStyle}>Date demande</label>
@@ -186,7 +203,6 @@ const ExamenEditModal = ({ examenId, onClose, onSuccess }) => {
                   <option value="">Sélectionner</option>
                   <option value="laboratoire">Laboratoire</option>
                   <option value="imagerie">Imagerie</option>
-                  <option value="clinique">Clinique</option>
                 </select>
               </div>
               <div>
@@ -209,7 +225,7 @@ const ExamenEditModal = ({ examenId, onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* Paramètres / Résultats */}
+          {/* Paramètres / Résultats avec distinction quantitatif/qualitatif */}
           <div style={sectionStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h4 style={{ margin: 0 }}>📊 Paramètres / Résultats</h4>
@@ -218,44 +234,81 @@ const ExamenEditModal = ({ examenId, onClose, onSuccess }) => {
               </button>
             </div>
             {examen.parametres && examen.parametres.length > 0 ? (
-              examen.parametres.map((p, idx) => (
-                <div key={idx} style={{ border: '1px solid #e5e7eb', padding: '12px', marginBottom: '10px', borderRadius: '6px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '12px', fontWeight: '500' }}>Paramètre</label>
-                      <input type="text" value={p.parametre_nom || ''} onChange={e => handleParamChange(idx, 'parametre_nom', e.target.value)} style={inputStyle} placeholder="Nom" />
+              examen.parametres.map((p, idx) => {
+                const isQuantitatif = p.type_parametre === 'quantitatif';
+                return (
+                  <div key={idx} style={{ border: '1px solid #e5e7eb', padding: '12px', marginBottom: '10px', borderRadius: '6px', backgroundColor: isQuantitatif ? '#f0f9ff' : '#fefce8' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: '500' }}>Paramètre</label>
+                        <input type="text" value={p.nom || ''} onChange={e => handleParamChange(idx, 'nom', e.target.value)} style={inputStyle} placeholder="Nom" />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: '500' }}>Type</label>
+                        <select value={p.type_parametre || 'quantitatif'} onChange={e => handleParamChange(idx, 'type_parametre', e.target.value)} style={inputStyle}>
+                          <option value="quantitatif">Quantitatif</option>
+                          <option value="qualitatif">Qualitatif</option>
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label style={{ fontSize: '12px', fontWeight: '500' }}>Valeur</label>
-                      <input type="text" value={p.valeur || ''} onChange={e => handleParamChange(idx, 'valeur', e.target.value)} style={inputStyle} placeholder="Valeur" />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '12px', fontWeight: '500' }}>Unité</label>
-                      <input type="text" value={p.unite || ''} onChange={e => handleParamChange(idx, 'unite', e.target.value)} style={inputStyle} placeholder="Unité" />
+                    {isQuantitatif ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: '500' }}>Valeur</label>
+                          <input type="number" step="any" value={p.valeur || ''} onChange={e => handleParamChange(idx, 'valeur', e.target.value)} style={inputStyle} placeholder="Valeur" />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: '500' }}>Unité</label>
+                          <input type="text" value={p.unite || ''} onChange={e => handleParamChange(idx, 'unite', e.target.value)} style={inputStyle} placeholder="Unité" />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: '500' }}>Réf. min</label>
+                          <input type="number" step="any" value={p.ref_min || ''} onChange={e => handleParamChange(idx, 'ref_min', e.target.value)} style={inputStyle} placeholder="Min" />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: '500' }}>Réf. max</label>
+                          <input type="number" step="any" value={p.ref_max || ''} onChange={e => handleParamChange(idx, 'ref_max', e.target.value)} style={inputStyle} placeholder="Max" />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: '500' }}>Interprétation</label>
+                          <select value={p.interpretation || ''} onChange={e => handleParamChange(idx, 'interpretation', e.target.value)} style={inputStyle}>
+                            <option value="">Auto</option>
+                            <option value="normal">Normal</option>
+                            <option value="haut">Haut</option>
+                            <option value="bas">Bas</option>
+                          </select>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: '500' }}>Résultat</label>
+                          {p.valeurs_possibles ? (
+                            <select value={p.valeur || ''} onChange={e => handleParamChange(idx, 'valeur', e.target.value)} style={inputStyle}>
+                              <option value="">Choisir</option>
+                              {p.valeurs_possibles.split(',').map(v => (
+                                <option key={v.trim()} value={v.trim()}>{v.trim()}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input type="text" value={p.valeur || ''} onChange={e => handleParamChange(idx, 'valeur', e.target.value)} style={inputStyle} placeholder="Ex: Positif, Négatif" />
+                          )}
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: '500' }}>Valeurs possibles</label>
+                          <input type="text" value={p.valeurs_possibles || ''} onChange={e => handleParamChange(idx, 'valeurs_possibles', e.target.value)} style={inputStyle} placeholder="Positif,Négatif" />
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input type="text" value={p.commentaire || ''} onChange={e => handleParamChange(idx, 'commentaire', e.target.value)} style={{ ...inputStyle, flex: 1 }} placeholder="Commentaire du paramètre" />
+                      <button type="button" onClick={() => removeParam(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
+                        <FaTimes />
+                      </button>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '12px', fontWeight: '500' }}>Ref min</label>
-                      <input type="text" value={p.ref_min || ''} onChange={e => handleParamChange(idx, 'ref_min', e.target.value)} style={inputStyle} placeholder="Ref min" />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '12px', fontWeight: '500' }}>Ref max</label>
-                      <input type="text" value={p.ref_max || ''} onChange={e => handleParamChange(idx, 'ref_max', e.target.value)} style={inputStyle} placeholder="Ref max" />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '12px', fontWeight: '500' }}>Interprétation</label>
-                      <input type="text" value={p.interpretation || ''} onChange={e => handleParamChange(idx, 'interpretation', e.target.value)} style={inputStyle} placeholder="Interprétation" />
-                    </div>
-                  </div>
-                  <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input type="text" value={p.commentaire || ''} onChange={e => handleParamChange(idx, 'commentaire', e.target.value)} style={{ ...inputStyle, flex: 1 }} placeholder="Commentaire du paramètre" />
-                    <button type="button" onClick={() => removeParam(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
-                      <FaTimes />
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <p style={{ color: '#6b7280', fontStyle: 'italic' }}>Aucun paramètre. Cliquez sur "Ajouter un paramètre".</p>
             )}

@@ -90,6 +90,8 @@ import ResultatForm from './pages/laboratoire-imagerie/ResultatForm';
 import ValidationForm from './pages/laboratoire-imagerie/ValidationForm';
 import TypesExamens from './pages/laboratoire-imagerie/TypesExamens';
 import ParametresLabo from './pages/laboratoire-imagerie/ParametresLabo';
+// 👇 NOUVEL IMPORT POUR L'IMPRESSION DES RÉSULTATS DE LABO
+import ImpressionExamen from './pages/laboratoire-imagerie/ImpressionExamen';
 
 // ========== IMPORTS MODULE RESSOURCES HUMAINES & PLANNING ==========
 import RHPlanningModule from './pages/rh-planning/RHPlanningModule';
@@ -335,13 +337,25 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 {/* Route publique pour les partenaires */}
                 <Route path="/rdv-partenaire/:token" element={<RendezVousPartenaire />} />
 
-                {/* ===== Route d'impression (sans Layout) ===== */}
+                {/* ===== Routes d'impression (sans Layout) ===== */}
                 <Route
                   path="/prescription/print/:id"
                   element={
                     <ProtectedRoute>
                       <PermissionRoute permission="view_prescriptions">
                         <PrescriptionPrint />
+                      </PermissionRoute>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* 👇 NOUVELLE ROUTE POUR L'IMPRESSION DES RÉSULTATS DE LABORATOIRE */}
+                <Route
+                  path="/impression/examen/:id"
+                  element={
+                    <ProtectedRoute>
+                      <PermissionRoute permission="view_laboratory">
+                        <ImpressionExamen />
                       </PermissionRoute>
                     </ProtectedRoute>
                   }

@@ -109,6 +109,7 @@ const ResultatForm = () => {
         newParams[index].interpretation = '';
       }
     } else if (field === 'valeur' && !isQuantitatif) {
+      // Pour les qualitatifs, on ne calcule pas d'interprétation automatique
       newParams[index].interpretation = '';
     }
     setParametres(newParams);
@@ -194,9 +195,8 @@ const ResultatForm = () => {
     }
   };
 
-  // Impression : ouverture de la page d'impression HTML (route React)
+  // Impression : ouverture de la page HTML imprimable
   const handlePrint = () => {
-    // On ouvre la page dédiée à l'impression dans un nouvel onglet
     window.open(`/impression/examen/${id}`, '_blank');
   };
 
@@ -381,25 +381,46 @@ const ResultatForm = () => {
                             }}
                           />
                         ) : (
-                          <input
-                            type="text"
-                            value={p.valeur || ''}
-                            onChange={(e) => handleParamChange(idx, 'valeur', e.target.value)}
-                            disabled={isSaisieTerminee}
-                            style={{
-                              width: '150px',
-                              padding: '6px',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '4px',
-                              fontSize: '14px'
-                            }}
-                            placeholder="Saisir le résultat"
-                          />
+                          // Pour les qualitatifs : select si valeurs_possibles existe, sinon input text
+                          p.valeurs_possibles ? (
+                            <select
+                              value={p.valeur || ''}
+                              onChange={(e) => handleParamChange(idx, 'valeur', e.target.value)}
+                              disabled={isSaisieTerminee}
+                              style={{
+                                width: '150px',
+                                padding: '6px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '4px',
+                                fontSize: '14px'
+                              }}
+                            >
+                              <option value="">Sélectionner</option>
+                              {p.valeurs_possibles.split(',').map(v => (
+                                <option key={v.trim()} value={v.trim()}>{v.trim()}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={p.valeur || ''}
+                              onChange={(e) => handleParamChange(idx, 'valeur', e.target.value)}
+                              disabled={isSaisieTerminee}
+                              style={{
+                                width: '150px',
+                                padding: '6px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '4px',
+                                fontSize: '14px'
+                              }}
+                              placeholder="Saisir le résultat"
+                            />
+                          )
                         )}
                       </td>
                       <td style={{ padding: '8px' }}>{p.unite || '-'}</td>
                       <td style={{ padding: '8px' }}>
-                        {isQuantitatif ? `${p.ref_min || ''} - ${p.ref_max || ''}` : '-'}
+                        {isQuantitatif ? `${p.ref_min || ''} - ${p.ref_max || ''}` : (p.valeurs_possibles || '-')}
                       </td>
                       <td style={{ padding: '8px' }}>
                         {p.interpretation && isQuantitatif && (
