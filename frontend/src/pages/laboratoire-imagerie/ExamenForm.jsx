@@ -12,6 +12,7 @@ const ExamenForm = () => {
   const isEdit = !!id;
   const { user } = useAuth();
 
+  // État commun (patient, consultation, etc.)
   const [formData, setFormData] = useState({
     patient_id: '',
     consultation_id: '',
@@ -21,6 +22,7 @@ const ExamenForm = () => {
     date_demande: new Date().toISOString().split('T')[0],
   });
 
+  // Liste des examens (un seul en édition, plusieurs en création)
   const [examens, setExamens] = useState([
     {
       type_examen_id: '',
@@ -34,33 +36,35 @@ const ExamenForm = () => {
       notes: '',
       parametres: [],
       statut: 'en_attente',
-      prix: null
-    }
+      prix: null,
+    },
   ]);
 
+  // Données de référence
   const [patients, setPatients] = useState([]);
   const [typesExamens, setTypesExamens] = useState([]);
   const [services, setServices] = useState([]);
   const [consultations, setConsultations] = useState([]);
   const [medecins, setMedecins] = useState([]);
+
+  // États de chargement et de formulaire
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [loadingExamen, setLoadingExamen] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [errors, setErrors] = useState({});
-  const [loadingExamen, setLoadingExamen] = useState(false);
 
   // Chargement initial des données de référence
   useEffect(() => {
     const fetchData = async () => {
       setLoadingData(true);
-      setError('');
       try {
         const [patientsRes, typesRes, servicesRes, medecinsRes] = await Promise.all([
           api.get('/patients').catch(() => ({ data: [] })),
           api.get('/types-examens').catch(() => ({ data: [] })),
           api.get('/services').catch(() => ({ data: [] })),
-          api.get('/consultations/medecins/all').catch(() => ({ data: [] }))
+          api.get('/consultations/medecins/all').catch(() => ({ data: [] })),
         ]);
         setPatients(patientsRes.data || []);
         setTypesExamens(typesRes.data || []);
@@ -76,12 +80,13 @@ const ExamenForm = () => {
     fetchData();
   }, []);
 
-  // Si édition, charger l'examen
+  // En édition, charger l'examen
   useEffect(() => {
     if (isEdit) {
       setLoadingExamen(true);
-      api.get(`/examens/${id}`)
-        .then(res => {
+      api
+        .get(`/examens/${id}`)
+        .then((res) => {
           const examen = res.data;
           setFormData({
             patient_id: examen.patient_id || '',
@@ -89,43 +94,53 @@ const ExamenForm = () => {
             service_id: examen.service_id || '',
             medecin_prescripteur: examen.medecin_prescripteur || '',
             priorite: examen.priorite || 'normal',
-            date_demande: examen.date_demande ? new Date(examen.date_demande).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            date_demande: examen.date_demande
+              ? new Date(examen.date_demande).toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0],
           });
-          // S'assurer que chaque paramètre a un type_parametre (défaut 'quantitatif') et une valeur_texte
-          const params = (examen.parametres || []).map(p => ({
+          // Uniformisation des paramètres : on utilise 'valeur' pour tous
+          const params = (examen.parametres || []).map((p) => ({
             ...p,
             type_parametre: p.type_parametre || 'quantitatif',
-            valeur_texte: p.valeur_texte || ''   // conserver la valeur texte existante
+            // On fusionne valeur_texte dans valeur si nécessaire
+            valeur: p.valeur || p.valeur_texte || '',
           }));
-          setExamens([{
-            type_examen_id: examen.type_examen_id || '',
-            categorie: examen.categorie || 'laboratoire',
-            description: examen.description || '',
-            date_prevue: examen.date_prevue ? new Date(examen.date_prevue).toISOString().split('T')[0] : '',
-            instructions_preparation: examen.instructions_preparation || '',
-            type_prelevement: examen.type_prelevement || '',
-            date_prelevement: examen.date_prelevement ? new Date(examen.date_prelevement).toISOString().split('T')[0] : '',
-            preleveur_id: examen.preleveur_id || '',
-            notes: examen.notes || '',
-            parametres: params,
-            statut: examen.statut || 'en_attente',
-            prix: examen.prix || null
-          }]);
+          setExamens([
+            {
+              type_examen_id: examen.type_examen_id || '',
+              categorie: examen.categorie || 'laboratoire',
+              description: examen.description || '',
+              date_prevue: examen.date_prevue
+                ? new Date(examen.date_prevue).toISOString().split('T')[0]
+                : '',
+              instructions_preparation: examen.instructions_preparation || '',
+              type_prelevement: examen.type_prelevement || '',
+              date_prelevement: examen.date_prelevement
+                ? new Date(examen.date_prelevement).toISOString().split('T')[0]
+                : '',
+              preleveur_id: examen.preleveur_id || '',
+              notes: examen.notes || '',
+              parametres: params,
+              statut: examen.statut || 'en_attente',
+              prix: examen.prix || null,
+            },
+          ]);
           setLoadingExamen(false);
         })
-        .catch(err => {
+        .catch((err) => {
           console.error('Erreur chargement examen pour édition', err);
-          setError('Impossible de charger l\'examen pour modification');
+          setError("Impossible de charger l'examen pour modification");
           setLoadingExamen(false);
         });
     }
   }, [isEdit, id]);
 
-  // Chargement des consultations du patient
+  // Charger les consultations du patient sélectionné
   useEffect(() => {
     if (formData.patient_id) {
-      api.get(`/consultations/patient/${formData.patient_id}`)
-        .then(res => setConsultations(res.data || []))
+      api
+        .get(`/consultations/patient/${formData.patient_id}`)
+        .then((res) => setConsultations(res.data || []))
         .catch(() => setConsultations([]));
     } else {
       setConsultations([]);
@@ -135,11 +150,11 @@ const ExamenForm = () => {
   // Gestion des champs communs
   const handleCommonChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  // Gestion des lignes d'examens
+  // Ajout / suppression d'examens (seulement en création)
   const addExamen = () => {
     if (isEdit) return;
     setExamens([
@@ -154,8 +169,10 @@ const ExamenForm = () => {
         date_prelevement: '',
         preleveur_id: '',
         notes: '',
-        parametres: []
-      }
+        parametres: [],
+        statut: 'en_attente',
+        prix: null,
+      },
     ]);
   };
 
@@ -165,29 +182,35 @@ const ExamenForm = () => {
     setExamens(examens.filter((_, i) => i !== index));
   };
 
+  // Mise à jour d'un champ d'examen
   const updateExamen = (index, field, value) => {
     const newExamens = [...examens];
     newExamens[index][field] = value;
 
+    // Lorsque le type d'examen change, charger les paramètres par défaut
     if (field === 'type_examen_id') {
-      const type = typesExamens.find(t => t.id === parseInt(value));
+      const type = typesExamens.find((t) => t.id === parseInt(value));
       if (type) {
         newExamens[index].categorie = type.categorie || newExamens[index].categorie;
         if (!newExamens[index].parametres || newExamens[index].parametres.length === 0) {
           let defaultParams = type.parametres_defaut;
           if (typeof defaultParams === 'string') {
-            try { defaultParams = JSON.parse(defaultParams); } catch { defaultParams = []; }
+            try {
+              defaultParams = JSON.parse(defaultParams);
+            } catch {
+              defaultParams = [];
+            }
           }
           if (Array.isArray(defaultParams) && defaultParams.length > 0) {
-            newExamens[index].parametres = defaultParams.map(p => ({
+            newExamens[index].parametres = defaultParams.map((p) => ({
               nom: p.nom || '',
               valeur: p.valeur || '',
-              valeur_texte: p.valeur_texte || '',   // ajout
               unite: p.unite || '',
               ref_min: p.ref_min || '',
               ref_max: p.ref_max || '',
               interpretation: p.interpretation || '',
-              type_parametre: p.type_parametre || 'quantitatif'
+              type_parametre: p.type_parametre || 'quantitatif',
+              valeurs_possibles: p.valeurs_possibles || '', // pour les qualitatifs
             }));
           }
         }
@@ -197,38 +220,55 @@ const ExamenForm = () => {
   };
 
   // Gestion des paramètres
-  const addParametre = (index) => {
+  const addParametre = (examenIndex) => {
     const newExamens = [...examens];
-    newExamens[index].parametres.push({
+    newExamens[examenIndex].parametres.push({
       nom: '',
       valeur: '',
-      valeur_texte: '',    // nouveau champ texte
       unite: '',
       ref_min: '',
       ref_max: '',
       interpretation: '',
-      type_parametre: 'quantitatif'
+      type_parametre: 'quantitatif',
+      valeurs_possibles: '',
     });
     setExamens(newExamens);
   };
 
   const removeParametre = (examenIndex, paramIndex) => {
     const newExamens = [...examens];
-    newExamens[examenIndex].parametres = newExamens[examenIndex].parametres.filter((_, i) => i !== paramIndex);
+    newExamens[examenIndex].parametres = newExamens[examenIndex].parametres.filter(
+      (_, i) => i !== paramIndex
+    );
     setExamens(newExamens);
   };
 
   const updateParametre = (examenIndex, paramIndex, field, value) => {
     const newExamens = [...examens];
-    newExamens[examenIndex].parametres[paramIndex][field] = value;
+    const param = newExamens[examenIndex].parametres[paramIndex];
+    param[field] = value;
+
+    // Si quantitatif, auto-interprétation basée sur les références
+    if (param.type_parametre === 'quantitatif' && field === 'valeur') {
+      const val = parseFloat(value);
+      const min = parseFloat(param.ref_min);
+      const max = parseFloat(param.ref_max);
+      if (!isNaN(val) && !isNaN(min) && !isNaN(max)) {
+        if (val < min) param.interpretation = 'bas';
+        else if (val > max) param.interpretation = 'haut';
+        else param.interpretation = 'normal';
+      } else {
+        param.interpretation = '';
+      }
+    }
     setExamens(newExamens);
   };
 
-  // Validation
+  // Validation du formulaire
   const validateForm = () => {
     const newErrors = {};
     if (!formData.patient_id) newErrors.patient_id = 'Patient requis';
-    const hasValidExamen = examens.some(e => e.type_examen_id);
+    const hasValidExamen = examens.some((e) => e.type_examen_id);
     if (!hasValidExamen) newErrors.examens = 'Au moins un examen doit être sélectionné';
     examens.forEach((e, idx) => {
       if (!e.type_examen_id) {
@@ -244,7 +284,7 @@ const ExamenForm = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    const validExamens = examens.filter(ex => ex.type_examen_id);
+    const validExamens = examens.filter((ex) => ex.type_examen_id);
     if (validExamens.length === 0) {
       setError('Veuillez ajouter au moins un examen valide.');
       return;
@@ -256,7 +296,6 @@ const ExamenForm = () => {
 
     try {
       if (isEdit) {
-        // Édition : mettre à jour l'examen existant
         const examen = validExamens[0];
         const payload = {
           patient_id: formData.patient_id,
@@ -275,20 +314,19 @@ const ExamenForm = () => {
           preleveur_id: examen.preleveur_id || null,
           notes: examen.notes || null,
           parametres: examen.parametres || [],
-          statut: examen.statut || 'en_attente'
+          statut: examen.statut || 'en_attente',
         };
         await api.put(`/examens/${id}`, payload);
         setSuccess('Examen mis à jour avec succès');
         setTimeout(() => navigate(`/laboratoire/examen/${id}`), 1500);
       } else {
-        // Création
         const payload = {
           patient_id: formData.patient_id,
           consultation_id: formData.consultation_id || null,
           service_id: formData.service_id || null,
           medecin_prescripteur: formData.medecin_prescripteur || null,
           priorite: formData.priorite,
-          examens: validExamens.map(ex => ({
+          examens: validExamens.map((ex) => ({
             type_examen_id: ex.type_examen_id,
             categorie: ex.categorie,
             description: ex.description,
@@ -298,8 +336,8 @@ const ExamenForm = () => {
             date_prelevement: ex.date_prelevement || null,
             preleveur_id: ex.preleveur_id || null,
             notes: ex.notes || null,
-            parametres: ex.parametres || []
-          }))
+            parametres: ex.parametres || [],
+          })),
         };
         const res = await api.post('/examens/groupe', payload);
         setSuccess(`${res.data.examensIds.length} examen(s) créé(s) avec succès`);
@@ -307,7 +345,7 @@ const ExamenForm = () => {
       }
     } catch (err) {
       console.error('Erreur sauvegarde :', err);
-      setError(err.response?.data?.error || 'Erreur lors de l\'enregistrement');
+      setError(err.response?.data?.error || "Erreur lors de l'enregistrement");
     } finally {
       setLoading(false);
     }
@@ -324,59 +362,135 @@ const ExamenForm = () => {
   return (
     <div>
       <div style={{ marginBottom: '24px' }}>
-        <Link to={isEdit ? `/laboratoire/examen/${id}` : "/laboratoire"} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#3b82f6', textDecoration: 'none', fontWeight: '500' }}>
+        <Link
+          to={isEdit ? `/laboratoire/examen/${id}` : '/laboratoire'}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: '#3b82f6',
+            textDecoration: 'none',
+            fontWeight: '500',
+          }}
+        >
           <FaArrowLeft /> {isEdit ? 'Retour au détail' : 'Retour'}
         </Link>
       </div>
 
-      <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <div
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '32px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        }}
+      >
         <h2 style={{ marginTop: 0, color: '#0f172a' }}>
-          {isEdit ? 'Modifier l\'examen' : 'Nouvelle demande d\'examens'}
+          {isEdit ? "Modifier l'examen" : "Nouvelle demande d'examens"}
         </h2>
 
         {error && (
-          <div style={{ color: '#ef4444', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px', marginBottom: '16px' }}>
+          <div
+            style={{
+              color: '#ef4444',
+              padding: '12px',
+              backgroundColor: '#fee2e2',
+              borderRadius: '8px',
+              marginBottom: '16px',
+            }}
+          >
             {error}
           </div>
         )}
         {success && (
-          <div style={{ color: '#10b981', padding: '12px', backgroundColor: '#d1fae5', borderRadius: '8px', marginBottom: '16px' }}>
+          <div
+            style={{
+              color: '#10b981',
+              padding: '12px',
+              backgroundColor: '#d1fae5',
+              borderRadius: '8px',
+              marginBottom: '16px',
+            }}
+          >
             {success}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
           {/* Champs communs */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '20px',
+              marginBottom: '24px',
+            }}
+          >
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Patient *</label>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '6px',
+                  fontWeight: '500',
+                  color: '#334155',
+                }}
+              >
+                Patient *
+              </label>
               <select
                 name="patient_id"
                 value={formData.patient_id}
                 onChange={handleCommonChange}
                 required
                 disabled={isEdit}
-                style={{ width: '100%', padding: '10px 14px', border: `1px solid ${errors.patient_id ? '#ef4444' : '#e2e8f0'}`, borderRadius: '8px', fontSize: '16px' }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: `1px solid ${errors.patient_id ? '#ef4444' : '#e2e8f0'}`,
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                }}
               >
                 <option value="">Sélectionner un patient</option>
-                {patients.map(p => (
-                  <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>
+                {patients.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nom} {p.prenom}
+                  </option>
                 ))}
               </select>
-              {errors.patient_id && <div style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>{errors.patient_id}</div>}
+              {errors.patient_id && (
+                <div style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
+                  {errors.patient_id}
+                </div>
+              )}
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Consultation associée (optionnel)</label>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '6px',
+                  fontWeight: '500',
+                  color: '#334155',
+                }}
+              >
+                Consultation associée (optionnel)
+              </label>
               <select
                 name="consultation_id"
                 value={formData.consultation_id}
                 onChange={handleCommonChange}
-                style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '16px' }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                }}
                 disabled={!formData.patient_id || isEdit}
               >
                 <option value="">Sélectionner une consultation</option>
-                {consultations.map(c => (
+                {consultations.map((c) => (
                   <option key={c.id} value={c.id}>
                     {new Date(c.date).toLocaleDateString()} - {c.motif || 'Consultation'}
                   </option>
@@ -385,16 +499,33 @@ const ExamenForm = () => {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Service demandeur (optionnel)</label>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '6px',
+                  fontWeight: '500',
+                  color: '#334155',
+                }}
+              >
+                Service demandeur (optionnel)
+              </label>
               <select
                 name="service_id"
                 value={formData.service_id}
                 onChange={handleCommonChange}
-                style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '16px' }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                }}
               >
                 <option value="">Sélectionner un service</option>
-                {services.map(s => (
-                  <option key={s.id} value={s.id}>{s.nom}</option>
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nom}
+                  </option>
                 ))}
               </select>
             </div>
@@ -402,15 +533,30 @@ const ExamenForm = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Médecin prescripteur</label>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '6px',
+                  fontWeight: '500',
+                  color: '#334155',
+                }}
+              >
+                Médecin prescripteur
+              </label>
               <select
                 name="medecin_prescripteur"
                 value={formData.medecin_prescripteur}
                 onChange={handleCommonChange}
-                style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '16px' }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                }}
               >
                 <option value="">Sélectionner un médecin</option>
-                {medecins.map(m => (
+                {medecins.map((m) => (
                   <option key={m.id} value={`${m.nom} ${m.prenom}`}>
                     {m.nom} {m.prenom} {m.specialite ? `(${m.specialite})` : ''}
                   </option>
@@ -418,25 +564,55 @@ const ExamenForm = () => {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#334155' }}>Priorité *</label>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '6px',
+                  fontWeight: '500',
+                  color: '#334155',
+                }}
+              >
+                Priorité *
+              </label>
               <select
                 name="priorite"
                 value={formData.priorite}
                 onChange={handleCommonChange}
-                style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '16px' }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                }}
               >
                 <option value="normal">Normal</option>
                 <option value="urgent">⚠️ Urgent</option>
               </select>
               {formData.priorite === 'urgent' && (
-                <div style={{ color: '#dc2626', fontSize: '14px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div
+                  style={{
+                    color: '#dc2626',
+                    fontSize: '14px',
+                    marginTop: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
                   <FaExclamationTriangle /> Priorité urgente : délai réduit
                 </div>
               )}
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px', marginBottom: '20px' }}>
+          <div
+            style={{
+              borderTop: '1px solid #e2e8f0',
+              paddingTop: '20px',
+              marginBottom: '20px',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, color: '#0f172a' }}>
                 {isEdit ? 'Examen' : 'Examens demandés'}
@@ -445,19 +621,49 @@ const ExamenForm = () => {
                 <button
                   type="button"
                   onClick={addExamen}
-                  style={{ backgroundColor: '#3b82f6', color: 'white', padding: '6px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  style={{
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    padding: '6px 16px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
                 >
                   <FaPlus /> Ajouter un examen
                 </button>
               )}
             </div>
-            {errors.examens && <div style={{ color: '#ef4444', fontSize: '14px', marginTop: '8px' }}>{errors.examens}</div>}
+            {errors.examens && (
+              <div style={{ color: '#ef4444', fontSize: '14px', marginTop: '8px' }}>
+                {errors.examens}
+              </div>
+            )}
           </div>
 
           {/* Liste des examens */}
           {examens.map((ex, idx) => (
-            <div key={idx} style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '20px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div
+              key={idx}
+              style={{
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px',
+                padding: '20px',
+                marginBottom: '20px',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '12px',
+                }}
+              >
                 <h4 style={{ margin: 0, color: '#1e293b' }}>Examen #{idx + 1}</h4>
                 {!isEdit && examens.length > 1 && (
                   <button
@@ -472,7 +678,16 @@ const ExamenForm = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Catégorie *</label>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '4px',
+                      fontWeight: '500',
+                      color: '#334155',
+                    }}
+                  >
+                    Catégorie *
+                  </label>
                   <div style={{ display: 'flex', gap: '16px', alignItems: 'center', paddingTop: '4px' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                       <input
@@ -500,40 +715,88 @@ const ExamenForm = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Type d'examen *</label>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '4px',
+                      fontWeight: '500',
+                      color: '#334155',
+                    }}
+                  >
+                    Type d'examen *
+                  </label>
                   <select
                     value={ex.type_examen_id}
                     onChange={(e) => updateExamen(idx, 'type_examen_id', e.target.value)}
                     required
                     disabled={isEdit}
-                    style={{ width: '100%', padding: '8px', border: `1px solid ${errors[`examen_${idx}_type`] ? '#ef4444' : '#e2e8f0'}`, borderRadius: '6px' }}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: `1px solid ${errors[`examen_${idx}_type`] ? '#ef4444' : '#e2e8f0'}`,
+                      borderRadius: '6px',
+                    }}
                   >
                     <option value="">Sélectionner</option>
                     {typesExamens
-                      .filter(t => t.categorie && t.categorie.toLowerCase() === ex.categorie.toLowerCase())
-                      .map(t => (
-                        <option key={t.id} value={t.id}>{t.nom}</option>
+                      .filter((t) => t.categorie && t.categorie.toLowerCase() === ex.categorie.toLowerCase())
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nom}
+                        </option>
                       ))}
                   </select>
-                  {errors[`examen_${idx}_type`] && <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>{errors[`examen_${idx}_type`]}</div>}
+                  {errors[`examen_${idx}_type`] && (
+                    <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>
+                      {errors[`examen_${idx}_type`]}
+                    </div>
+                  )}
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Date prévue</label>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '4px',
+                      fontWeight: '500',
+                      color: '#334155',
+                    }}
+                  >
+                    Date prévue
+                  </label>
                   <input
                     type="date"
                     value={ex.date_prevue}
                     onChange={(e) => updateExamen(idx, 'date_prevue', e.target.value)}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                    }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Type de prélèvement</label>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '4px',
+                      fontWeight: '500',
+                      color: '#334155',
+                    }}
+                  >
+                    Type de prélèvement
+                  </label>
                   <select
                     value={ex.type_prelevement}
                     onChange={(e) => updateExamen(idx, 'type_prelevement', e.target.value)}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                    }}
                   >
                     <option value="">Non spécifié</option>
                     <option value="sang">Sang</option>
@@ -546,144 +809,346 @@ const ExamenForm = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Date de prélèvement</label>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '4px',
+                      fontWeight: '500',
+                      color: '#334155',
+                    }}
+                  >
+                    Date de prélèvement
+                  </label>
                   <input
                     type="date"
                     value={ex.date_prelevement}
                     onChange={(e) => updateExamen(idx, 'date_prelevement', e.target.value)}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                    }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Préleveur (ID)</label>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '4px',
+                      fontWeight: '500',
+                      color: '#334155',
+                    }}
+                  >
+                    Préleveur (ID)
+                  </label>
                   <input
                     type="text"
                     value={ex.preleveur_id || ''}
                     onChange={(e) => updateExamen(idx, 'preleveur_id', e.target.value)}
                     placeholder="ID du préleveur"
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                    }}
                   />
                 </div>
               </div>
 
               <div style={{ marginTop: '12px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Description / Motif</label>
+                <label
+                  style={{
+                    display: 'block',
+                    marginBottom: '4px',
+                    fontWeight: '500',
+                    color: '#334155',
+                  }}
+                >
+                  Description / Motif
+                </label>
                 <textarea
                   value={ex.description}
                   onChange={(e) => updateExamen(idx, 'description', e.target.value)}
                   rows="2"
-                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                  }}
                 />
               </div>
 
               <div style={{ marginTop: '12px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Instructions de préparation</label>
+                <label
+                  style={{
+                    display: 'block',
+                    marginBottom: '4px',
+                    fontWeight: '500',
+                    color: '#334155',
+                  }}
+                >
+                  Instructions de préparation
+                </label>
                 <input
                   type="text"
                   value={ex.instructions_preparation || ''}
                   onChange={(e) => updateExamen(idx, 'instructions_preparation', e.target.value)}
                   placeholder="Jeûne, arrêt de médicaments, etc."
-                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                  }}
                 />
               </div>
 
               <div style={{ marginTop: '12px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Notes internes</label>
+                <label
+                  style={{
+                    display: 'block',
+                    marginBottom: '4px',
+                    fontWeight: '500',
+                    color: '#334155',
+                  }}
+                >
+                  Notes internes
+                </label>
                 <input
                   type="text"
                   value={ex.notes || ''}
                   onChange={(e) => updateExamen(idx, 'notes', e.target.value)}
                   placeholder="Informations complémentaires"
-                  style={{ width: '100%', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                  }}
                 />
               </div>
 
-              {/* Paramètres avec deux champs de valeur : numérique et texte */}
-              <div style={{ marginTop: '16px', borderTop: '1px dashed #cbd5e1', paddingTop: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              {/* Paramètres avec distinction quantitatif / qualitatif */}
+              <div
+                style={{
+                  marginTop: '16px',
+                  borderTop: '1px dashed #cbd5e1',
+                  paddingTop: '12px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '8px',
+                  }}
+                >
                   <label style={{ fontWeight: '500', color: '#334155' }}>Paramètres</label>
                   <button
                     type="button"
                     onClick={() => addParametre(idx)}
-                    style={{ backgroundColor: '#e2e8f0', border: 'none', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{
+                      backgroundColor: '#e2e8f0',
+                      border: 'none',
+                      padding: '4px 10px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
                   >
                     <FaPlus /> Ajouter
                   </button>
                 </div>
+
                 {ex.parametres.length === 0 && (
-                  <div style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', padding: '8px' }}>Aucun paramètre</div>
+                  <div
+                    style={{
+                      color: '#94a3b8',
+                      fontSize: '13px',
+                      textAlign: 'center',
+                      padding: '8px',
+                    }}
+                  >
+                    Aucun paramètre
+                  </div>
                 )}
+
                 {ex.parametres.map((p, pIdx) => {
+                  const isQuantitatif = p.type_parametre === 'quantitatif';
                   return (
-                    <div key={pIdx} style={{ display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div
+                      key={pIdx}
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        marginBottom: '6px',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        backgroundColor: isQuantitatif ? '#f0f9ff' : '#fefce8',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                      }}
+                    >
                       <input
                         type="text"
                         placeholder="Nom"
                         value={p.nom || ''}
                         onChange={(e) => updateParametre(idx, pIdx, 'nom', e.target.value)}
-                        style={{ flex: '1 1 100px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                        style={{
+                          flex: '1 1 120px',
+                          padding: '4px 8px',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '4px',
+                        }}
                       />
                       <select
                         value={p.type_parametre || 'quantitatif'}
-                        onChange={(e) => updateParametre(idx, pIdx, 'type_parametre', e.target.value)}
-                        style={{ flex: '1 1 80px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          updateParametre(idx, pIdx, 'type_parametre', newType);
+                          // Réinitialiser interprétation si on passe à qualitatif
+                          if (newType === 'qualitatif') {
+                            updateParametre(idx, pIdx, 'interpretation', '');
+                          }
+                        }}
+                        style={{
+                          flex: '1 1 100px',
+                          padding: '4px 8px',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '4px',
+                        }}
                       >
-                        <option value="quantitatif">Quantitatif</option>
-                        <option value="qualitatif">Qualitatif</option>
+                        <option value="quantitatif">📊 Quantitatif</option>
+                        <option value="qualitatif">✏️ Qualitatif</option>
                       </select>
-                      {/* Champ numérique (toujours visible) */}
-                      <input
-                        type="number"
-                        step="any"
-                        placeholder="Valeur num."
-                        value={p.valeur || ''}
-                        onChange={(e) => updateParametre(idx, pIdx, 'valeur', e.target.value)}
-                        style={{ flex: '1 1 80px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                      />
-                      {/* Champ texte (toujours visible) */}
-                      <input
-                        type="text"
-                        placeholder="Résultat texte"
-                        value={p.valeur_texte || ''}
-                        onChange={(e) => updateParametre(idx, pIdx, 'valeur_texte', e.target.value)}
-                        style={{ flex: '1 1 100px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Unité"
-                        value={p.unite || ''}
-                        onChange={(e) => updateParametre(idx, pIdx, 'unite', e.target.value)}
-                        style={{ flex: '1 1 80px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Réf. min"
-                        value={p.ref_min || ''}
-                        onChange={(e) => updateParametre(idx, pIdx, 'ref_min', e.target.value)}
-                        style={{ flex: '1 1 70px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Réf. max"
-                        value={p.ref_max || ''}
-                        onChange={(e) => updateParametre(idx, pIdx, 'ref_max', e.target.value)}
-                        style={{ flex: '1 1 70px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                      />
-                      <select
-                        value={p.interpretation || ''}
-                        onChange={(e) => updateParametre(idx, pIdx, 'interpretation', e.target.value)}
-                        style={{ flex: '1 1 100px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                      >
-                        <option value="">Interprétation</option>
-                        <option value="normal">Normal</option>
-                        <option value="haut">Haut</option>
-                        <option value="bas">Bas</option>
-                      </select>
+
+                      {isQuantitatif ? (
+                        <>
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Valeur"
+                            value={p.valeur || ''}
+                            onChange={(e) => updateParametre(idx, pIdx, 'valeur', e.target.value)}
+                            style={{
+                              flex: '1 1 80px',
+                              padding: '4px 8px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '4px',
+                            }}
+                          />
+                          <input
+                            type="text"
+                            placeholder="Unité"
+                            value={p.unite || ''}
+                            onChange={(e) => updateParametre(idx, pIdx, 'unite', e.target.value)}
+                            style={{
+                              flex: '1 1 70px',
+                              padding: '4px 8px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '4px',
+                            }}
+                          />
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Réf. min"
+                            value={p.ref_min || ''}
+                            onChange={(e) => updateParametre(idx, pIdx, 'ref_min', e.target.value)}
+                            style={{
+                              flex: '1 1 70px',
+                              padding: '4px 8px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '4px',
+                            }}
+                          />
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Réf. max"
+                            value={p.ref_max || ''}
+                            onChange={(e) => updateParametre(idx, pIdx, 'ref_max', e.target.value)}
+                            style={{
+                              flex: '1 1 70px',
+                              padding: '4px 8px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '4px',
+                            }}
+                          />
+                          <select
+                            value={p.interpretation || ''}
+                            onChange={(e) => updateParametre(idx, pIdx, 'interpretation', e.target.value)}
+                            style={{
+                              flex: '1 1 100px',
+                              padding: '4px 8px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '4px',
+                            }}
+                          >
+                            <option value="">Interprétation</option>
+                            <option value="normal">Normal</option>
+                            <option value="haut">Haut</option>
+                            <option value="bas">Bas</option>
+                          </select>
+                        </>
+                      ) : (
+                        <>
+                          {/* Pour qualitatif : champ texte ou select si valeurs_possibles */}
+                          {p.valeurs_possibles ? (
+                            <select
+                              value={p.valeur || ''}
+                              onChange={(e) => updateParametre(idx, pIdx, 'valeur', e.target.value)}
+                              style={{
+                                flex: '1 1 150px',
+                                padding: '4px 8px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '4px',
+                              }}
+                            >
+                              <option value="">Choisir</option>
+                              {p.valeurs_possibles.split(',').map((v) => (
+                                <option key={v.trim()} value={v.trim()}>
+                                  {v.trim()}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              placeholder="Résultat (ex: Positif, Négatif)"
+                              value={p.valeur || ''}
+                              onChange={(e) => updateParametre(idx, pIdx, 'valeur', e.target.value)}
+                              style={{
+                                flex: '1 1 150px',
+                                padding: '4px 8px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '4px',
+                              }}
+                            />
+                          )}
+                          <span style={{ fontSize: '12px', color: '#94a3b8', flex: '0 0 auto' }}>
+                            (Qualitatif)
+                          </span>
+                        </>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => removeParametre(idx, pIdx)}
-                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                        style={{
+                          color: '#ef4444',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '4px',
+                        }}
                       >
                         <FaTrash />
                       </button>
@@ -709,10 +1174,10 @@ const ExamenForm = () => {
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
             }}
           >
-            <FaSave /> {loading ? 'Enregistrement...' : (isEdit ? 'Mettre à jour' : 'Demander les examens')}
+            <FaSave /> {loading ? 'Enregistrement...' : isEdit ? 'Mettre à jour' : 'Demander les examens'}
           </button>
         </form>
       </div>

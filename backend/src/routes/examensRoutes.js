@@ -1,3 +1,4 @@
+// backend/src/routes/examensRoutes.js
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
@@ -528,7 +529,7 @@ router.get('/:id/historique', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// PDF
+// PDF - Version corrigée avec gestion d'erreur
 // ============================================================
 router.get('/:id/pdf', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1] || req.query.token;
@@ -556,19 +557,39 @@ router.get('/:id/pdf', async (req, res) => {
        WHERE e.id = $1`,
       [id]
     );
-    if (rows.length === 0) return res.status(404).json({ error: 'Examen non trouvé' });
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Examen non trouvé' });
+    }
     const examen = rows[0];
 
-    const resultats = await pool.query(`SELECT * FROM resultats_examens WHERE examen_id = $1 ORDER BY id`, [id]);
+    const resultats = await pool.query(
+      `SELECT * FROM resultats_examens WHERE examen_id = $1 ORDER BY id`,
+      [id]
+    );
     examen.parametres = resultats.rows;
 
-    const pdfBuffer = await generateExamPDF(examen);
+    // Génération du PDF avec gestion d'erreur
+    let pdfBuffer;
+    try {
+      pdfBuffer = await generateExamPDF(examen);
+    } catch (pdfErr) {
+      console.error('❌ Erreur dans generateExamPDF :', pdfErr);
+      return res.status(500).json({
+        error: 'Erreur lors de la génération du PDF',
+        details: pdfErr.message
+      });
+    }
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=examen_${id}.pdf`);
     res.send(pdfBuffer);
   } catch (err) {
     console.error('❌ Erreur génération PDF :', err);
-    return res.status(401).json({ error: 'Token invalide ou expiré', details: err.message });
+    // Distinguer les erreurs JWT (401) des autres (500)
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token invalide ou expiré' });
+    }
+    res.status(500).json({ error: 'Erreur interne du serveur', details: err.message });
   }
 });
 
@@ -934,6 +955,131 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
     res.status(204).send();
   } catch (err) {
     console.error('DELETE /examens/:id :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  STATISTIQUES - NOUVELLES ROUTES
+// ============================================================
+
+/**
+ * GET /examens/stats/mensuelles
+ * Paramètre optionnel : ?period=12 (nombre de mois)
+ * Retourne le nombre d'examens par mois (total, urgents, réalisés)
+ */
+router.get('/stats/mensuelles', authenticate, async (req, res) => {
+  try {
+    const period = parseInt(req.query.period) || 12;
+    // Requête pour PostgreSQL (formatage de la date en YYYY-MM)
+    const query = `
+      SELECT 
+        TO_CHAR(date_demande, 'YYYY-MM') AS mois,
+        COUNT(*) AS total,
+        SUM(CASE WHEN COALESCE(priorite, 'normal') = 'urgent' THEN 1 ELSE 0 END) AS urgents,
+        SUM(CASE WHEN statut = 'realise' THEN 1 ELSE 0 END) AS realizes
+      FROM examens
+      WHERE date_demande >= CURRENT_DATE - INTERVAL '${period} months'
+      GROUP BY mois
+      ORDER BY mois ASC
+    `;
+    const { rows } = await pool.query(query);
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /examens/stats/mensuelles :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /examens/stats/globales
+ * Retourne les totaux globaux (tous statuts, par catégorie)
+ */
+router.get('/stats/globales', authenticate, async (req, res) => {
+  try {
+    const total = await pool.query('SELECT COUNT(*) FROM examens');
+    const en_attente = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['en_attente']);
+    const en_cours = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['en_cours']);
+    const realise = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['realise']);
+    const annule = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['annule']);
+    // valide n'est pas un statut stocké, on considère qu'un examen avec date_validation non null est validé
+    const valide = await pool.query('SELECT COUNT(*) FROM examens WHERE date_validation IS NOT NULL');
+
+    const parCategorie = await pool.query(`
+      SELECT categorie, COUNT(*) AS total
+      FROM examens
+      WHERE categorie IS NOT NULL
+      GROUP BY categorie
+    `);
+
+    const result = {
+      total: parseInt(total.rows[0].count),
+      en_attente: parseInt(en_attente.rows[0].count),
+      en_cours: parseInt(en_cours.rows[0].count),
+      realise: parseInt(realise.rows[0].count),
+      annule: parseInt(annule.rows[0].count),
+      valide: parseInt(valide.rows[0].count),
+      par_categorie: parCategorie.rows.reduce((acc, row) => {
+        acc[row.categorie] = parseInt(row.total);
+        return acc;
+      }, {})
+    };
+
+    res.json(result);
+  } catch (err) {
+    console.error('GET /examens/stats/globales :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /examens/stats/par-service
+ * Retourne le nombre d'examens par service demandeur
+ */
+router.get('/stats/par-service', authenticate, async (req, res) => {
+  try {
+    const query = `
+      SELECT s.nom AS service, COUNT(e.id) AS total
+      FROM examens e
+      LEFT JOIN services s ON e.service_id = s.id
+      WHERE e.service_id IS NOT NULL
+      GROUP BY s.nom
+      ORDER BY total DESC
+      LIMIT 10
+    `;
+    const { rows } = await pool.query(query);
+
+    // Ajouter les examens sans service
+    const sansService = await pool.query('SELECT COUNT(*) FROM examens WHERE service_id IS NULL');
+    if (parseInt(sansService.rows[0].count) > 0) {
+      rows.push({ service: 'Non spécifié', total: parseInt(sansService.rows[0].count) });
+    }
+
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /examens/stats/par-service :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /examens/stats/par-medecin
+ * Retourne le nombre d'examens par médecin prescripteur
+ */
+router.get('/stats/par-medecin', authenticate, async (req, res) => {
+  try {
+    const query = `
+      SELECT medecin_prescripteur AS medecin, COUNT(*) AS total
+      FROM examens
+      WHERE medecin_prescripteur IS NOT NULL
+      GROUP BY medecin_prescripteur
+      ORDER BY total DESC
+      LIMIT 10
+    `;
+    const { rows } = await pool.query(query);
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /examens/stats/par-medecin :', err);
     res.status(500).json({ error: err.message });
   }
 });

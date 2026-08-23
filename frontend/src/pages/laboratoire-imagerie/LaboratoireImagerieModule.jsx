@@ -199,7 +199,7 @@ const LaboratoireImagerieModule = () => {
                 Saisie
               </li>
               <MenuItem
-                to="/laboratoire?statut=en_attente"   // ← modifié
+                to="/laboratoire?statut=en_attente"
                 icon={<FaMicroscope />}
                 label="Résultats à saisir"
                 badge={counts.aSaisir}
@@ -207,7 +207,7 @@ const LaboratoireImagerieModule = () => {
               />
               {canValidate && (
                 <MenuItem
-                  to="/laboratoire?statut=realise"     // ← modifié
+                  to="/laboratoire?statut=realise"
                   icon={<FaClipboardCheck />}
                   label="À valider"
                   badge={counts.aValider}

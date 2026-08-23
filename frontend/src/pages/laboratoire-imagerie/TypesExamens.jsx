@@ -14,6 +14,8 @@ const TypesExamens = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingType, setEditingType] = useState(null);
   const [prestations, setPrestations] = useState([]);
+  const [parametresDisponibles, setParametresDisponibles] = useState([]); // catalogue
+
   const [formData, setFormData] = useState({
     nom: '',
     categorie: 'laboratoire',
@@ -22,14 +24,18 @@ const TypesExamens = () => {
     prix: '',
     preparation: '',
     prestation_id: '',
-    parametres: [] // [{ nom, unite, ref_min, ref_max }]
+    parametres_ids: [] // tableau d'IDs des paramètres sélectionnés
   });
+
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [saving, setSaving] = useState(false);
 
+  // Chargement initial
   useEffect(() => {
     fetchTypes();
     fetchPrestations();
+    fetchParametres();
   }, []);
 
   const fetchTypes = async () => {
@@ -53,6 +59,15 @@ const TypesExamens = () => {
     }
   };
 
+  const fetchParametres = async () => {
+    try {
+      const res = await api.get('/parametres-references');
+      setParametresDisponibles(res.data || []);
+    } catch (err) {
+      console.error('Erreur chargement paramètres:', err);
+    }
+  };
+
   const filteredTypes = useMemo(() => {
     return types.filter(t =>
       t.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -70,69 +85,108 @@ const TypesExamens = () => {
       prix: '',
       preparation: '',
       prestation_id: '',
-      parametres: []
+      parametres_ids: []
     });
     setEditingType(null);
     setShowForm(false);
     setErrors({});
     setMessage({ text: '', type: '' });
+    setSaving(false);
   };
 
   const handleEdit = (type) => {
     setEditingType(type);
+    // Si le type a déjà des parametres_ids, on les utilise
+    // Sinon, on essaie de parser l'ancienne colonne parametres_defaut (si elle existe)
+    let ids = type.parametres_ids || [];
+    if (!ids.length && type.parametres_defaut) {
+      try {
+        const parsed = JSON.parse(type.parametres_defaut);
+        if (Array.isArray(parsed) && parsed.length) {
+          // On essaie de faire correspondre par nom (à améliorer)
+          ids = parsed.map(p => {
+            const found = parametresDisponibles.find(pd => pd.nom === p.nom);
+            return found ? found.id : null;
+          }).filter(id => id !== null);
+        }
+      } catch (e) {}
+    }
     setFormData({
-      ...type,
+      nom: type.nom || '',
+      categorie: type.categorie || 'laboratoire',
+      description: type.description || '',
+      duree_estimee: type.duree_estimee || '',
+      prix: type.prix || '',
+      preparation: type.preparation || '',
       prestation_id: type.prestation_id || '',
-      parametres: type.parametres || []
+      parametres_ids: ids
     });
     setShowForm(true);
     setErrors({});
-  };
-
-  const handleParamChange = (index, field, value) => {
-    const newParams = [...formData.parametres];
-    newParams[index][field] = value;
-    setFormData({ ...formData, parametres: newParams });
-  };
-
-  const addParam = () => {
-    setFormData({
-      ...formData,
-      parametres: [...formData.parametres, { nom: '', unite: '', ref_min: '', ref_max: '' }]
-    });
-  };
-
-  const removeParam = (index) => {
-    const newParams = formData.parametres.filter((_, i) => i !== index);
-    setFormData({ ...formData, parametres: newParams });
   };
 
   const validateForm = () => {
     const newErrors = {};
     if (!formData.nom.trim()) newErrors.nom = 'Le nom est requis';
     if (!formData.categorie) newErrors.categorie = 'La catégorie est requise';
-    if (formData.duree_estimee && (isNaN(formData.duree_estimee) || formData.duree_estimee < 0)) {
+    if (formData.duree_estimee && (isNaN(parseFloat(formData.duree_estimee)) || parseFloat(formData.duree_estimee) < 0)) {
       newErrors.duree_estimee = 'La durée doit être un nombre positif';
     }
-    if (formData.prix && (isNaN(formData.prix) || formData.prix < 0)) {
-      newErrors.prix = 'Le prix doit être un nombre positif';
+    if (formData.prix) {
+      const prixStr = formData.prix.toString().replace(',', '.');
+      if (isNaN(parseFloat(prixStr)) || parseFloat(prixStr) < 0) {
+        newErrors.prix = 'Le prix doit être un nombre positif';
+      }
     }
-    const paramNames = formData.parametres.map(p => p.nom);
-    const duplicate = paramNames.find((n, i) => n && paramNames.indexOf(n) !== i);
-    if (duplicate) newErrors.parametres = `Le paramètre "${duplicate}" est dupliqué`;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const toggleParametre = (id) => {
+    setFormData(prev => {
+      const ids = prev.parametres_ids || [];
+      if (ids.includes(id)) {
+        return { ...prev, parametres_ids: ids.filter(i => i !== id) };
+      } else {
+        return { ...prev, parametres_ids: [...ids, id] };
+      }
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    setSaving(true);
     try {
       const payload = { ...formData };
-      if (!payload.prix) delete payload.prix;
-      if (!payload.duree_estimee) delete payload.duree_estimee;
-      if (payload.parametres.length === 0) delete payload.parametres;
+
+      // Conversion prix
+      if (payload.prix) {
+        const prixStr = payload.prix.toString().replace(',', '.');
+        const prixNum = parseFloat(prixStr);
+        if (!isNaN(prixNum)) payload.prix = prixNum;
+        else delete payload.prix;
+      } else {
+        delete payload.prix;
+      }
+
+      if (payload.duree_estimee) {
+        const duree = parseInt(payload.duree_estimee);
+        if (!isNaN(duree) && duree > 0) payload.duree_estimee = duree;
+        else delete payload.duree_estimee;
+      } else {
+        delete payload.duree_estimee;
+      }
+
       if (!payload.prestation_id) delete payload.prestation_id;
+      if (!payload.preparation) delete payload.preparation;
+      if (!payload.description) delete payload.description;
+
+      // On envoie les IDs des paramètres sélectionnés
+      payload.parametres_ids = formData.parametres_ids || [];
+
+      console.log('📦 Payload :', JSON.stringify(payload, null, 2));
 
       if (editingType) {
         await api.put(`/types-examens/${editingType.id}`, payload);
@@ -146,15 +200,17 @@ const TypesExamens = () => {
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
       resetForm();
     } catch (err) {
-      console.error(err);
-      setMessage({ text: 'Erreur lors de l\'enregistrement', type: 'error' });
+      console.error('❌ Erreur:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Erreur inconnue';
+      setMessage({ text: `Erreur : ${errorMsg}`, type: 'error' });
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer ce type d\'examen ? Cette action est irréversible.')) return;
+    if (!window.confirm('Supprimer ce type ?')) return;
     try {
-      // Vérifier si des examens utilisent ce type
       const check = await api.get(`/types-examens/${id}/check`);
       if (check.data.used) {
         setMessage({ text: `Impossible de supprimer : ${check.data.count} examen(s) l'utilisent`, type: 'error' });
@@ -162,20 +218,18 @@ const TypesExamens = () => {
       }
       await api.delete(`/types-examens/${id}`);
       setTypes(types.filter(t => t.id !== id));
-      setMessage({ text: 'Type supprimé avec succès', type: 'success' });
-      setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+      setMessage({ text: 'Type supprimé', type: 'success' });
     } catch (err) {
       console.error(err);
-      setMessage({ text: 'Erreur lors de la suppression', type: 'error' });
+      setMessage({ text: 'Erreur suppression', type: 'error' });
     }
   };
 
-  if (loading) {
-    return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
-  }
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>⏳ Chargement...</div>;
 
   return (
     <div>
+      {/* En-tête */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <h1 style={{ fontSize: '28px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <FaFlask style={{ color: '#f472b6' }} /> Types d'examens
@@ -219,7 +273,7 @@ const TypesExamens = () => {
           <FaSearch style={{ color: '#94a3b8' }} />
           <input
             type="text"
-            placeholder="Rechercher par nom, catégorie ou description..."
+            placeholder="Rechercher..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             style={{ flex: 1, padding: '10px 12px', border: 'none', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
@@ -266,6 +320,7 @@ const TypesExamens = () => {
                 <input
                   type="number"
                   min="0"
+                  step="1"
                   value={formData.duree_estimee}
                   onChange={e => setFormData({ ...formData, duree_estimee: e.target.value })}
                   style={{ width: '100%', padding: '10px', border: `1px solid ${errors.duree_estimee ? '#ef4444' : '#e2e8f0'}`, borderRadius: '6px' }}
@@ -275,11 +330,11 @@ const TypesExamens = () => {
               <div>
                 <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Prix (FCFA)</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
                   value={formData.prix}
                   onChange={e => setFormData({ ...formData, prix: e.target.value })}
                   style={{ width: '100%', padding: '10px', border: `1px solid ${errors.prix ? '#ef4444' : '#e2e8f0'}`, borderRadius: '6px' }}
+                  placeholder="ex: 25000"
                 />
                 {errors.prix && <span style={{ color: '#ef4444', fontSize: '12px' }}>{errors.prix}</span>}
               </div>
@@ -298,110 +353,58 @@ const TypesExamens = () => {
                   value={formData.preparation}
                   onChange={e => setFormData({ ...formData, preparation: e.target.value })}
                   rows="2"
-                  placeholder="Jeûne, arrêt de médicaments, etc."
+                  placeholder="Jeûne, arrêt de médicaments..."
                   style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
                 />
               </div>
-              {/* Nouveau champ : Prestation associée */}
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>
-                  Prestation associée (facturation)
-                </label>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', color: '#334155' }}>Prestation associée</label>
                 <select
                   value={formData.prestation_id}
                   onChange={e => setFormData({ ...formData, prestation_id: e.target.value })}
                   style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
                 >
-                  <option value="">Aucune (prix par défaut)</option>
+                  <option value="">Aucune</option>
                   {prestations.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.code} - {p.libelle} ({p.prix_unitaire} FCFA)
                     </option>
                   ))}
                 </select>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>
-                  La prestation sera utilisée pour facturer automatiquement cet examen
-                </span>
               </div>
             </div>
 
-            {/* Gestion des paramètres */}
+            {/* Paramètres – Sélection depuis le catalogue */}
             <div style={{ marginTop: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#334155' }}>
-                Paramètres par défaut (pour la saisie des résultats)
-                <button type="button" onClick={addParam} style={{ marginLeft: '12px', background: '#e2e8f0', border: 'none', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer' }}>
-                  <FaPlus /> Ajouter un paramètre
-                </button>
+                Paramètres par défaut (sélectionnez dans la liste)
               </label>
-              {errors.parametres && <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '8px' }}>{errors.parametres}</div>}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                <thead style={{ backgroundColor: '#f1f5f9' }}>
-                  <tr>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Nom</th>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Unité</th>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Réf. min</th>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Réf. max</th>
-                    <th style={{ padding: '8px', textAlign: 'center' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {formData.parametres.map((p, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '6px' }}>
-                        <input
-                          type="text"
-                          value={p.nom}
-                          onChange={(e) => handleParamChange(idx, 'nom', e.target.value)}
-                          style={{ width: '100%', padding: '6px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                          placeholder="ex: Hémoglobine"
-                        />
-                      </td>
-                      <td style={{ padding: '6px' }}>
-                        <input
-                          type="text"
-                          value={p.unite}
-                          onChange={(e) => handleParamChange(idx, 'unite', e.target.value)}
-                          style={{ width: '100%', padding: '6px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                          placeholder="g/dL"
-                        />
-                      </td>
-                      <td style={{ padding: '6px' }}>
-                        <input
-                          type="number"
-                          step="any"
-                          value={p.ref_min}
-                          onChange={(e) => handleParamChange(idx, 'ref_min', e.target.value)}
-                          style={{ width: '100%', padding: '6px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                          placeholder="12"
-                        />
-                      </td>
-                      <td style={{ padding: '6px' }}>
-                        <input
-                          type="number"
-                          step="any"
-                          value={p.ref_max}
-                          onChange={(e) => handleParamChange(idx, 'ref_max', e.target.value)}
-                          style={{ width: '100%', padding: '6px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                          placeholder="16"
-                        />
-                      </td>
-                      <td style={{ padding: '6px', textAlign: 'center' }}>
-                        <button type="button" onClick={() => removeParam(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
-                          <FaTimes />
-                        </button>
-                      </td>
-                    </tr>
+              {parametresDisponibles.length === 0 ? (
+                <p style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                  Aucun paramètre disponible. Créez-en d'abord dans "Paramètres du laboratoire".
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e2e8f0', padding: '12px', borderRadius: '6px' }}>
+                  {parametresDisponibles.map(p => (
+                    <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={(formData.parametres_ids || []).includes(p.id)}
+                        onChange={() => toggleParametre(p.id)}
+                      />
+                      {p.nom} {p.unite ? `(${p.unite})` : ''}
+                      {p.ref_min && p.ref_max ? ` [${p.ref_min} - ${p.ref_max}]` : ''}
+                    </label>
                   ))}
-                  {formData.parametres.length === 0 && (
-                    <tr><td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>Aucun paramètre défini</td></tr>
-                  )}
-                </tbody>
-              </table>
+                </div>
+              )}
+              {errors.parametres && <div style={{ color: '#ef4444', fontSize: '12px' }}>{errors.parametres}</div>}
             </div>
 
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
               <button
                 type="submit"
+                disabled={saving}
                 style={{
                   backgroundColor: '#f472b6',
                   color: 'white',
@@ -410,12 +413,10 @@ const TypesExamens = () => {
                   borderRadius: '6px',
                   fontWeight: '500',
                   cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
+                  opacity: saving ? 0.6 : 1
                 }}
               >
-                <FaSave /> {editingType ? 'Modifier' : 'Créer'}
+                <FaSave /> {saving ? 'Enregistrement...' : (editingType ? 'Modifier' : 'Créer')}
               </button>
               <button
                 type="button"
@@ -437,7 +438,7 @@ const TypesExamens = () => {
         </div>
       )}
 
-      {/* Tableau */}
+      {/* Tableau des types */}
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ backgroundColor: '#f1f5f9' }}>
@@ -472,23 +473,15 @@ const TypesExamens = () => {
                     {t.prestation_libelle ? `${t.prestation_code || ''} - ${t.prestation_libelle}` : 'Non associée'}
                   </td>
                   <td style={{ padding: '14px 20px', color: '#475569' }}>
-                    {t.parametres && t.parametres.length > 0 ? `${t.parametres.length} paramètre(s)` : '-'}
+                    {t.parametres_ids && t.parametres_ids.length > 0 ? `${t.parametres_ids.length} paramètre(s)` : '-'}
                   </td>
                   {canManage && (
                     <td style={{ padding: '14px 20px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                        <button
-                          onClick={() => handleEdit(t)}
-                          style={{ color: '#f59e0b', background: 'none', border: 'none', cursor: 'pointer' }}
-                          title="Modifier"
-                        >
+                        <button onClick={() => handleEdit(t)} style={{ color: '#f59e0b', background: 'none', border: 'none', cursor: 'pointer' }}>
                           <FaEdit />
                         </button>
-                        <button
-                          onClick={() => handleDelete(t.id)}
-                          style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                          title="Supprimer"
-                        >
+                        <button onClick={() => handleDelete(t.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
                           <FaTrash />
                         </button>
                       </div>
