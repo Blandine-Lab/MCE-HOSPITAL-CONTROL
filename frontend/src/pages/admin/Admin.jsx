@@ -1,6 +1,6 @@
 // frontend/src/pages/Admin.jsx
 import { useEffect, useState } from 'react';
-import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaFlask, FaXRay } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaFlask, FaXRay, FaPrint } from 'react-icons/fa';
 import api from '../../axios';
 import DispositifsList from './DispositifsList';
 import PharmacovigilanceList from './PharmacovigilanceList';
@@ -938,6 +938,64 @@ const Admin = () => {
     } catch (err) { showToast('Erreur', 'error'); }
   };
 
+  // ========== FONCTION D'IMPRESSION DE LA GRILLE TARIFAIRE ==========
+  const handlePrintPrestations = () => {
+    // Construire le HTML de la grille à imprimer
+    const tableRows = prestations.map(p => `
+      <tr>
+        <td style="border:1px solid #ddd; padding:8px;">${p.code}</td>
+        <td style="border:1px solid #ddd; padding:8px;">${p.libelle}</td>
+        <td style="border:1px solid #ddd; padding:8px; text-align:right;">${parseFloat(p.prix_unitaire).toFixed(2)}</td>
+        <td style="border:1px solid #ddd; padding:8px;">${p.categorie || '-'}</td>
+      </tr>
+    `).join('');
+
+    const printWindow = window.open('', '_blank', 'width=1000,height=800');
+    if (!printWindow) {
+      alert('Veuillez autoriser les pop-ups pour l\'impression.');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Grille tarifaire</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { text-align: center; color: #1e3a8a; margin-bottom: 5px; }
+            .subtitle { text-align: center; color: #4b5563; margin-bottom: 20px; font-size: 14px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th { background: #1e3a8a; color: white; padding: 10px; border: 1px solid #1e3a8a; }
+            td { padding: 8px; border: 1px solid #ddd; }
+            .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #6b7280; }
+          </style>
+        </head>
+        <body>
+          <h1>Grille tarifaire des prestations</h1>
+          <div class="subtitle">Établissement de santé - ${new Date().toLocaleDateString()}</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Libellé</th>
+                <th style="text-align:right;">Prix (FCFA)</th>
+                <th>Catégorie</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+          <div class="footer">Document imprimé le ${new Date().toLocaleString()}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
   // ========== EFFETS ==========
   useEffect(() => {
     fetchData();
@@ -1258,9 +1316,14 @@ const Admin = () => {
       {activeTab === 'prestations' && (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
           <h2>Grille tarifaire (CCAM, NGAP, etc.)</h2>
-          <button onClick={() => { setEditPrestationId(null); setNewPrestation({ code: '', libelle: '', prix_unitaire: '', categorie: '' }); setShowPrestationModal(true); }} style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            <FaPlus /> Ajouter une prestation
-          </button>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+            <button onClick={() => { setEditPrestationId(null); setNewPrestation({ code: '', libelle: '', prix_unitaire: '', categorie: '' }); setShowPrestationModal(true); }} style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+              <FaPlus /> Ajouter une prestation
+            </button>
+            <button onClick={handlePrintPrestations} style={{ padding: '8px 16px', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+              <FaPrint /> Imprimer la grille
+            </button>
+          </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
