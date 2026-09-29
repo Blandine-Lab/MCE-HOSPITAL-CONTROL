@@ -3,6 +3,25 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../axios';
 import { FaPrint, FaArrowLeft } from 'react-icons/fa';
 
+// ✅ Construction robuste de l'URL de la photo
+const buildPhotoUrl = (photo) => {
+  if (!photo) return null;
+
+  // Cas 1 : déjà une URL absolue (http:// ou https://)
+  if (/^https?:\/\//i.test(photo)) return photo;
+
+  // Cas 2 : data URL (base64)
+  if (/^data:/i.test(photo)) return photo;
+
+  // Cas 3 : chemin relatif → on préfixe avec l'origine du backend
+  const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api')
+    .replace(/\/+$/, '');                        // enlève les slashs finaux
+  const origin = apiBase.replace(/\/api$/, '');  // http://localhost:5000
+
+  const path = photo.replace(/\\/g, '/').replace(/^\/+/, ''); // gère \ Windows + slashes
+  return `${origin}/${path}`;
+};
+
 const Badge = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -25,6 +44,11 @@ const Badge = () => {
       });
   }, [id]);
 
+  // ✅ Réinitialiser photoError quand l'employé change
+  useEffect(() => {
+    setPhotoError(false);
+  }, [id, employe?.photo]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -33,13 +57,14 @@ const Badge = () => {
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>{error}</div>;
   if (!employe) return null;
 
-  // Construction robuste de l'URL de la photo
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-  const baseUrl = apiBase.replace(/\/api$/, ''); // enlève le /api final
-  const photoPath = employe.photo ? employe.photo.replace(/^\/+/, '') : ''; // enlève les slashs au début
-  const photoUrl = photoPath ? `${baseUrl}/${photoPath}` : null;
-
+  const photoUrl = buildPhotoUrl(employe.photo);
   const logoUrl = '/logo.jpeg';
+
+  // Log de debug (à retirer en production)
+  if (import.meta.env.DEV) {
+    console.log('📷 photo brute :', employe.photo);
+    console.log('📷 photoUrl    :', photoUrl);
+  }
 
   return (
     <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
@@ -67,9 +92,15 @@ const Badge = () => {
           margin: '0 auto 24px auto',
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}>
+
           {/* En-tête */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', borderBottom: '2px solid #2563eb', paddingBottom: '10px', marginBottom: '10px' }}>
-            <img src={logoUrl} alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
+          <div className="badge-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', borderBottom: '2px solid #2563eb', paddingBottom: '10px', marginBottom: '10px' }}>
+            <img
+              src={logoUrl}
+              alt="Logo"
+              style={{ height: '40px', width: 'auto', objectFit: 'contain' }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
             <div>
               <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '1px' }}>HÔPITAL</h2>
               <p style={{ fontSize: '9px', color: '#6b7280', margin: 0, letterSpacing: '0.5px' }}>BADGE D'IDENTIFICATION</p>
@@ -82,13 +113,18 @@ const Badge = () => {
             <div style={{ flexShrink: 0 }}>
               {photoUrl && !photoError ? (
                 <img
+                  key={photoUrl}                  /* ✅ force le rechargement si l'URL change */
                   src={photoUrl}
                   alt="Photo"
+                  crossOrigin="anonymous"        /* ✅ si le backend gère CORS */
                   style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #2563eb' }}
                   onError={() => setPhotoError(true)}
                 />
               ) : (
-                <div style={{ width: '70px', height: '70px', borderRadius: '50%', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px', color: '#6b7280', border: '3px solid #2563eb' }}>
+                <div
+                  className="badge-photo-fallback"
+                  style={{ width: '70px', height: '70px', borderRadius: '50%', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px', color: '#6b7280', border: '3px solid #2563eb' }}
+                >
                   {employe.prenom?.[0]}{employe.nom?.[0]}
                 </div>
               )}
@@ -106,15 +142,18 @@ const Badge = () => {
           </div>
 
           {/* Zone info avec adresse complète */}
-          <div style={{
-            marginTop: '8px',
-            backgroundColor: '#e8f0fe',
-            borderRadius: '10px',
-            padding: '8px 12px',
-            textAlign: 'center',
-            border: '1px solid #b6d4fe',
-            fontSize: '11px',
-          }}>
+          <div
+            className="badge-address"
+            style={{
+              marginTop: '8px',
+              backgroundColor: '#e8f0fe',
+              borderRadius: '10px',
+              padding: '8px 12px',
+              textAlign: 'center',
+              border: '1px solid #b6d4fe',
+              fontSize: '11px',
+            }}
+          >
             <p style={{ margin: '0', fontWeight: '600', color: '#1e3a8a' }}>
               🏥 MCE Localisation : Bukavu RDC
             </p>
@@ -142,8 +181,13 @@ const Badge = () => {
           fontFamily: 'system-ui, -apple-system, sans-serif',
           textAlign: 'center',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', borderBottom: '2px solid #2563eb', paddingBottom: '10px', marginBottom: '16px' }}>
-            <img src={logoUrl} alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
+          <div className="badge-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', borderBottom: '2px solid #2563eb', paddingBottom: '10px', marginBottom: '16px' }}>
+            <img
+              src={logoUrl}
+              alt="Logo"
+              style={{ height: '40px', width: 'auto', objectFit: 'contain' }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
             <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '1px' }}>LAISSEZ-PASSER</h2>
           </div>
           <div style={{ padding: '8px 12px' }}>
@@ -203,15 +247,38 @@ const Badge = () => {
             overflow: hidden;
           }
 
+          /* ✅ cible bien la photo (attribut alt réel) */
           .badge-face img[alt="Photo"] {
             width: 35px !important;
             height: 35px !important;
           }
-          .badge-face div[style*="borderRadius: 50%"] {
+
+          /* ✅ classe dédiée au cercle de secours (initiales) */
+          .badge-photo-fallback {
             width: 35px !important;
             height: 35px !important;
             font-size: 16px !important;
           }
+
+          /* ✅ classe dédiée à l'en-tête (au lieu de [style*=...]) */
+          .badge-header {
+            padding-bottom: 2px !important;
+            margin-bottom: 2px !important;
+          }
+          .badge-header img {
+            height: 18px !important;
+          }
+
+          /* ✅ classe dédiée au bloc adresse */
+          .badge-address {
+            padding: 2px 6px !important;
+            margin-top: 2px !important;
+          }
+          .badge-address p {
+            font-size: 6px !important;
+            margin: 0 !important;
+          }
+
           .badge-face h2 {
             font-size: 10px !important;
             letter-spacing: 0.3px !important;
@@ -225,21 +292,7 @@ const Badge = () => {
             margin: 0 !important;
             line-height: 1.2;
           }
-          .badge-face div[style*="borderBottom: 2px solid #2563eb"] {
-            padding-bottom: 2px !important;
-            margin-bottom: 2px !important;
-          }
-          .badge-face div[style*="borderBottom: 2px solid #2563eb"] img {
-            height: 18px !important;
-          }
-          .badge-face div[style*="backgroundColor: #e8f0fe"] {
-            padding: 2px 6px !important;
-            margin-top: 2px !important;
-          }
-          .badge-face div[style*="backgroundColor: #e8f0fe"] p {
-            font-size: 6px !important;
-            margin: 0 !important;
-          }
+
           .badge-face > div:last-child {
             margin-top: 2px !important;
           }
@@ -250,6 +303,7 @@ const Badge = () => {
             size: A4;
             margin: 15mm 10mm;
           }
+
           html, body {
             margin: 0 !important;
             padding: 0 !important;
@@ -258,6 +312,7 @@ const Badge = () => {
             align-items: center;
             justify-content: center;
           }
+
           .badge-container {
             display: block;
             width: 100%;
