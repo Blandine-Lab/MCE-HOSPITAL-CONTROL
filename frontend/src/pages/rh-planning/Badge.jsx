@@ -116,7 +116,6 @@ const Badge = () => {
                   key={photoUrl}                  /* ✅ force le rechargement si l'URL change */
                   src={photoUrl}
                   alt="Photo"
-                  crossOrigin="anonymous"        /* ✅ si le backend gère CORS */
                   style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #2563eb' }}
                   onError={() => setPhotoError(true)}
                 />
