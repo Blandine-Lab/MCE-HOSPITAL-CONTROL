@@ -1,6 +1,6 @@
 // frontend/public/sw.js
-const CACHE_VERSION = 'v4';   // ⬅️ bump pour forcer le remplacement de l'ancien SW
-const CACHE_NAME = `mce-cache-${CACHE_VERSION}`;
+const CACHE_VERSION = 'v5';   // Bump pour forcer le remplacement de l'ancien SW
+const CACHE_NAME = `globalmind-cache-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [
   '/',
@@ -12,34 +12,34 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  console.log('📦 Service Worker : Installation v4');
+  console.log('Service Worker : Installation v5');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) =>
         Promise.allSettled(
           STATIC_ASSETS.map((url) =>
             cache.add(url).catch((err) =>
-              console.warn(`⚠️ Asset non caché : ${url}`, err.message)
+              console.warn(`Asset non caché : ${url}`, err.message)
             )
           )
         )
       )
       .then(() => {
-        console.log('📦 Assets pré-cachés (échecs ignorés)');
+        console.log('Assets pré-cachés (échecs ignorés)');
         return self.skipWaiting();
       })
   );
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker : Activation v4');
+  console.log('Service Worker : Activation v5');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
           .filter((name) => name !== CACHE_NAME)
           .map((name) => {
-            console.log(`🗑️ Suppression de l'ancien cache : ${name}`);
+            console.log(`Suppression de l'ancien cache : ${name}`);
             return caches.delete(name);
           })
       );
@@ -50,8 +50,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. API : jamais de cache
-  if (url.pathname.startsWith('/api/')) return;
+  // 1. API et requêtes non-GET (POST, PUT, DELETE...) : bypass total du cache
+  if (url.pathname.startsWith('/api/') || event.request.method !== 'GET') return;
 
   // 2. Range/206 : pas de cache
   if (event.request.headers.has('range')) {
@@ -104,7 +104,7 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncData() {
-  console.log('🔄 Synchronisation...');
+  console.log('Synchronisation...');
   const clients = await self.clients.matchAll();
   clients.forEach(client => client.postMessage({ type: 'SYNC_START' }));
 }
