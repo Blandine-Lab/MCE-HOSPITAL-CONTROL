@@ -1,40 +1,91 @@
-# ── Node.js ──
+# ══════════════════════════════════════════════════════════════
+#  MCE — Logiciel de Gestion de l'Hôpital
+#  .gitignore consolidé
+# ══════════════════════════════════════════════════════════════
+
+# ── Node.js ──────────────────────────────────────────────────
 node_modules/
 npm-debug.log*
+yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+.npm/
+.pnpm-store/
 
-# ── Builds ──
+# ── Builds / caches ─────────────────────────────────────────
 dist/
 build/
 .next/
+out/
+.cache/
+.parcel-cache/
+.vite/
+coverage/
+*.tsbuildinfo
 
-# ── Variables d'environnement ──
+# ── Variables d'environnement ───────────────────────────────
 .env
 .env.*
 !.env.example
 
-# ── IDE / OS ──
+# ── IDE / OS ────────────────────────────────────────────────
 .vscode/
 .idea/
+*.swp
+*.swo
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# ── Credentials locaux / debug (ne JAMAIS pousser) ──
+# ── Logs ────────────────────────────────────────────────────
+*.log
+logs/
+backend/seed.log
+
+# ── Credentials locaux / debug — NE JAMAIS POUSSER ─────────
+# JSON de test contenant des identifiants
 backend/login.json
 backend/login2.json
 backend/dupont.json
 backend/badlogin.json
-backend/scope-report.txt
-backend/reset-password.js
-backend/scripts/
-backend/src/back route/
 frontend/badlogin.json
 
-# ── Uploads utilisateurs ──
-backend/uploads/logos/*
-!backend/uploads/logos/.gitkeep
+# Rapports d'audit locaux
+backend/scope-report.txt
 
-# ── Scripts SQL locaux / seeds / debug ──
+# Scripts admin qui manipulent des credentials
+backend/update-password.js
+backend/reset-password.js
+backend/genHash.js
+backend/change-admin.js
+
+# Scripts de test de connexion (email/password souvent en dur)
+backend/test-connexion.js
+backend/test-db.js
+backend/test-jwt.js
+
+# Dossier de scripts perso / locales
+backend/scripts/
+
+# Dossier legacy à ne pas versionner
+backend/src/back route/
+
+# ── Uploads utilisateurs ────────────────────────────────────
+# Tout ignorer sauf les .gitkeep (données potentiellement patients → RGPD)
+backend/uploads/*
+!backend/uploads/**/.gitkeep
+!backend/uploads/**/.gitignore
+
+# ── SQL locaux / seeds / debug ──────────────────────────────
 backend/insert_data*.sql
-backend/seed.log
-migration_multitenant.sql
+# migration_multitenant.sql → à versionner si elle ne contient que du DDL.
+# Si elle contient des seeds avec passwords, garde-la ignorée :
+# migration_multitenant.sql
+
+# ── Divers ──────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig
+*.rej
+tmp/
+temp/
