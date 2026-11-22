@@ -1,15 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
-
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Finances - Comptes : connecté à PostgreSQL'));
 
 // GET - Récupérer tous les comptes avec hiérarchie
 router.get('/', authenticate, async (req, res) => {
@@ -61,11 +53,13 @@ router.post('/', authenticate, async (req, res) => {
     if (!code || !nom || !type) {
       return res.status(400).json({ error: 'Code, nom et type sont requis' });
     }
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      `INSERT INTO comptes_comptables (code, nom, type, parent_id, description)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO comptes_comptables (hospital_id, code, nom, type, parent_id, description)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [code, nom, type, parent_id || null, description]
+      [req.hospitalId, code, nom, type, parent_id || null, description]
     );
     res.status(201).json(rows[0]);
   } catch (err) {

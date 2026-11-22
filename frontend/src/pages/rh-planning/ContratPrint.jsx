@@ -3,12 +3,45 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../axios';
 import { FaArrowLeft, FaPrint } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
 
 const ContratPrint = () => {
+  // 🔧 Récupère l'hôpital courant depuis le contexte auth (multi-tenant)
+  const { hopital } = useAuth();
+
   const { id } = useParams();
   const [contrat, setContrat] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // 🔧 Nom, logo, adresse et ville tenant-aware (fallbacks si contexte vide)
+  const HOPITAL_NOM =
+    hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
+
+  const HOPITAL_ADRESSE =
+    hopital?.adresse || hopital?.address || '';
+
+  const HOPITAL_VILLE =
+    hopital?.ville || hopital?.city || 'Bukavu';
+
+  // 🔧 Résout le logo :
+  //  - URL absolue (https://...) → utilisée telle quelle
+  //  - chemin relatif (/logo.jpeg) → préfixé par l'origine
+  //  - fallback → /logo.jpeg
+  const resolveLogoUrl = (rawLogo) => {
+    if (!rawLogo) return `${window.location.origin}/logo.jpeg`;
+    if (/^https?:\/\//i.test(rawLogo)) return rawLogo;
+    const withSlash = rawLogo.startsWith('/') ? rawLogo : `/${rawLogo}`;
+    return `${window.location.origin}${withSlash}`;
+  };
+
+  // À l'écran, on utilise un chemin relatif (cache navigateur) ; à l'impression une URL absolue
+  const LOGO_PATH =
+    hopital?.logo_url && !/^https?:\/\//i.test(hopital.logo_url)
+      ? hopital.logo_url.startsWith('/')
+        ? hopital.logo_url
+        : `/${hopital.logo_url}`
+      : resolveLogoUrl(hopital?.logo_url);
 
   useEffect(() => {
     api.get(`/contrats/${id}`)
@@ -31,9 +64,6 @@ const ContratPrint = () => {
   if (error) return <div style={{ padding: 60, color: 'red' }}>{error}</div>;
   if (!contrat) return null;
 
-  // Récupération du logo – ajustez le chemin si nécessaire
-  const logoUrl = '/logo.jpeg';
-
   return (
     <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
       {/* Barre d'outils (masquée à l'impression) */}
@@ -47,45 +77,48 @@ const ContratPrint = () => {
       </div>
 
       {/* Contenu imprimable */}
-      <div id="contrat-print" style={{ 
-        backgroundColor: 'white', 
-        padding: '40px', 
-        borderRadius: '12px', 
+      <div id="contrat-print" style={{
+        backgroundColor: 'white',
+        padding: '40px',
+        borderRadius: '12px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
-        {/* En-tête avec logo */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '16px', 
-          borderBottom: '3px solid #2563eb', 
-          paddingBottom: '16px', 
-          marginBottom: '24px' 
+        {/* En-tête avec logo + nom + adresse (tenant-aware) */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px',
+          borderBottom: '3px solid #2563eb',
+          paddingBottom: '16px',
+          marginBottom: '24px'
         }}>
-          <img 
-            src={logoUrl} 
-            alt="Logo MCE" 
-            style={{ height: '60px', width: 'auto', objectFit: 'contain' }} 
-            onError={(e) => e.target.style.display = 'none'} 
+          <img
+            src={LOGO_PATH}
+            alt={`Logo ${HOPITAL_NOM}`}
+            style={{ height: '60px', width: 'auto', objectFit: 'contain' }}
+            onError={(e) => e.target.style.display = 'none'}
           />
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '2px' }}>HÔPITAL MCE</h1>
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Medical Center Elizabeth – Bukavu</p>
-            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-              Avenue BOBZO, Quartier NDENDERE, Commune d'IBANDA, SUD-KIVU/RDC
-            </p>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '2px' }}>
+              {HOPITAL_NOM}
+            </h1>
+            {HOPITAL_ADRESSE && (
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                {HOPITAL_ADRESSE}
+              </p>
+            )}
           </div>
         </div>
 
         <h2 style={{ textAlign: 'center', color: '#1e3a8a', marginBottom: '24px' }}>CONTRAT DE TRAVAIL</h2>
 
         {/* Informations générales */}
-        <div style={{ 
-          marginBottom: '20px', 
-          display: 'grid', 
-          gridTemplateColumns: '1fr 1fr', 
+        <div style={{
+          marginBottom: '20px',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
           gap: '8px 20px',
           backgroundColor: '#f8fafc',
           padding: '16px',
@@ -125,22 +158,22 @@ const ContratPrint = () => {
         </div>
 
         {/* Pied de page */}
-        <div style={{ 
-          marginTop: '40px', 
-          borderTop: '2px solid #e2e8f0', 
-          paddingTop: '20px', 
+        <div style={{
+          marginTop: '40px',
+          borderTop: '2px solid #e2e8f0',
+          paddingTop: '20px',
           textAlign: 'center',
           fontSize: '12px',
           color: '#6b7280'
         }}>
           <p style={{ margin: '4px 0' }}>
-            Fait à Bukavu, le {new Date().toLocaleDateString('fr-FR')}
+            Fait à {HOPITAL_VILLE}, le {new Date().toLocaleDateString('fr-FR')}
           </p>
           <p style={{ margin: '4px 0' }}>
             Cachet et signature de l'employeur
           </p>
           <p style={{ margin: '12px 0 0 0', fontSize: '10px', color: '#94a3b8' }}>
-            Document généré par le système MCE
+            Document généré par le système {HOPITAL_NOM}
           </p>
         </div>
       </div>

@@ -1,16 +1,8 @@
 // backend/src/routes/dashboardQualiteRoutes.js
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate } = require('../middleware/auth');
-
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Qualité - Dashboard : connecté à PostgreSQL'));
 
 // Helper pour exécuter une requête et retourner 0 en cas d'erreur
 const safeCount = async (query, params = []) => {
@@ -30,7 +22,7 @@ router.get('/', authenticate, async (req, res) => {
     const dateDebut = new Date();
     dateDebut.setDate(dateDebut.getDate() - parseInt(periode));
 
-    // 1. Statistiques de base – adaptation PostgreSQL (guillemets simples pour les chaînes)
+    // 1. Statistiques de base
     const signalementsOuverts = await safeCount(`SELECT COUNT(*) as count FROM signalements WHERE statut = 'ouvert'`);
     const signalementsResolus = await safeCount(`SELECT COUNT(*) as count FROM signalements WHERE statut = 'resolu'`);
     const signalementsTotal = await safeCount(`SELECT COUNT(*) as count FROM signalements`);
@@ -39,7 +31,7 @@ router.get('/', authenticate, async (req, res) => {
     const nonConformites = await safeCount(`SELECT COUNT(*) as count FROM non_conformites WHERE statut = 'ouverte'`);
     const risquesCritiques = await safeCount(`SELECT COUNT(*) as count FROM evaluations_risques WHERE niveau_risque = 'critique'`);
 
-    // 2. Évolution (requête PostgreSQL avec $1)
+    // 2. Évolution
     let evolution = [];
     try {
       const result = await pool.query(
@@ -53,10 +45,9 @@ router.get('/', authenticate, async (req, res) => {
       evolution = result.rows;
     } catch (err) {
       console.error('Erreur évolution:', err.message);
-      // fallback : données vides
     }
 
-    // 3. Répartition par service (si colonne 'service' n'existe pas, adaptez)
+    // 3. Répartition par service
     let repartitionService = [];
     try {
       const result = await pool.query(
@@ -88,7 +79,7 @@ router.get('/', authenticate, async (req, res) => {
       console.error('Erreur risques catégorie:', err.message);
     }
 
-    // 5. Alertes (signalements ouverts depuis +72h) – adaptation PostgreSQL
+    // 5. Alertes
     let alertes = [];
     try {
       const result = await pool.query(

@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Stock - Inventaires : connecté à PostgreSQL'));
+// ============================================================
+// Helper : pose le tenant dans la transaction courante
+// ============================================================
+async function setTenant(client, hospitalId) {
+  await client.query(
+    `SELECT set_config('app.hospital_id', $1, true)`,
+    [String(hospitalId)]
+  );
+}
 
 // GET - Liste des inventaires
 router.get('/', authenticate, async (req, res) => {
@@ -50,13 +52,16 @@ router.post('/', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
+
     const { date, type, notes, lignes } = req.body;
     const userId = req.user.id;
 
+    // ✅ FIX : hospital_id explicite dans inventaires
     const { rows: invRows } = await client.query(
-      `INSERT INTO inventaires (date, type, statut, notes, created_by)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [date || new Date().toISOString().split('T')[0], type, 'en_cours', notes, userId]
+      `INSERT INTO inventaires (hospital_id, date, type, statut, notes, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [req.hospitalId, date || new Date().toISOString().split('T')[0], type, 'en_cours', notes, userId]
     );
     const invId = invRows[0].id;
 
@@ -65,10 +70,11 @@ router.post('/', authenticate, async (req, res) => {
       const quantite_theorique = stockRows.length > 0 ? stockRows[0].quantite : 0;
       const quantite_reelle = l.quantite_reelle || 0;
 
+      // ✅ FIX : hospital_id explicite dans inventaire_lignes
       await client.query(
-        `INSERT INTO inventaire_lignes (inventaire_id, produit_id, quantite_theorique, quantite_reelle)
-         VALUES ($1, $2, $3, $4)`,
-        [invId, l.produit_id, quantite_theorique, quantite_reelle]
+        `INSERT INTO inventaire_lignes (hospital_id, inventaire_id, produit_id, quantite_theorique, quantite_reelle)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [req.hospitalId, invId, l.produit_id, quantite_theorique, quantite_reelle]
       );
 
       await client.query(
@@ -85,7 +91,7 @@ router.post('/', authenticate, async (req, res) => {
     await client.query('COMMIT');
     res.status(201).json(invRows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Erreur POST /inventaires :', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -96,7 +102,6 @@ router.post('/', authenticate, async (req, res) => {
 // ✅ DELETE /:id – Supprimer un inventaire (réservé aux administrateurs)
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
-    // Supprimer d'abord les lignes associées
     await pool.query('DELETE FROM inventaire_lignes WHERE inventaire_id = $1', [req.params.id]);
     const { rowCount } = await pool.query('DELETE FROM inventaires WHERE id = $1', [req.params.id]);
     if (rowCount === 0) return res.status(404).json({ error: 'Inventaire non trouvé' });

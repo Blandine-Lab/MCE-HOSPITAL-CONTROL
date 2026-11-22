@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Finances - Écritures : connecté à PostgreSQL'));
+// ============================================================
+// Helper : pose le tenant dans la transaction courante
+// ============================================================
+async function setTenant(client, hospitalId) {
+  await client.query(
+    `SELECT set_config('app.hospital_id', $1, true)`,
+    [String(hospitalId)]
+  );
+}
 
 // GET - Récupérer toutes les écritures avec filtres et pagination
 router.get('/', authenticate, async (req, res) => {
@@ -121,6 +123,7 @@ router.post('/', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
 
     const { journal_id, date_ecriture, libelle, lignes } = req.body;
     const userId = req.user.id;
@@ -136,31 +139,35 @@ router.post('/', authenticate, async (req, res) => {
       if (l.sens === 'debit') totalDebit += parseFloat(l.montant);
       else totalCredit += parseFloat(l.montant);
     });
+    
     if (totalDebit !== totalCredit) {
+      await client.query('ROLLBACK'); // ✅ FIX : ROLLBACK avant de quitter !
       return res.status(400).json({ error: 'Les totaux débit et crédit doivent être égaux' });
     }
 
+    // ✅ FIX : hospital_id explicite dans ecritures
     const { rows: ecritureRows } = await client.query(
-      `INSERT INTO ecritures (numero_piece, journal_id, date_ecriture, libelle, montant_total, created_by, statut)
-       VALUES ($1, $2, $3, $4, $5, $6, 'brouillon')
+      `INSERT INTO ecritures (hospital_id, numero_piece, journal_id, date_ecriture, libelle, montant_total, created_by, statut)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'brouillon')
        RETURNING *`,
-      [numero_piece, journal_id, date_ecriture || new Date().toISOString().split('T')[0], libelle, totalDebit, userId]
+      [req.hospitalId, numero_piece, journal_id, date_ecriture || new Date().toISOString().split('T')[0], libelle, totalDebit, userId]
     );
 
     const ecritureId = ecritureRows[0].id;
 
     for (const ligne of lignes) {
+      // ✅ FIX : hospital_id explicite dans ecriture_lignes
       await client.query(
-        `INSERT INTO ecriture_lignes (ecriture_id, compte_id, sens, montant, description)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [ecritureId, ligne.compte_id, ligne.sens, ligne.montant, ligne.description]
+        `INSERT INTO ecriture_lignes (hospital_id, ecriture_id, compte_id, sens, montant, description)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [req.hospitalId, ecritureId, ligne.compte_id, ligne.sens, ligne.montant, ligne.description]
       );
     }
 
     await client.query('COMMIT');
     res.status(201).json(ecritureRows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ Erreur POST /ecritures :', err);
     res.status(500).json({ 
       error: 'Erreur lors de la création de l\'écriture',

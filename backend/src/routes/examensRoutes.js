@@ -1,21 +1,24 @@
 // backend/src/routes/examensRoutes.js
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 const { generateExamPDF } = require('../services/pdfService');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-pool.on('connect', () => console.log('✅ Laboratoire - Examens : connecté à PostgreSQL'));
+// ============================================================
+// Helper : pose le tenant dans la transaction courante
+// ============================================================
+async function setTenant(client, hospitalId) {
+  await client.query(
+    `SELECT set_config('app.hospital_id', $1, true)`,
+    [String(hospitalId)]
+  );
+}
 
 // ============================================================
 //  VÉRIFICATION / AJOUT DES COLONNES MANQUANTES
 // ============================================================
-
 const ensureGroupesExamensTable = async () => {
   try {
     await pool.query(`ALTER TABLE groupes_examens DROP COLUMN IF EXISTS nom CASCADE`);
@@ -233,7 +236,7 @@ router.get('/patient/:patientId', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// GROUPE (avec gestion du type_examen par défaut et vérification du préleveur)
+// GROUPE
 // ============================================================
 router.post('/groupe', authenticate, async (req, res) => {
   const { patient_id, medecin_prescripteur, examens, service_id } = req.body;
@@ -241,7 +244,6 @@ router.post('/groupe', authenticate, async (req, res) => {
     return res.status(400).json({ error: 'Patient et au moins un examen sont requis' });
   }
 
-  // Validation des IDs
   const parsedPatientId = parseInt(patient_id);
   if (isNaN(parsedPatientId)) {
     return res.status(400).json({ error: 'Le patient_id doit être un nombre valide.' });
@@ -254,24 +256,23 @@ router.post('/groupe', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX tenant
 
-    // Insérer le groupe
+    // ✅ FIX hospital_id
     const groupeResult = await client.query(
-      `INSERT INTO groupes_examens (patient_id, medecin_prescripteur)
-       VALUES ($1, $2) RETURNING id`,
-      [parsedPatientId, medecin_prescripteur || null]
+      `INSERT INTO groupes_examens (hospital_id, patient_id, medecin_prescripteur)
+       VALUES ($1, $2, $3) RETURNING id`,
+      [req.hospitalId, parsedPatientId, medecin_prescripteur || null]
     );
     const groupeId = groupeResult.rows[0].id;
 
     const insertedIds = [];
     for (const ex of examens) {
-      // Conversion des IDs
       const typeExamenId = ex.type_examen_id ? parseInt(ex.type_examen_id) : null;
       if (ex.type_examen_id && isNaN(typeExamenId)) {
         throw new Error(`Le type_examen_id "${ex.type_examen_id}" n'est pas un nombre valide.`);
       }
 
-      // Gestion du preleveur_id : vide, 0 ou NaN → NULL
       let preleveurId = null;
       if (ex.preleveur_id && ex.preleveur_id !== '0' && ex.preleveur_id !== 0) {
         const parsed = parseInt(ex.preleveur_id);
@@ -280,11 +281,9 @@ router.post('/groupe', authenticate, async (req, res) => {
         }
       }
 
-      // Vérifier que le préleveur existe (si un ID est fourni)
       if (preleveurId !== null) {
         const userCheck = await client.query('SELECT id FROM utilisateurs WHERE id = $1', [preleveurId]);
         if (userCheck.rows.length === 0) {
-          // Si l'ID n'existe pas, on le met à NULL pour éviter l'erreur de clé étrangère
           preleveurId = null;
           console.log(`⚠️ Préleveur ID ${ex.preleveur_id} inexistant, mis à NULL.`);
         }
@@ -292,7 +291,6 @@ router.post('/groupe', authenticate, async (req, res) => {
 
       const serviceIdForExam = parsedServiceId;
 
-      // Déterminer le type_examen (texte)
       let typeNom = ex.type_examen || 'Examen non spécifié';
       if (typeExamenId) {
         const typeRes = await client.query('SELECT nom FROM types_examens WHERE id = $1', [typeExamenId]);
@@ -301,7 +299,6 @@ router.post('/groupe', authenticate, async (req, res) => {
         }
       }
 
-      // Catégorie
       let categorie = ex.categorie;
       if (!categorie && typeExamenId) {
         const catRes = await client.query('SELECT categorie FROM types_examens WHERE id = $1', [typeExamenId]);
@@ -312,14 +309,16 @@ router.post('/groupe', authenticate, async (req, res) => {
       const date_prelevement = ex.date_prelevement || null;
       const date_demande = new Date().toISOString().split('T')[0];
 
+      // ✅ FIX hospital_id
       const result = await client.query(
         `INSERT INTO examens 
-         (patient_id, type_examen_id, type_examen, categorie, description, date_demande, date_prevue,
+         (hospital_id, patient_id, type_examen_id, type_examen, categorie, description, date_demande, date_prevue,
           medecin_prescripteur, statut, notes, priorite, instructions_preparation, groupe_id,
           parametres, type_prelevement, date_prelevement, preleveur_id, service_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
          RETURNING id`,
         [
+          req.hospitalId,
           parsedPatientId,
           typeExamenId,
           typeNom,
@@ -350,7 +349,7 @@ router.post('/groupe', authenticate, async (req, res) => {
       examensIds: insertedIds
     });
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Erreur création groupe examens :', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -529,7 +528,7 @@ router.get('/:id/historique', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// PDF - Version corrigée avec gestion d'erreur
+// PDF
 // ============================================================
 router.get('/:id/pdf', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1] || req.query.token;
@@ -568,7 +567,6 @@ router.get('/:id/pdf', async (req, res) => {
     );
     examen.parametres = resultats.rows;
 
-    // Génération du PDF avec gestion d'erreur
     let pdfBuffer;
     try {
       pdfBuffer = await generateExamPDF(examen);
@@ -585,7 +583,6 @@ router.get('/:id/pdf', async (req, res) => {
     res.send(pdfBuffer);
   } catch (err) {
     console.error('❌ Erreur génération PDF :', err);
-    // Distinguer les erreurs JWT (401) des autres (500)
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token invalide ou expiré' });
     }
@@ -594,7 +591,7 @@ router.get('/:id/pdf', async (req, res) => {
 });
 
 // ============================================================
-// POST /examens (individuel) avec vérification du préleveur
+// POST /examens (individuel)
 // ============================================================
 router.post('/', authenticate, async (req, res) => {
   try {
@@ -617,7 +614,6 @@ router.post('/', authenticate, async (req, res) => {
       service_id
     } = req.body;
 
-    // Gestion du preleveur_id : vide, 0 ou NaN → NULL
     let parsedPreleveurId = null;
     if (preleveur_id && preleveur_id !== '0' && preleveur_id !== 0) {
       const parsed = parseInt(preleveur_id);
@@ -626,7 +622,6 @@ router.post('/', authenticate, async (req, res) => {
       }
     }
 
-    // Vérifier l'existence du préleveur
     if (parsedPreleveurId !== null) {
       const userCheck = await pool.query('SELECT id FROM utilisateurs WHERE id = $1', [parsedPreleveurId]);
       if (userCheck.rows.length === 0) {
@@ -635,7 +630,6 @@ router.post('/', authenticate, async (req, res) => {
       }
     }
 
-    // Déterminer le type_examen
     let typeNom = 'Examen non spécifié';
     if (type_examen_id) {
       const typeRes = await pool.query('SELECT nom FROM types_examens WHERE id = $1', [type_examen_id]);
@@ -646,15 +640,17 @@ router.post('/', authenticate, async (req, res) => {
 
     const statutNormalized = normalizeStatut(statut || 'demandé');
 
+    // ✅ FIX hospital_id
     const { rows } = await pool.query(
       `INSERT INTO examens 
-       (patient_id, type_examen_id, type_examen, categorie, description, date_demande, date_prevue,
+       (hospital_id, patient_id, type_examen_id, type_examen, categorie, description, date_demande, date_prevue,
         medecin_prescripteur, statut, notes, priorite,
         instructions_preparation, type_prelevement, date_prelevement, preleveur_id,
         parametres, service_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        RETURNING *`,
       [
+        req.hospitalId,
         patient_id,
         type_examen_id || null,
         typeNom,
@@ -675,10 +671,11 @@ router.post('/', authenticate, async (req, res) => {
       ]
     );
 
+    // ✅ FIX hospital_id
     await pool.query(
-      `INSERT INTO historique_examens (examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [rows[0].id, req.user.id, 'creation', '', 'Création de l\'examen']
+      `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [req.hospitalId, rows[0].id, req.user.id, 'creation', '', 'Création de l\'examen']
     );
 
     res.status(201).json(rows[0]);
@@ -762,17 +759,19 @@ router.put('/:id', authenticate, async (req, res) => {
         const oldStr = JSON.stringify(oldVal || []);
         const newStr = JSON.stringify(newVal || []);
         if (oldStr !== newStr) {
+          // ✅ FIX hospital_id
           await pool.query(
-            `INSERT INTO historique_examens (examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [id, req.user.id, field, oldStr, newStr]
+            `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [req.hospitalId, id, req.user.id, field, oldStr, newStr]
           );
         }
       } else if (oldVal !== newVal) {
+        // ✅ FIX hospital_id
         await pool.query(
-          `INSERT INTO historique_examens (examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [id, req.user.id, field, String(oldVal || ''), String(newVal || '')]
+          `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [req.hospitalId, id, req.user.id, field, String(oldVal || ''), String(newVal || '')]
         );
       }
     }
@@ -812,19 +811,21 @@ router.put('/:id/resultats', authenticate, async (req, res) => {
     if (parametres && parametres.length > 0) {
       await pool.query('DELETE FROM resultats_examens WHERE examen_id = $1', [id]);
       for (const p of parametres) {
+        // ✅ FIX hospital_id
         await pool.query(
           `INSERT INTO resultats_examens 
-           (examen_id, parametre_nom, valeur, unite, ref_min, ref_max, interpretation, commentaire)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [id, p.nom || p.parametre_nom, p.valeur, p.unite, p.ref_min, p.ref_max, p.interpretation, p.commentaire || null]
+           (hospital_id, examen_id, parametre_nom, valeur, unite, ref_min, ref_max, interpretation, commentaire)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [req.hospitalId, id, p.nom || p.parametre_nom, p.valeur, p.unite, p.ref_min, p.ref_max, p.interpretation, p.commentaire || null]
         );
       }
     }
 
+    // ✅ FIX hospital_id
     await pool.query(
-      `INSERT INTO historique_examens (examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [id, req.user.id, 'resultats', '', 'Saisie des résultats']
+      `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [req.hospitalId, id, req.user.id, 'resultats', '', 'Saisie des résultats']
     );
 
     const { rows } = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
@@ -857,10 +858,11 @@ router.put('/:id/validation', authenticate, async (req, res) => {
       [commentaire_validation || null, req.user.id, id]
     );
 
+    // ✅ FIX hospital_id
     await pool.query(
-      `INSERT INTO historique_examens (examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [id, req.user.id, 'validation', '', 'Validation de l\'examen']
+      `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [req.hospitalId, id, req.user.id, 'validation', '', 'Validation de l\'examen']
     );
 
     const { rows } = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
@@ -893,10 +895,11 @@ router.put('/:id/reopen', authenticate, async (req, res) => {
       [id]
     );
 
+    // ✅ FIX hospital_id
     await pool.query(
-      `INSERT INTO historique_examens (examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [id, req.user.id, 'reopen', 'realise', 'Réouverture de l\'examen']
+      `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [req.hospitalId, id, req.user.id, 'reopen', 'realise', 'Réouverture de l\'examen']
     );
 
     const { rows } = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
@@ -928,10 +931,11 @@ router.put('/:id/annuler', authenticate, async (req, res) => {
       [motif || null, id]
     );
 
+    // ✅ FIX hospital_id
     await pool.query(
-      `INSERT INTO historique_examens (examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [id, req.user.id, 'annulation', '', `Annulation - motif: ${motif || 'non précisé'}`]
+      `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [req.hospitalId, id, req.user.id, 'annulation', '', `Annulation - motif: ${motif || 'non précisé'}`]
     );
 
     const { rows } = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
@@ -963,15 +967,9 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
 //  STATISTIQUES - NOUVELLES ROUTES
 // ============================================================
 
-/**
- * GET /examens/stats/mensuelles
- * Paramètre optionnel : ?period=12 (nombre de mois)
- * Retourne le nombre d'examens par mois (total, urgents, réalisés)
- */
 router.get('/stats/mensuelles', authenticate, async (req, res) => {
   try {
     const period = parseInt(req.query.period) || 12;
-    // Requête pour PostgreSQL (formatage de la date en YYYY-MM)
     const query = `
       SELECT 
         TO_CHAR(date_demande, 'YYYY-MM') AS mois,
@@ -991,10 +989,6 @@ router.get('/stats/mensuelles', authenticate, async (req, res) => {
   }
 });
 
-/**
- * GET /examens/stats/globales
- * Retourne les totaux globaux (tous statuts, par catégorie)
- */
 router.get('/stats/globales', authenticate, async (req, res) => {
   try {
     const total = await pool.query('SELECT COUNT(*) FROM examens');
@@ -1002,7 +996,6 @@ router.get('/stats/globales', authenticate, async (req, res) => {
     const en_cours = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['en_cours']);
     const realise = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['realise']);
     const annule = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['annule']);
-    // valide n'est pas un statut stocké, on considère qu'un examen avec date_validation non null est validé
     const valide = await pool.query('SELECT COUNT(*) FROM examens WHERE date_validation IS NOT NULL');
 
     const parCategorie = await pool.query(`
@@ -1032,10 +1025,6 @@ router.get('/stats/globales', authenticate, async (req, res) => {
   }
 });
 
-/**
- * GET /examens/stats/par-service
- * Retourne le nombre d'examens par service demandeur
- */
 router.get('/stats/par-service', authenticate, async (req, res) => {
   try {
     const query = `
@@ -1049,7 +1038,6 @@ router.get('/stats/par-service', authenticate, async (req, res) => {
     `;
     const { rows } = await pool.query(query);
 
-    // Ajouter les examens sans service
     const sansService = await pool.query('SELECT COUNT(*) FROM examens WHERE service_id IS NULL');
     if (parseInt(sansService.rows[0].count) > 0) {
       rows.push({ service: 'Non spécifié', total: parseInt(sansService.rows[0].count) });
@@ -1062,10 +1050,6 @@ router.get('/stats/par-service', authenticate, async (req, res) => {
   }
 });
 
-/**
- * GET /examens/stats/par-medecin
- * Retourne le nombre d'examens par médecin prescripteur
- */
 router.get('/stats/par-medecin', authenticate, async (req, res) => {
   try {
     const query = `

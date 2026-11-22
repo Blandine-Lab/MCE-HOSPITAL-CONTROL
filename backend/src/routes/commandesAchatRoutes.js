@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Stock - Commandes Achat : connecté à PostgreSQL'));
+// ============================================================
+// Helper : pose le tenant dans la transaction courante
+// ============================================================
+async function setTenant(client, hospitalId) {
+  await client.query(
+    `SELECT set_config('app.hospital_id', $1, true)`,
+    [String(hospitalId)]
+  );
+}
 
 // GET - Liste des commandes avec détails
 router.get('/', authenticate, async (req, res) => {
@@ -57,7 +59,10 @@ router.post('/', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
+
     const { fournisseur_id, date_commande, date_livraison_prevue, notes, lignes } = req.body;
+    
     // Générer numéro de commande
     const { rows: numRows } = await client.query(
       "SELECT 'CMD-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(COALESCE(MAX(CAST(SUBSTRING(numero_commande FROM 'CMD-[0-9]{8}-([0-9]+)$') AS INTEGER)), 0) + 1, 4, '0') as numero FROM commandes_achat WHERE numero_commande LIKE 'CMD-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-%'"
@@ -67,24 +72,28 @@ router.post('/', authenticate, async (req, res) => {
     let montant_total = 0;
     lignes.forEach(l => montant_total += l.quantite * l.prix_unitaire);
 
+    // ✅ FIX : hospital_id explicite dans commandes_achat
     const { rows: cmdRows } = await client.query(
-      `INSERT INTO commandes_achat (numero_commande, fournisseur_id, date_commande, date_livraison_prevue, montant_total, notes, created_by, statut)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'commandé') RETURNING *`,
-      [numero_commande, fournisseur_id, date_commande, date_livraison_prevue, montant_total, notes, userId]
+      `INSERT INTO commandes_achat (hospital_id, numero_commande, fournisseur_id, date_commande, date_livraison_prevue, montant_total, notes, created_by, statut)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'commandé') RETURNING *`,
+      [req.hospitalId, numero_commande, fournisseur_id, date_commande, date_livraison_prevue, montant_total, notes, userId]
     );
     const commandeId = cmdRows[0].id;
+    
     // Insérer les lignes
     for (const l of lignes) {
+      // ✅ FIX : hospital_id explicite dans commande_lignes
       await client.query(
-        `INSERT INTO commande_lignes (commande_id, produit_id, quantite, prix_unitaire)
-         VALUES ($1, $2, $3, $4)`,
-        [commandeId, l.produit_id, l.quantite, l.prix_unitaire]
+        `INSERT INTO commande_lignes (hospital_id, commande_id, produit_id, quantite, prix_unitaire)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [req.hospitalId, commandeId, l.produit_id, l.quantite, l.prix_unitaire]
       );
     }
+    
     await client.query('COMMIT');
     res.status(201).json(cmdRows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error(err);
     res.status(500).json({ error: err.message });
   } finally {

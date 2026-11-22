@@ -1,10 +1,15 @@
+// src/pages/billing/FactureDetail.jsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../axios';
 import { FaEuroSign, FaPrint, FaEnvelope, FaFilePdf, FaInfoCircle } from 'react-icons/fa';
 import html2pdf from 'html2pdf.js';
+import { useAuth } from '../../context/AuthContext';
 
 const FactureDetail = () => {
+  // 🔧 Récupère l'hôpital courant depuis le contexte auth (multi-tenant)
+  const { hopital } = useAuth();
+
   const { id } = useParams();
   const navigate = useNavigate();
   const [facture, setFacture] = useState(null);
@@ -16,6 +21,40 @@ const FactureDetail = () => {
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
+
+  // 🔧 Infos tenant-aware (fallbacks si contexte vide)
+  const HOPITAL_NOM =
+    hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
+
+  const HOPITAL_ADRESSE =
+    hopital?.adresse || hopital?.address || '';
+
+  const HOPITAL_VILLE =
+    hopital?.ville || hopital?.city || '';
+
+  const HOPITAL_PAYS =
+    hopital?.pays || hopital?.country || '';
+
+  const HOPITAL_TEL   = hopital?.telephone || hopital?.phone || '';
+  const HOPITAL_EMAIL = hopital?.email || hopital?.email_contact || '';
+
+  // 🔧 Résout le logo :
+  //  - URL absolue (https://...) → utilisée telle quelle
+  //  - chemin relatif (/logo.jpeg) → préfixé par l'origine
+  //  - fallback → /logo.jpeg
+  const resolveLogoUrl = (rawLogo) => {
+    if (!rawLogo) return `${window.location.origin}/logo.jpeg`;
+    if (/^https?:\/\//i.test(rawLogo)) return rawLogo;
+    const withSlash = rawLogo.startsWith('/') ? rawLogo : `/${rawLogo}`;
+    return `${window.location.origin}${withSlash}`;
+  };
+
+  const LOGO_PATH =
+    hopital?.logo_url && !/^https?:\/\//i.test(hopital.logo_url)
+      ? hopital.logo_url.startsWith('/')
+        ? hopital.logo_url
+        : `/${hopital.logo_url}`
+      : resolveLogoUrl(hopital?.logo_url);
 
   useEffect(() => {
     fetchFacture();
@@ -164,10 +203,27 @@ const FactureDetail = () => {
 
         {/* Partie à imprimer / PDF */}
         <div id="facture-print">
-          {/* En-tête de l'hôpital */}
+          {/* 🔧 En-tête tenant-aware (logo + nom + adresse + contact) */}
           <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px' }}>
-            <img src="/logo.jpeg" alt="Logo Medical Center Elizabeth MCE" style={{ height: '60px', width: 'auto', marginBottom: '10px' }} />
-            <h2 style={{ margin: 0, color: '#1e3a8a' }}>Medical Center Elizabeth MCE</h2>
+            <img
+              src={LOGO_PATH}
+              alt={`Logo ${HOPITAL_NOM}`}
+              style={{ height: '60px', width: 'auto', marginBottom: '10px' }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+            <h2 style={{ margin: 0, color: '#1e3a8a' }}>{HOPITAL_NOM}</h2>
+            {(HOPITAL_ADRESSE || HOPITAL_VILLE) && (
+              <p style={{ margin: '5px 0 0', color: '#4b5563', fontSize: '13px' }}>
+                {[HOPITAL_ADRESSE, HOPITAL_VILLE, HOPITAL_PAYS].filter(Boolean).join(', ')}
+              </p>
+            )}
+            {(HOPITAL_TEL || HOPITAL_EMAIL) && (
+              <p style={{ margin: '2px 0 0', color: '#4b5563', fontSize: '12px' }}>
+                {HOPITAL_TEL && `Tél : ${HOPITAL_TEL}`}
+                {HOPITAL_TEL && HOPITAL_EMAIL && ' · '}
+                {HOPITAL_EMAIL && `Email : ${HOPITAL_EMAIL}`}
+              </p>
+            )}
             <p style={{ margin: '5px 0 0', color: '#4b5563' }}>Système intégré de gestion hospitalière</p>
           </div>
 

@@ -1,13 +1,8 @@
 // backend/src/routes/parametresLaboRoutes.js
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
 
 // ============================================================
 // GET /api/parametres-references - Liste tous les paramètres
@@ -68,13 +63,15 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Un paramètre avec ce nom existe déjà' });
     }
 
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
       `INSERT INTO parametres_reference 
-       (nom, unite, ref_min, ref_max, valeurs_possibles, seuil_critique_min, seuil_critique_max,
+       (hospital_id, nom, unite, ref_min, ref_max, valeurs_possibles, seuil_critique_min, seuil_critique_max,
         type_parametre, categorie, commentaire)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
+        req.hospitalId,
         nom,
         unite || null,
         ref_min || null,

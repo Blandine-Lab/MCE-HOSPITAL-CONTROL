@@ -1,3 +1,4 @@
+import Library from './pages/Library';
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -28,6 +29,14 @@ import RendezVousPartenaire from './pages/RendezVousPartenaire';
 // ========== IMPORTS OFFLINE ==========
 import api from './axios';
 import { onConnectionChange } from './services/offlineStorage';
+
+// ========== 💬 CHAT LIVE (WIDGET FLOTTANT) ==========
+import ChatWidget from './components/ChatWidget';
+
+// ========== SUPER ADMIN ==========
+import HospitalsList from './pages/superadmin/HospitalsList';
+import HospitalForm from './pages/superadmin/HospitalForm';
+import SuperAdmin from './pages/superadmin/SuperAdmin';
 
 // Anciens imports (conservés pour les autres modules)
 import PatientsList from './pages/patients/PatientsList';
@@ -69,7 +78,6 @@ import MedicalAdmissionForm from './pages/medical/AdmissionForm';
 import MedicalBedManagement from './pages/medical/BedManagement';
 import AdmissionDetail from './pages/medical/AdmissionDetail';
 import AdmissionEdit from './pages/medical/AdmissionEdit';
-// 👇 NOUVEL IMPORT POUR LE DÉTAIL DE CONSULTATION
 import ConsultationDetail from './pages/medical/ConsultationDetail';
 
 // ========== IMPORTS MODULE PARAMÉDICAL & SOINS ==========
@@ -90,7 +98,6 @@ import ResultatForm from './pages/laboratoire-imagerie/ResultatForm';
 import ValidationForm from './pages/laboratoire-imagerie/ValidationForm';
 import TypesExamens from './pages/laboratoire-imagerie/TypesExamens';
 import ParametresLabo from './pages/laboratoire-imagerie/ParametresLabo';
-// 👇 NOUVEL IMPORT POUR L'IMPRESSION DES RÉSULTATS DE LABO
 import ImpressionExamen from './pages/laboratoire-imagerie/ImpressionExamen';
 
 // ========== IMPORTS MODULE RESSOURCES HUMAINES & PLANNING ==========
@@ -204,6 +211,26 @@ import PharmacyCommandesList from './pages/pharmacy/CommandesList';
 import PharmacyCommandeForm from './pages/pharmacy/CommandeForm';
 
 // ============================================================
+// ========== DÉCODAGE JWT base64url-safe (fix atob brut) =====
+// ============================================================
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const pad = (4 - (base64.length % 4)) % 4;
+    base64 += '='.repeat(pad);
+    const binary = atob(base64);
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder('utf-8').decode(bytes));
+  } catch (e) {
+    console.warn('decodeJwtPayload: token illisible', e);
+    return null;
+  }
+}
+
+// ============================================================
 // ==================== ERROR BOUNDARY ========================
 // ============================================================
 class ErrorBoundary extends React.Component {
@@ -211,16 +238,11 @@ class ErrorBoundary extends React.Component {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
   }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
   componentDidCatch(error, errorInfo) {
     console.error('ErrorBoundary a capturé une erreur :', error, errorInfo);
     this.setState({ errorInfo });
   }
-
   render() {
     if (this.state.hasError) {
       return (
@@ -257,7 +279,7 @@ if ('serviceWorker' in navigator) {
 // ============================================================
 // ========== INTERCEPTEUR GLOBAL ==============================
 // ============================================================
-axios.interceptors.request.use(config => {
+axios.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -270,25 +292,44 @@ axios.interceptors.request.use(config => {
 // ============================================================
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  if (!token) {
-    return <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/login" replace />;
+  const payload = decodeJwtPayload(token);
+  if (!payload) return <Navigate to="/login" replace />;
+  return children;
+};
+
+const SuperAdminRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/login" replace />;
+  const payload = decodeJwtPayload(token);
+  if (!payload) return <Navigate to="/login" replace />;
+  const isSuper = payload.is_super_admin === true || payload.role === 'super_admin';
+  if (!isSuper) {
+    console.warn('SuperAdminRoute: accès refusé (pas super_admin) → /dashboard');
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+};
+
+const HospitalAdminRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/login" replace />;
+  const payload = decodeJwtPayload(token);
+  if (!payload) return <Navigate to="/login" replace />;
+  const isSuper = payload.is_super_admin === true || payload.role === 'super_admin';
+  if (isSuper) {
+    console.warn('HospitalAdminRoute: super_admin → /super-admin');
+    return <Navigate to="/super-admin" replace />;
   }
   return children;
 };
 
 const RoleRoute = ({ children, allowedRoles }) => {
   const token = localStorage.getItem('token');
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    if (!allowedRoles.includes(payload.role)) {
-      return <Navigate to="/dashboard" replace />;
-    }
-  } catch (e) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!token) return <Navigate to="/login" replace />;
+  const payload = decodeJwtPayload(token);
+  if (!payload) return <Navigate to="/login" replace />;
+  if (!allowedRoles.includes(payload.role)) return <Navigate to="/dashboard" replace />;
   return children;
 };
 
@@ -301,19 +342,14 @@ const SyncManager = () => {
       console.log('Synchronisation initiale...');
       api.sync().catch(console.error);
     }
-
     const cleanup = onConnectionChange((isOnline) => {
       if (isOnline) {
         console.log('Connexion rétablie, synchronisation...');
-        setTimeout(() => {
-          api.sync().catch(console.error);
-        }, 2000);
+        setTimeout(() => { api.sync().catch(console.error); }, 2000);
       }
     });
-
     return cleanup;
   }, []);
-
   return null;
 };
 
@@ -333,11 +369,20 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/login" element={<Login />} />
                 <Route path="/ui" element={<UIShowcase />} />
                 <Route path="/test" element={<div style={{ color: 'green', fontSize: '2rem' }}>Test OK</div>} />
-
-                {/* Route publique pour les partenaires */}
                 <Route path="/rdv-partenaire/:token" element={<RendezVousPartenaire />} />
 
                 {/* ===== Routes d'impression (sans Layout) ===== */}
+                {/* 🔧 Alias "s" pour l'impression des prescriptions */}
+                <Route
+                  path="/prescriptions/:id/print"
+                  element={
+                    <ProtectedRoute>
+                      <PermissionRoute permission="view_prescriptions">
+                        <PrescriptionPrint />
+                      </PermissionRoute>
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/prescription/print/:id"
                   element={
@@ -348,8 +393,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     </ProtectedRoute>
                   }
                 />
-
-                {/* 👇 NOUVELLE ROUTE POUR L'IMPRESSION DES RÉSULTATS DE LABORATOIRE */}
                 <Route
                   path="/impression/examen/:id"
                   element={
@@ -365,443 +408,100 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route element={<Layout />}>
                   <Route path="/badge/:id" element={<Badge />} />
 
-                  {/* Page d'accueil (Home) visible par tous les utilisateurs connectés */}
-                  <Route
-                    path="/"
-                    element={
-                      <ProtectedRoute>
-                        <Home />
-                      </ProtectedRoute>
-                    }
-                  />
+                  {/* ⭐ SUPER ADMIN */}
+                  <Route path="/super-admin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
+                  <Route path="/superadmin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
 
-                  {/* Page Accès non autorisé */}
-                  <Route
-                    path="/unauthorized"
-                    element={
-                      <ProtectedRoute>
-                        <Unauthorized />
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                  <Route path="/unauthorized" element={<ProtectedRoute><Unauthorized /></ProtectedRoute>} />
 
-                  {/* Dashboard */}
                   <Route
                     path="/dashboard"
                     element={
-                      <ProtectedRoute>
+                      <HospitalAdminRoute>
                         <PermissionRoute permission="view_dashboard">
                           <Dashboard />
                         </PermissionRoute>
-                      </ProtectedRoute>
+                      </HospitalAdminRoute>
                     }
                   />
+
+                  {/* ===== SUPER ADMIN (sous-routes) ===== */}
+                  <Route path="/superadmin/hospitals" element={<SuperAdminRoute><PermissionRoute permission="manage_users"><HospitalsList /></PermissionRoute></SuperAdminRoute>} />
+                  <Route path="/superadmin/hospitals/new" element={<SuperAdminRoute><PermissionRoute permission="manage_users"><HospitalForm /></PermissionRoute></SuperAdminRoute>} />
+
+                  {/* ========== 📚 BIBLIOTHÈQUE ========== */}
+                  <Route path="/library" element={<ProtectedRoute><PermissionRoute permission="view_dashboard"><Library /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/library/:folderId" element={<ProtectedRoute><PermissionRoute permission="view_dashboard"><Library /></PermissionRoute></ProtectedRoute>} />
 
                   {/* Patients */}
-                  <Route
-                    path="/patients"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_patients">
-                          <PatientsList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/patients/new"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_patients">
-                          <PatientForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/patients/edit/:id"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_patients">
-                          <PatientForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/patients/:id"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_patients">
-                          <PatientProfile />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/patients" element={<ProtectedRoute><PermissionRoute permission="view_patients"><PatientsList /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/patients/new" element={<ProtectedRoute><PermissionRoute permission="manage_patients"><PatientForm /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/patients/edit/:id" element={<ProtectedRoute><PermissionRoute permission="manage_patients"><PatientForm /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/patients/:id" element={<ProtectedRoute><PermissionRoute permission="view_patients"><PatientProfile /></PermissionRoute></ProtectedRoute>} />
 
                   {/* Consultations */}
-                  <Route
-                    path="/admission"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_consultations">
-                          <AdmissionForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/urgences"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_consultations">
-                          <UrgencesList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/rendezvous"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_consultations">
-                          <RendezVousList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/consultations"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_consultations">
-                          <ConsultationsHome />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/transfert"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_consultations">
-                          <TransfertForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/sortie"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_consultations">
-                          <SortieForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/admission" element={<ProtectedRoute><PermissionRoute permission="manage_consultations"><AdmissionForm /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/urgences" element={<ProtectedRoute><PermissionRoute permission="view_consultations"><UrgencesList /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/rendezvous" element={<ProtectedRoute><PermissionRoute permission="view_consultations"><RendezVousList /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/consultations" element={<ProtectedRoute><PermissionRoute permission="view_consultations"><ConsultationsHome /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/transfert" element={<ProtectedRoute><PermissionRoute permission="manage_consultations"><TransfertForm /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/sortie" element={<ProtectedRoute><PermissionRoute permission="manage_consultations"><SortieForm /></PermissionRoute></ProtectedRoute>} />
 
                   {/* Lits */}
-                  <Route
-                    path="/lits"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_consultations">
-                          <BedManagement />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/lits" element={<ProtectedRoute><PermissionRoute permission="view_consultations"><BedManagement /></PermissionRoute></ProtectedRoute>} />
 
-                  {/* ===== FACTURATION (avec permissions dédiées) ===== */}
-                  <Route
-                    path="/factures"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_facturation">
-                          <FacturesList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/factures/new"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_facturation">
-                          <FactureForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/factures/:id"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_facturation">
-                          <FactureDetail />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/prestations"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_facturation">
-                          <PrestationsList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/tarifs"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_facturation">
-                          <TarifSheet />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
+                  {/* Facturation */}
+                  <Route path="/factures" element={<ProtectedRoute><PermissionRoute permission="view_facturation"><FacturesList /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/factures/new" element={<ProtectedRoute><PermissionRoute permission="manage_facturation"><FactureForm /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/factures/:id" element={<ProtectedRoute><PermissionRoute permission="view_facturation"><FactureDetail /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/prestations" element={<ProtectedRoute><PermissionRoute permission="view_facturation"><PrestationsList /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/tarifs" element={<ProtectedRoute><PermissionRoute permission="view_facturation"><TarifSheet /></PermissionRoute></ProtectedRoute>} />
 
                   {/* Pharmacie */}
-                  <Route
-                    path="/pharmacy"
-                    element={<Navigate to="/pharmacy/dashboard" replace />}
-                  />
-                  <Route
-                    path="/pharmacy/dashboard"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_pharmacy">
-                          <PharmacyDashboard />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/medicaments"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_pharmacy">
-                          <MedicamentsList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/lots"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_pharmacy">
-                          <LotsList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/lots/:medicamentId"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_pharmacy">
-                          <LotsList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/delivrance"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_pharmacy">
-                          <DelivranceForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/delivrance/:ordonnanceId"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_pharmacy">
-                          <DelivranceForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/retour"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_pharmacy">
-                          <RetourForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Commandes pharmacie */}
-                  <Route
-                    path="/pharmacy/commandes"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_pharmacy">
-                          <PharmacyCommandesList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/pharmacy/commandes/nouveau"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_pharmacy">
-                          <PharmacyCommandeForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/pharmacy/commandes/:id/reception"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_pharmacy">
-                          <PharmacyCommandeForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/pharmacy" element={<Navigate to="/pharmacy/dashboard" replace />} />
+                  <Route path="/pharmacy/dashboard" element={<ProtectedRoute><PermissionRoute permission="view_pharmacy"><PharmacyDashboard /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/medicaments" element={<ProtectedRoute><PermissionRoute permission="view_pharmacy"><MedicamentsList /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/lots" element={<ProtectedRoute><PermissionRoute permission="view_pharmacy"><LotsList /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/lots/:medicamentId" element={<ProtectedRoute><PermissionRoute permission="view_pharmacy"><LotsList /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/delivrance" element={<ProtectedRoute><PermissionRoute permission="manage_pharmacy"><DelivranceForm /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/delivrance/:ordonnanceId" element={<ProtectedRoute><PermissionRoute permission="manage_pharmacy"><DelivranceForm /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/retour" element={<ProtectedRoute><PermissionRoute permission="manage_pharmacy"><RetourForm /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/pharmacy/commandes" element={<ProtectedRoute><PermissionRoute permission="view_pharmacy"><PharmacyCommandesList /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/pharmacy/commandes/nouveau" element={<ProtectedRoute><PermissionRoute permission="manage_pharmacy"><PharmacyCommandeForm /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/pharmacy/commandes/:id/reception" element={<ProtectedRoute><PermissionRoute permission="manage_pharmacy"><PharmacyCommandeForm /></PermissionRoute></ProtectedRoute>} />
 
                   {/* Admin */}
-                  <Route
-                    path="/admin"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_security">
-                          <Admin />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/admin" element={<ProtectedRoute><PermissionRoute permission="manage_security"><Admin /></PermissionRoute></ProtectedRoute>} />
 
-                  {/* Prescriptions */}
-                  <Route
-                    path="/prescription/new"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_prescriptions">
-                          <PrescriptionCreation />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/prescriptions/new"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_prescriptions">
-                          <PrescriptionCreation />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/prescription/new/:patientId"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_prescriptions">
-                          <PrescriptionCreation />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/doctor/prescriptions"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_prescriptions">
-                          <DoctorPrescriptionList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/pharmacist/prescriptions"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_prescriptions">
-                          <PharmacistPrescriptionList />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/prescription/:id"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_prescriptions">
-                          <PrescriptionDetail />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/prescription"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_prescriptions">
-                          <PrescriptionPage />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/prescription/:patientId"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_prescriptions">
-                          <PrescriptionPage />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
+                  {/* ============================================================
+                      PRESCRIPTIONS & ORDONNANCES
+                      🔧 FIX : ajout des alias avec "s" (/prescriptions)
+                      Les listes génèrent des liens vers /prescriptions/:id
+                  ============================================================ */}
+                  <Route path="/prescription/new" element={<ProtectedRoute><PermissionRoute permission="manage_prescriptions"><PrescriptionCreation /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/prescriptions/new" element={<ProtectedRoute><PermissionRoute permission="manage_prescriptions"><PrescriptionCreation /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/prescription/new/:patientId" element={<ProtectedRoute><PermissionRoute permission="manage_prescriptions"><PrescriptionCreation /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/doctor/prescriptions" element={<ProtectedRoute><PermissionRoute permission="view_prescriptions"><DoctorPrescriptionList /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/pharmacist/prescriptions" element={<ProtectedRoute><PermissionRoute permission="view_prescriptions"><PharmacistPrescriptionList /></PermissionRoute></ProtectedRoute>} />
+
+                  {/* 🔧 ALIAS "s" — liste globale accessible via /prescriptions */}
+                  <Route path="/prescriptions" element={<ProtectedRoute><PermissionRoute permission="view_prescriptions"><DoctorPrescriptionList /></PermissionRoute></ProtectedRoute>} />
+
+                  {/* 🔧 ALIAS "s" — détail via /prescriptions/:id */}
+                  <Route path="/prescriptions/:id" element={<ProtectedRoute><PermissionRoute permission="view_prescriptions"><PrescriptionDetail /></PermissionRoute></ProtectedRoute>} />
+
+                  {/* Alias historique "prescription" (sans s) — conservé pour compat */}
+                  <Route path="/prescription/:id" element={<ProtectedRoute><PermissionRoute permission="view_prescriptions"><PrescriptionDetail /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/prescription" element={<ProtectedRoute><PermissionRoute permission="view_prescriptions"><PrescriptionPage /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/prescription/:patientId" element={<ProtectedRoute><PermissionRoute permission="view_prescriptions"><PrescriptionPage /></PermissionRoute></ProtectedRoute>} />
 
                   {/* Ordonnances */}
-                  <Route
-                    path="/ordonnance"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_prescriptions">
-                          <OrdonnanceForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/ordonnance/:patientId"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_prescriptions">
-                          <OrdonnanceForm />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/ordonnance" element={<ProtectedRoute><PermissionRoute permission="manage_prescriptions"><OrdonnanceForm /></PermissionRoute></ProtectedRoute>} />
+                  <Route path="/ordonnance/:patientId" element={<ProtectedRoute><PermissionRoute permission="manage_prescriptions"><OrdonnanceForm /></PermissionRoute></ProtectedRoute>} />
 
-                  {/* ============================================================ */}
-                  {/* MODULE MÉDICAL (DME) - ROUTES COMPLÈTES                     */}
-                  {/* ============================================================ */}
-                  <Route
-                    path="/medical"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_medical">
-                          <MedicalModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  {/* MODULE MÉDICAL (DME) */}
+                  <Route path="/medical" element={<ProtectedRoute><PermissionRoute permission="view_medical"><MedicalModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<MedicalPatientsList />} />
                     <Route path="patients" element={<MedicalPatientsList />} />
                     <Route path="patients/:id" element={<PatientMedicalRecord />} />
@@ -813,16 +513,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </Route>
 
                   {/* MODULE PARAMÉDICAL */}
-                  <Route
-                    path="/paramedical"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="manage_paramedical">
-                          <ParamedicalModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/paramedical" element={<ProtectedRoute><PermissionRoute permission="manage_paramedical"><ParamedicalModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<SoinsList />} />
                     <Route path="soins" element={<SoinsList />} />
                     <Route path="soins/nouveau" element={<SoinForm />} />
@@ -834,21 +525,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </Route>
 
                   {/* MODULE LABORATOIRE & IMAGERIE */}
-                  <Route
-                    path="/laboratoire"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_laboratory">
-                          <LaboratoireImagerieModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/laboratoire" element={<ProtectedRoute><PermissionRoute permission="view_laboratory"><LaboratoireImagerieModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<ExamensList />} />
                     <Route path="examens" element={<ExamensList />} />
                     <Route path="urgents" element={<ExamensList initialFilter={{ priorite: 'urgent' }} />} />
                     <Route path="examen/nouveau" element={<ExamenForm />} />
-                    {/* 👇 NOUVELLE ROUTE POUR L'ÉDITION D'UN EXAMEN */}
                     <Route path="examen/edit/:id" element={<ExamenForm />} />
                     <Route path="examen/:id" element={<ExamenDetail />} />
                     <Route path="resultats/:id" element={<ResultatForm />} />
@@ -859,17 +540,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </Route>
                   <Route path="/laboratory" element={<Navigate to="/laboratoire" replace />} />
 
-                  {/* MODULE RH (RESSOURCES HUMAINES & PLANNING) */}
-                  <Route
-                    path="/rh"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_rh">
-                          <RHPlanningModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  {/* MODULE RH */}
+                  <Route path="/rh" element={<ProtectedRoute><PermissionRoute permission="view_rh"><RHPlanningModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<StatsRH />} />
                     <Route path="employes" element={<EmployesList />} />
                     <Route path="employes/nouveau" element={<EmployeForm />} />
@@ -898,20 +570,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </Route>
                   <Route path="/hr" element={<Navigate to="/rh" replace />} />
 
-                  {/* Demandes de congé */}
                   <Route path="/demandes-conge" element={<DemandesConge />} />
 
                   {/* MODULE FINANCES */}
-                  <Route
-                    path="/finance"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_finance">
-                          <FinancesModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/finance" element={<ProtectedRoute><PermissionRoute permission="view_finance"><FinancesModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<DashboardFinances />} />
                     <Route path="comptes" element={<ComptesList />} />
                     <Route path="comptes/nouveau" element={<CompteForm />} />
@@ -933,16 +595,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   <Route path="/finances" element={<Navigate to="/finance" replace />} />
 
                   {/* MODULE STOCK */}
-                  <Route
-                    path="/stock"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_stock">
-                          <StockModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/stock" element={<ProtectedRoute><PermissionRoute permission="view_stock"><StockModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<DashboardStock />} />
                     <Route path="produits" element={<ProduitsList />} />
                     <Route path="produits/nouveau" element={<ProduitForm />} />
@@ -962,16 +615,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   <Route path="/stocks" element={<Navigate to="/stock" replace />} />
 
                   {/* MODULE QUALITÉ */}
-                  <Route
-                    path="/qualite"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_quality">
-                          <QualiteModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/qualite" element={<ProtectedRoute><PermissionRoute permission="view_quality"><QualiteModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<DashboardQualite />} />
                     <Route path="signalements" element={<SignalementsList />} />
                     <Route path="signalements/nouveau" element={<SignalementForm />} />
@@ -998,16 +642,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   <Route path="/quality" element={<Navigate to="/qualite" replace />} />
 
                   {/* MODULE REPORTING */}
-                  <Route
-                    path="/reporting"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_reporting">
-                          <ReportingModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/reporting" element={<ProtectedRoute><PermissionRoute permission="view_reporting"><ReportingModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<DashboardBI />} />
                     <Route path="rapports" element={<RapportsList />} />
                     <Route path="export" element={<ExportsList />} />
@@ -1015,16 +650,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   <Route path="/bi" element={<Navigate to="/reporting" replace />} />
 
                   {/* MODULE SÉCURITÉ */}
-                  <Route
-                    path="/security"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_security">
-                          <SecurityModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/security" element={<ProtectedRoute><PermissionRoute permission="view_security"><SecurityModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<DashboardSecurity />} />
                     <Route path="roles" element={<RolesList />} />
                     <Route path="roles/nouveau" element={<RoleForm />} />
@@ -1036,16 +662,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </Route>
 
                   {/* MODULE INTEROPÉRABILITÉ */}
-                  <Route
-                    path="/interoperabilite"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_interoperabilite">
-                          <InteroperabiliteModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/interoperabilite" element={<ProtectedRoute><PermissionRoute permission="view_interoperabilite"><InteroperabiliteModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<DashboardInteroperabilite />} />
                     <Route path="systemes" element={<SystemesList />} />
                     <Route path="flux" element={<FluxList />} />
@@ -1055,16 +672,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   <Route path="/interop" element={<Navigate to="/interoperabilite" replace />} />
 
                   {/* MODULE BLOC OPÉRATOIRE */}
-                  <Route
-                    path="/bloc"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_medical">
-                          <BlocModule />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/bloc" element={<ProtectedRoute><PermissionRoute permission="view_medical"><BlocModule /></PermissionRoute></ProtectedRoute>}>
                     <Route index element={<PlanningBloc />} />
                     <Route path="interventions" element={<InterventionsList />} />
                     <Route path="interventions/nouveau" element={<InterventionForm />} />
@@ -1073,23 +681,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <Route path="stats" element={<BlocStats />} />
                   </Route>
 
-                  {/* 👇 NOUVELLE ROUTE POUR LE DÉTAIL D'UNE CONSULTATION */}
-                  <Route
-                    path="/consultation/:id"
-                    element={
-                      <ProtectedRoute>
-                        <PermissionRoute permission="view_consultations">
-                          <ConsultationDetail />
-                        </PermissionRoute>
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/consultation/:id" element={<ProtectedRoute><PermissionRoute permission="view_consultations"><ConsultationDetail /></PermissionRoute></ProtectedRoute>} />
 
-                </Route> {/* fin du Layout */}
+                </Route>{/* fin du Layout */}
 
-                {/* Route UI Showcase (publique, sans Layout) */}
                 <Route path="/ui" element={<UIShowcase />} />
               </Routes>
+
+              <ChatWidget />
             </ToastProvider>
           </ThemeProvider>
         </BrowserRouter>

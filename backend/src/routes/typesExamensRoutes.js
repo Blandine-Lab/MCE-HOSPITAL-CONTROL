@@ -1,15 +1,15 @@
+// src/routes/typesExamensRoutes.js
+// ============================================================
+// 🔬 LABORATOIRE – Types d'examens
+// ------------------------------------------------------------
+// ⚠️ FIX :
+//   1. Pool patché de config/db.js (ALS + set_config auto)
+//   2. hospital_id explicite dans le POST (NOT NULL sans DEFAULT)
+// ============================================================
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
-
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Laboratoire - Types Examens : connecté à PostgreSQL'));
 
 // ============================================================
 // GET tous les types
@@ -40,7 +40,7 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// POST créer un type (avec support de parametres_ids)
+// POST créer un type
 // ============================================================
 router.post('/', authenticate, requireAdmin, async (req, res) => {
   try {
@@ -54,11 +54,10 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       preparation,
       prestation_id,
       parametres_defaut,
-      parametres_ids   // nouveau champ (tableau d'IDs)
+      parametres_ids
     } = req.body;
 
-    // ✅ Normalisation des données
-    // prix : virgule → point → nombre
+    // ✅ Normalisation prix
     let prixNum = null;
     if (prix !== undefined && prix !== null && prix !== '') {
       const prixStr = prix.toString().replace(',', '.');
@@ -66,14 +65,14 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       if (isNaN(prixNum)) prixNum = null;
     }
 
-    // duree_estimee : entier
+    // ✅ Normalisation durée
     let duree = null;
     if (duree_estimee !== undefined && duree_estimee !== null && duree_estimee !== '') {
       duree = parseInt(duree_estimee);
       if (isNaN(duree)) duree = null;
     }
 
-    // parametres_defaut (ancien champ) : conversion en JSON
+    // ✅ Normalisation parametres_defaut
     let paramsDefautJson = null;
     if (parametres_defaut) {
       if (Array.isArray(parametres_defaut)) {
@@ -88,30 +87,30 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       }
     }
 
-    // parametres_ids (nouveau champ) : tableau d'entiers → JSON
+    // ✅ Normalisation parametres_ids
     let paramsIdsJson = null;
     if (parametres_ids && Array.isArray(parametres_ids) && parametres_ids.length > 0) {
-      // S'assurer que ce sont des entiers
       const ids = parametres_ids.map(id => parseInt(id)).filter(id => !isNaN(id));
       if (ids.length > 0) {
         paramsIdsJson = JSON.stringify(ids);
       }
     }
 
-    // prestation_id : nombre ou NULL
+    // ✅ Normalisation prestation_id
     let prestationId = null;
     if (prestation_id && prestation_id !== '' && prestation_id !== 0) {
       prestationId = parseInt(prestation_id);
       if (isNaN(prestationId)) prestationId = null;
     }
 
+    // ✅ FIX : hospital_id explicite (colonne NOT NULL sans DEFAULT)
     const { rows } = await pool.query(
       `INSERT INTO types_examens 
-       (nom, categorie, description, duree_estimee, prix, preparation, prestation_id, 
+       (hospital_id, nom, categorie, description, duree_estimee, prix, preparation, prestation_id, 
         parametres_defaut, parametres_ids)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [nom, categorie, description, duree, prixNum, preparation, prestationId, paramsDefautJson, paramsIdsJson]
+      [req.hospitalId, nom, categorie, description, duree, prixNum, preparation, prestationId, paramsDefautJson, paramsIdsJson]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -121,7 +120,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
-// PUT modifier un type (avec support de parametres_ids)
+// PUT modifier un type
 // ============================================================
 router.put('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
@@ -140,7 +139,6 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
       parametres_ids
     } = req.body;
 
-    // ✅ Normalisation des données (identique à POST)
     let prixNum = null;
     if (prix !== undefined && prix !== null && prix !== '') {
       const prixStr = prix.toString().replace(',', '.');
@@ -206,7 +204,6 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    // Vérifier si des examens utilisent ce type
     const check = await pool.query('SELECT COUNT(*) FROM examens WHERE type_examen_id = $1', [id]);
     if (parseInt(check.rows[0].count) > 0) {
       return res.status(400).json({

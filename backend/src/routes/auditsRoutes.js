@@ -1,16 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Qualité - Audits : connecté à PostgreSQL'));
-
+// GET - Tous les audits
 router.get('/', authenticate, async (req, res) => {
   try {
     const { statut, service_id } = req.query;
@@ -34,6 +27,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// GET - Audit par ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -51,19 +45,23 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
+// POST - Créer un audit
 router.post('/', authenticate, async (req, res) => {
   try {
     const { numero_audit, titre, type, service_id, date_debut, date_fin,
             auditeur_principal, equipe_audit, objectif, scope, criteres } = req.body;
     const userId = req.user.id;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(`
       INSERT INTO audits (
-        numero_audit, titre, type, service_id, date_debut, date_fin,
+        hospital_id, numero_audit, titre, type, service_id, date_debut, date_fin,
         auditeur_principal, equipe_audit, objectif, scope, criteres, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
-    `, [numero_audit, titre, type, service_id, date_debut, date_fin,
+    `, [req.hospitalId, numero_audit, titre, type, service_id, date_debut, date_fin,
         auditeur_principal, equipe_audit, objectif, scope, criteres, userId]);
+        
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -71,6 +69,7 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
+// PUT - Modifier un audit
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { titre, type, service_id, date_debut, date_fin,

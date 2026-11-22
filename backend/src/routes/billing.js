@@ -1,15 +1,28 @@
+// src/routes/billing.js
+// ============================================================
+// 💰 BILLING – Facturation, prestations, paiements
+// ------------------------------------------------------------
+// ⚠️ FIX CRITIQUE :
+//   1. Pool patché de config/db.js (ALS + set_config auto)
+//   2. set_config manuel dans CHAQUE transaction (client.query
+//      ne passe PAS par patchedQuery)
+//   3. hospital_id explicite dans TOUS les INSERT (colonne
+//      NOT NULL sans DEFAULT)
+// ============================================================
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requirePermission, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Billing : connecté à PostgreSQL'));
+// ================================================================
+// Helper : pose le tenant dans la transaction courante
+// ================================================================
+async function setTenant(client, hospitalId) {
+  await client.query(
+    `SELECT set_config('app.hospital_id', $1, true)`,
+    [String(hospitalId)]
+  );
+}
 
 // ================================================================
 // ========== RECHERCHE DE PATIENTS ==============================
@@ -34,7 +47,7 @@ router.get('/patients/search', authenticate, requirePermission('view_finance'), 
 });
 
 // ================================================================
-// ========== LISTE DES MÉDICAMENTS FACTURABLES (ORDONNANCES SERVIES + STOCK) =====
+// ========== LISTE DES MÉDICAMENTS FACTURABLES ==================
 // ================================================================
 router.get('/medicaments/patient/:patientId', authenticate, requirePermission('view_finance'), async (req, res) => {
   const { patientId } = req.params;
@@ -92,6 +105,10 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
   const { sejourId } = req.params;
   const client = await pool.connect();
   try {
+    // ✅ FIX : poser le tenant DANS la transaction
+    await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);
+
     const admission = await client.query(`
       SELECT a.id, a.patient_id, a.date_admission, a.date_sortie_prevue, a.service_id, s.nom AS service_nom
       FROM admissions a
@@ -99,6 +116,7 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       WHERE a.id = $1
     `, [sejourId]);
     if (admission.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Séjour non trouvé' });
     }
     const ad = admission.rows[0];
@@ -239,8 +257,10 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       console.warn('⚠️ Table interventions absente ou colonne sejour_id manquante');
     }
 
+    await client.query('COMMIT');
     res.json(prestations);
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ Erreur GET /sejour/:sejourId/prestations:', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -255,12 +275,17 @@ router.get('/consultation/:consultationId/prestations', authenticate, requirePer
   const { consultationId } = req.params;
   const client = await pool.connect();
   try {
+    // ✅ FIX : poser le tenant DANS la transaction
+    await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);
+
     const cons = await client.query(`
       SELECT id, patient_id, date_rdv, motif
       FROM rendez_vous
       WHERE id = $1
     `, [consultationId]);
     if (cons.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Consultation non trouvée' });
     }
     const c = cons.rows[0];
@@ -347,8 +372,10 @@ router.get('/consultation/:consultationId/prestations', authenticate, requirePer
       console.warn('⚠️ Table prescriptions absente ou colonne consultation_id manquante');
     }
 
+    await client.query('COMMIT');
     res.json(prestations);
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ Erreur GET /consultation/:consultationId/prestations:', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -372,8 +399,9 @@ router.post('/prestations', authenticate, requirePermission('manage_finance'), a
   const { code, libelle, prix_unitaire, categorie } = req.body;
   try {
     const { rows } = await pool.query(
-      'INSERT INTO prestations (code, libelle, prix_unitaire, categorie) VALUES ($1,$2,$3,$4) RETURNING *',
-      [code, libelle, prix_unitaire, categorie]
+      `INSERT INTO prestations (hospital_id, code, libelle, prix_unitaire, categorie)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.hospitalId, code, libelle, prix_unitaire, categorie]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -424,8 +452,9 @@ router.post('/assurances', authenticate, requirePermission('manage_finance'), as
   const { nom, code, taux_prise_en_charge, adresse, telephone, email } = req.body;
   try {
     const { rows } = await pool.query(
-      'INSERT INTO assurances (nom, code, taux_prise_en_charge, adresse, telephone, email) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-      [nom, code, taux_prise_en_charge, adresse, telephone, email]
+      `INSERT INTO assurances (hospital_id, nom, code, taux_prise_en_charge, adresse, telephone, email)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [req.hospitalId, nom, code, taux_prise_en_charge, adresse, telephone, email]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -434,10 +463,10 @@ router.post('/assurances', authenticate, requirePermission('manage_finance'), as
 });
 
 // ================================================================
-// ========== FACTURES (CRUD enrichi) - CORRIGÉ ==================
+// ========== FACTURES (CRUD enrichi) ============================
 // ================================================================
 
-// ✅ GET /factures – Liste des factures (sans assurances, avec date_facture)
+// ✅ GET /factures – Liste des factures
 router.get('/factures', authenticate, requirePermission('view_finance'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -452,7 +481,7 @@ router.get('/factures', authenticate, requirePermission('view_finance'), async (
   }
 });
 
-// ✅ GET /factures/:id – Détail d'une facture (corrigé)
+// ✅ GET /factures/:id – Détail d'une facture
 router.get('/factures/:id', authenticate, requirePermission('view_finance'), async (req, res) => {
   try {
     const facture = await pool.query(`
@@ -476,7 +505,7 @@ router.get('/factures/:id', authenticate, requirePermission('view_finance'), asy
 });
 
 // ================================================================
-// ========== POST /factures (avec médicaments et jours) =========
+// ========== POST /factures =====================================
 // ================================================================
 router.post('/factures', authenticate, requirePermission('manage_finance'), async (req, res) => {
   console.log('📥 Corps reçu :', JSON.stringify(req.body, null, 2));
@@ -496,7 +525,7 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
     consultation_id,
     notes,
     tiers_payant,
-    type_facture, // NOUVEAU : récupération du type
+    type_facture,
   } = req.body;
 
   if (!patient_id || (!lignes?.length && !examens_ids?.length && !consultations_ids?.length && !medicament_ids?.length)) {
@@ -506,6 +535,7 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
 
     // Récupération des examens
     let examensRows = [];
@@ -546,7 +576,7 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
       }
     }
 
-    // Récupération des médicaments (depuis prescription_items ou mouvements_stock)
+    // Récupération des médicaments
     let medicamentsRows = [];
     if (medicament_ids && medicament_ids.length > 0) {
       const medicamentsResult = await client.query(`
@@ -581,7 +611,6 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
     // Construction des lignes
     const allLines = [];
 
-    // Lignes manuelles
     if (lignes && lignes.length > 0) {
       for (const ligne of lignes) {
         const prix = parseFloat(ligne.prix_unitaire) || 0;
@@ -596,7 +625,6 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
       }
     }
 
-    // Lignes issues des examens
     for (const ex of examensRows) {
       const prix = parseFloat(ex.prix_calcule) || 0;
       allLines.push({
@@ -608,7 +636,6 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
       });
     }
 
-    // Lignes issues des consultations
     for (const c of consultationsRows) {
       const prix = parseFloat(c.prix_calcule) || 50.00;
       const type = c.type_consultation || 'générale';
@@ -622,7 +649,6 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
       });
     }
 
-    // Lignes issues des médicaments
     for (const med of medicamentsRows) {
       const prix = parseFloat(med.prix_unitaire) || 0;
       const qte = parseInt(med.quantite) || 1;
@@ -635,25 +661,26 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
       });
     }
 
-    // Calcul du total
     let total = allLines.reduce((acc, line) => acc + line.total_ligne, 0);
     const remiseValue = parseFloat(remise) || 0;
     if (remiseValue > 0) total -= total * remiseValue / 100;
 
-    // Insertion facture
     const timestamp = Date.now();
     const numeroFacture = `F${timestamp}`;
 
+    // ✅ FIX : hospital_id explicite
     const { rows } = await client.query(`
       INSERT INTO factures (
+        hospital_id,
         patient_id, assurance_id, date_emission, date_echeance,
         remise, montant_total, statut, numero_facture,
         notes, tiers_payant, mode, sejour_id, consultation_id,
         type_facture
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `, [
+      req.hospitalId,
       patient_id,
       assurance_id || null,
       date_emission || new Date().toISOString().split('T')[0],
@@ -672,15 +699,14 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
 
     const factureId = rows[0].id;
 
-    // Insertion des lignes
+    // ✅ FIX : hospital_id explicite dans facture_lignes
     for (const line of allLines) {
       await client.query(`
-        INSERT INTO facture_lignes (facture_id, prestation_id, quantite, prix_unitaire, total_ligne, libelle)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `, [factureId, line.prestation_id, line.quantite, line.prix_unitaire, line.total_ligne, line.libelle]);
+        INSERT INTO facture_lignes (hospital_id, facture_id, prestation_id, quantite, prix_unitaire, total_ligne, libelle)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [req.hospitalId, factureId, line.prestation_id, line.quantite, line.prix_unitaire, line.total_ligne, line.libelle]);
     }
 
-    // ✅ Mettre à jour facture_id dans les deux tables pour éviter la double facturation
     if (medicament_ids && medicament_ids.length > 0) {
       await client.query(
         `UPDATE prescription_items SET facture_id = $1 WHERE id = ANY($2::int[])`,
@@ -695,7 +721,7 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
     await client.query('COMMIT');
     res.status(201).json(rows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ Erreur POST /factures:', err);
     res.status(500).json({ error: err.message, detail: err.detail });
   } finally {
@@ -711,10 +737,12 @@ router.post('/paiements', authenticate, requirePermission('manage_finance'), asy
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
+
     await client.query(`
-      INSERT INTO paiements (facture_id, montant, mode, reference)
-      VALUES ($1, $2, $3, $4)
-    `, [facture_id, montant, mode, reference]);
+      INSERT INTO paiements (hospital_id, facture_id, montant, mode, reference)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [req.hospitalId, facture_id, montant, mode, reference]);
     await client.query('UPDATE factures SET montant_paye = montant_paye + $1 WHERE id = $2', [montant, facture_id]);
     const facture = await client.query('SELECT montant_total, montant_paye FROM factures WHERE id = $1', [facture_id]);
     if (facture.rows[0].montant_paye >= facture.rows[0].montant_total) {
@@ -723,7 +751,7 @@ router.post('/paiements', authenticate, requirePermission('manage_finance'), asy
     await client.query('COMMIT');
     res.sendStatus(201);
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -737,9 +765,9 @@ router.post('/relances', authenticate, requirePermission('manage_finance'), asyn
   const { facture_id, mode, commentaire } = req.body;
   try {
     await pool.query(`
-      INSERT INTO relances (facture_id, mode, commentaire)
-      VALUES ($1, $2, $3)
-    `, [facture_id, mode, commentaire]);
+      INSERT INTO relances (hospital_id, facture_id, mode, commentaire)
+      VALUES ($1, $2, $3, $4)
+    `, [req.hospitalId, facture_id, mode, commentaire]);
     res.sendStatus(201);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -756,7 +784,7 @@ router.get('/relances/facture/:factureId', authenticate, requirePermission('view
 });
 
 // ================================================================
-// ========== RÉCAPITULATIF DE FACTURES (GÉNÉRAL) ===============
+// ========== RÉCAPITULATIF DE FACTURES ==========================
 // ================================================================
 router.get('/recap', authenticate, requirePermission('view_finance'), async (req, res) => {
   try {
@@ -775,7 +803,6 @@ router.get('/recap', authenticate, requirePermission('view_finance'), async (req
       return res.status(404).json({ error: 'Aucune facture trouvée' });
     }
 
-    // Récupération des factures et de leurs lignes
     const factures = await pool.query(`
       SELECT f.*, p.nom AS patient_nom, p.prenom AS patient_prenom
       FROM factures f
@@ -788,7 +815,6 @@ router.get('/recap', authenticate, requirePermission('view_finance'), async (req
       return res.status(404).json({ error: 'Factures non trouvées' });
     }
 
-    // Récupérer toutes les lignes pour ces factures
     const lignes = await pool.query(`
       SELECT fl.*, f.id AS facture_id, f.type_facture
       FROM facture_lignes fl
@@ -797,7 +823,6 @@ router.get('/recap', authenticate, requirePermission('view_finance'), async (req
       ORDER BY f.date_facture DESC, fl.id
     `, [ids]);
 
-    // Regrouper les lignes par type de facture
     const grouped = {};
     for (const ligne of lignes.rows) {
       const type = ligne.type_facture || 'mixte';
@@ -806,13 +831,11 @@ router.get('/recap', authenticate, requirePermission('view_finance'), async (req
       grouped[type].lignes.push(ligne);
     }
 
-    // Calcul du total général
     let totalGeneral = 0;
     for (const key in grouped) {
       totalGeneral += grouped[key].total;
     }
 
-    // Structure de la réponse
     const recap = {
       patient: {
         id: factures.rows[0].patient_id,

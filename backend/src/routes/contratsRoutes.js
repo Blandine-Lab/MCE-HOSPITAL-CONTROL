@@ -1,19 +1,31 @@
+// src/routes/contratsRoutes.js
+// ============================================================
+// 🏥 RH – Contrats (CRUD + PDF + transactions)
+// ------------------------------------------------------------
+// ⚠️ FIX :
+//   1. Pool patché de config/db.js (ALS + set_config auto)
+//   2. set_config manuel dans CHAQUE transaction
+//   3. hospital_id explicite dans TOUS les INSERT
+//   4. ROLLBACK avant chaque return 404 dans une transaction
+// ============================================================
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
 
-// ✅ Connexion PostgreSQL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ RH - Contrats : connecté à PostgreSQL'));
+// ============================================================
+// Helper : pose le tenant dans la transaction courante
+// ============================================================
+async function setTenant(client, hospitalId) {
+  await client.query(
+    `SELECT set_config('app.hospital_id', $1, true)`,
+    [String(hospitalId)]
+  );
+}
 
 // ============================================================
-// 1. GET  /contrats  - Liste des contrats
+// 1. GET /contrats — Liste des contrats
 // ============================================================
 router.get('/', authenticate, async (req, res) => {
   try {
@@ -31,7 +43,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// 2. GET  /contrats/modeles-contrats  - Liste des modèles (SPÉCIFIQUE)
+// 2. GET /contrats/modeles-contrats — Liste des modèles
 // ============================================================
 router.get('/modeles-contrats', authenticate, async (req, res) => {
   try {
@@ -50,7 +62,7 @@ router.get('/modeles-contrats', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// 3. GET  /contrats/employe/:employeId  - Contrats d'un employé
+// 3. GET /contrats/employe/:employeId — Contrats d'un employé
 // ============================================================
 router.get('/employe/:employeId', authenticate, async (req, res) => {
   try {
@@ -66,7 +78,7 @@ router.get('/employe/:employeId', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// 4. GET  /contrats/generate/:employeId  - PDF (simple, GET)
+// 4. GET /contrats/generate/:employeId — PDF (simple)
 // ============================================================
 router.get('/generate/:employeId', authenticate, async (req, res) => {
   try {
@@ -133,7 +145,7 @@ router.get('/generate/:employeId', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// 5. POST /contrats/generer  - Génération à partir d'un modèle
+// 5. POST /contrats/generer — Génération à partir d'un modèle
 // ============================================================
 router.post('/generer', authenticate, async (req, res) => {
   const { employe_id, modele_id, date_debut, date_fin, salaire } = req.body;
@@ -144,8 +156,8 @@ router.post('/generer', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
 
-    // Vérifier si la colonne actif existe
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns 
       WHERE table_name = 'modeles_contrats' AND column_name = 'actif'
@@ -157,11 +169,11 @@ router.post('/generer', authenticate, async (req, res) => {
 
     const modeleResult = await client.query(sqlModele, [modele_id]);
     if (modeleResult.rows.length === 0) {
+      await client.query('ROLLBACK');   // ✅ FIX : ROLLBACK avant return
       return res.status(404).json({ error: 'Modèle non trouvé ou inactif' });
     }
     const modele = modeleResult.rows[0];
 
-    // Récupérer les articles du modèle
     const articlesResult = await client.query(
       `SELECT titre, contenu, ordre FROM articles_modeles WHERE modele_id = $1 ORDER BY ordre, id`,
       [modele_id]
@@ -169,21 +181,31 @@ router.post('/generer', authenticate, async (req, res) => {
 
     const reference = `CONTRAT-${Date.now().toString(36).toUpperCase()}`;
 
-    // Insérer le contrat
+    // ✅ FIX : hospital_id explicite
     const contratResult = await client.query(
       `INSERT INTO contrats
-        (employe_id, type, date_debut, date_fin, salaire, statut, reference, modele_id)
-       VALUES ($1, $2, $3, $4, $5, 'actif', $6, $7)
+        (hospital_id, employe_id, type, date_debut, date_fin, salaire, statut, reference, modele_id)
+       VALUES ($1, $2, $3, $4, $5, $6, 'actif', $7, $8)
        RETURNING id, reference, employe_id, type, date_debut, date_fin, salaire, statut, modele_id`,
-      [employe_id, modele.nom || 'CDI', date_debut || new Date().toISOString().split('T')[0], date_fin || null, salaire || null, reference, modele_id]
+      [
+        req.hospitalId,
+        employe_id,
+        modele.nom || 'CDI',
+        date_debut || new Date().toISOString().split('T')[0],
+        date_fin || null,
+        salaire || null,
+        reference,
+        modele_id,
+      ]
     );
     const contrat = contratResult.rows[0];
 
-    // Copier les articles
+    // ✅ FIX : hospital_id explicite dans articles_contrats
     for (const art of articlesResult.rows) {
       await client.query(
-        `INSERT INTO articles_contrats (contrat_id, titre, contenu, ordre) VALUES ($1, $2, $3, $4)`,
-        [contrat.id, art.titre, art.contenu, art.ordre]
+        `INSERT INTO articles_contrats (hospital_id, contrat_id, titre, contenu, ordre)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [req.hospitalId, contrat.id, art.titre, art.contenu, art.ordre]
       );
     }
 
@@ -196,7 +218,7 @@ router.post('/generer', authenticate, async (req, res) => {
     await client.query('COMMIT');
     res.status(201).json({ message: 'Contrat généré avec succès', contrat });
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Erreur POST /contrats/generer :', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -205,7 +227,7 @@ router.post('/generer', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// 6. GET  /contrats/:id  - Détail d'un contrat (avec articles) - GÉNÉRIQUE
+// 6. GET /contrats/:id — Détail d'un contrat (avec articles)
 // ============================================================
 router.get('/:id', authenticate, async (req, res) => {
   try {
@@ -231,16 +253,17 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// 7. POST /contrats  - Créer un contrat
+// 7. POST /contrats — Créer un contrat
 // ============================================================
 router.post('/', authenticate, async (req, res) => {
   const { employe_id, type, date_debut, date_fin, salaire, statut, commentaire } = req.body;
   try {
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(`
-      INSERT INTO contrats (employe_id, type, date_debut, date_fin, salaire, statut, commentaire)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO contrats (hospital_id, employe_id, type, date_debut, date_fin, salaire, statut, commentaire)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
-    `, [employe_id, type, date_debut, date_fin, salaire, statut || 'actif', commentaire]);
+    `, [req.hospitalId, employe_id, type, date_debut, date_fin, salaire, statut || 'actif', commentaire]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Erreur POST /contrats :', err);
@@ -249,7 +272,7 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// 8. PUT /contrats/:id  - Modifier un contrat
+// 8. PUT /contrats/:id — Modifier un contrat
 // ============================================================
 router.put('/:id', authenticate, async (req, res) => {
   const { employe_id, type, date_debut, date_fin, salaire, statut, commentaire } = req.body;
@@ -270,7 +293,7 @@ router.put('/:id', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// 9. DELETE /contrats/:id  - Supprimer un contrat (admin)
+// 9. DELETE /contrats/:id — Supprimer un contrat (admin)
 // ============================================================
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
@@ -284,7 +307,7 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
-// 10. PUT /contrats/:id/articles  - Mise à jour des articles
+// 10. PUT /contrats/:id/articles — Mise à jour des articles
 // ============================================================
 router.put('/:id/articles', authenticate, async (req, res) => {
   const { articles } = req.body;
@@ -294,8 +317,11 @@ router.put('/:id/articles', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
+
     const contratCheck = await client.query('SELECT id FROM contrats WHERE id = $1', [req.params.id]);
     if (contratCheck.rows.length === 0) {
+      await client.query('ROLLBACK');   // ✅ FIX : ROLLBACK avant return
       return res.status(404).json({ error: 'Contrat non trouvé' });
     }
     for (const art of articles) {
@@ -305,16 +331,18 @@ router.put('/:id/articles', authenticate, async (req, res) => {
           [art.titre, art.contenu, art.ordre, art.id, req.params.id]
         );
       } else {
+        // ✅ FIX : hospital_id explicite
         await client.query(
-          `INSERT INTO articles_contrats (contrat_id, titre, contenu, ordre) VALUES ($1, $2, $3, $4)`,
-          [req.params.id, art.titre, art.contenu, art.ordre]
+          `INSERT INTO articles_contrats (hospital_id, contrat_id, titre, contenu, ordre)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [req.hospitalId, req.params.id, art.titre, art.contenu, art.ordre]
         );
       }
     }
     await client.query('COMMIT');
     res.json({ message: 'Articles mis à jour avec succès' });
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Erreur PUT /contrats/:id/articles :', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -323,7 +351,7 @@ router.put('/:id/articles', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// 11. POST /contrats/generate/:employeId  - PDF personnalisé
+// 11. POST /contrats/generate/:employeId — PDF personnalisé
 // ============================================================
 router.post('/generate/:employeId', authenticate, async (req, res) => {
   try {

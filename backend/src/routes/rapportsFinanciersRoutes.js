@@ -1,23 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate } = require('../middleware/auth');
-
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Finances - Rapports : connecté à PostgreSQL'));
 
 // GET - Bilan comptable (synthèse des comptes)
 router.get('/bilan', authenticate, async (req, res) => {
   try {
     const { date } = req.query;
-    const dateFilter = date ? `AND e.date <= '${date}'` : '';
-
-    const query = `
+    
+    // ✅ FIX : Requête paramétrée (contre l'injection SQL) + bonne colonne (date_ecriture)
+    let query = `
       SELECT 
         c.type,
         SUM(CASE WHEN el.sens = 'debit' THEN el.montant ELSE 0 END) as total_debit,
@@ -25,11 +17,16 @@ router.get('/bilan', authenticate, async (req, res) => {
       FROM comptes_comptables c
       JOIN ecriture_lignes el ON c.id = el.compte_id
       JOIN ecritures e ON el.ecriture_id = e.id
-      WHERE e.statut = 'validé' ${dateFilter}
-      GROUP BY c.type
+      WHERE e.statut = 'validé'
     `;
+    const params = [];
+    if (date) {
+      query += ` AND e.date_ecriture <= $1`;
+      params.push(date);
+    }
+    query += ` GROUP BY c.type`;
 
-    const { rows } = await pool.query(query);
+    const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (err) {
     console.error('Erreur GET /rapports/bilan :', err);
@@ -45,6 +42,7 @@ router.get('/resultat', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'date_debut et date_fin sont requis' });
     }
 
+    // ✅ FIX : date_ecriture
     const query = `
       SELECT 
         SUM(CASE WHEN c.type = 'produit' AND el.sens = 'credit' THEN el.montant ELSE 0 END) as total_produits,
@@ -55,7 +53,7 @@ router.get('/resultat', authenticate, async (req, res) => {
       JOIN ecriture_lignes el ON c.id = el.compte_id
       JOIN ecritures e ON el.ecriture_id = e.id
       WHERE e.statut = 'validé'
-        AND e.date BETWEEN $1 AND $2
+        AND e.date_ecriture BETWEEN $1 AND $2
         AND c.type IN ('produit', 'charge')
     `;
 
@@ -75,9 +73,10 @@ router.get('/grand-livre', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'compte_id est requis' });
     }
 
-    const query = `
+    // ✅ FIX : date_ecriture + valeurs par défaut si les dates ne sont pas fournies
+    let query = `
       SELECT 
-        e.date,
+        e.date_ecriture as date,
         e.numero_piece,
         e.libelle,
         el.sens,
@@ -87,11 +86,23 @@ router.get('/grand-livre', authenticate, async (req, res) => {
       JOIN ecritures e ON el.ecriture_id = e.id
       WHERE el.compte_id = $1
         AND e.statut = 'validé'
-        AND e.date BETWEEN $2 AND $3
-      ORDER BY e.date, e.id
     `;
+    const params = [compte_id];
+    
+    if (date_debut && date_fin) {
+      query += ` AND e.date_ecriture BETWEEN $2 AND $3`;
+      params.push(date_debut, date_fin);
+    } else if (date_debut) {
+      query += ` AND e.date_ecriture >= $2`;
+      params.push(date_debut);
+    } else if (date_fin) {
+      query += ` AND e.date_ecriture <= $2`;
+      params.push(date_fin);
+    }
 
-    const { rows } = await pool.query(query, [compte_id, date_debut, date_fin]);
+    query += ` ORDER BY e.date_ecriture, e.id`;
+
+    const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (err) {
     console.error('Erreur GET /rapports/grand-livre :', err);

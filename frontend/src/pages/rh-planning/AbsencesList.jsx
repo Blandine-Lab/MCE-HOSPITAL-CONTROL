@@ -3,8 +3,12 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../axios';
 import { FaClipboardList, FaPlus, FaEye, FaTrash, FaTimes, FaPrint } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
 
 const AbsencesList = () => {
+  // 🔧 Récupère l'hôpital courant depuis le contexte auth (multi-tenant)
+  const { hopital } = useAuth();
+
   const [absences, setAbsences] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +27,30 @@ const AbsencesList = () => {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // 🔧 Nom et logo tenant-aware (fallback sur .env / /logo.jpeg si contexte vide)
+  const HOPITAL_NOM =
+    hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
+
+  // 🔧 Résout le logo :
+  //  - URL absolue (https://...) → utilisée telle quelle
+  //  - chemin relatif (/logo.jpeg) → préfixé par l'origine
+  //  - fallback → /logo.jpeg
+  const resolveLogoUrl = (rawLogo) => {
+    if (!rawLogo) return `${window.location.origin}/logo.jpeg`;
+    if (/^https?:\/\//i.test(rawLogo)) return rawLogo;
+    const withSlash = rawLogo.startsWith('/') ? rawLogo : `/${rawLogo}`;
+    return `${window.location.origin}${withSlash}`;
+  };
+
+  const LOGO_URL = resolveLogoUrl(hopital?.logo_url);
+  // Version relative pour les <img> à l'écran (plus rapide, gère le cache)
+  const LOGO_PATH =
+    hopital?.logo_url && !/^https?:\/\//i.test(hopital.logo_url)
+      ? hopital.logo_url.startsWith('/')
+        ? hopital.logo_url
+        : `/${hopital.logo_url}`
+      : LOGO_URL;
 
   // Récupérer le rôle depuis le token JWT
   useEffect(() => {
@@ -156,8 +184,8 @@ const AbsencesList = () => {
       </head>
       <body>
         <div class="header">
-          <img src="/logo.jpeg" alt="Logo MCE" />
-          <h1>Medical Center Elizabeth MCE</h1>
+          <img src="${LOGO_URL}" alt="Logo ${HOPITAL_NOM}" />
+          <h1>${HOPITAL_NOM}</h1>
           <p><em>Absence - Document officiel</em></p>
         </div>
         <div class="detail"><span class="label">Employé :</span><span class="value">${nomEmploye}</span></div>
@@ -224,6 +252,26 @@ const AbsencesList = () => {
           {toast.message}
         </div>
       )}
+
+      {/* 🔧 En-tête tenant-aware avec logo + nom de l'hôpital (comme dans DemandesConge) */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '20px',
+        padding: '16px 24px',
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        marginBottom: '24px'
+      }}>
+        <img src={LOGO_PATH} alt={`Logo ${HOPITAL_NOM}`} style={{ height: '60px' }} />
+        <div>
+          <h2 style={{ margin: 0, fontSize: '24px', color: '#1e3a8a' }}>{HOPITAL_NOM}</h2>
+          <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '14px' }}>
+            Gestion des absences du personnel
+          </p>
+        </div>
+      </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <h1 style={{ fontSize: 28, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 12 }}>

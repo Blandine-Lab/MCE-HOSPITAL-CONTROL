@@ -1,15 +1,19 @@
+// src/routes/absencesRoutes.js
+// ============================================================
+// 🏥 RH – Absences
+// ------------------------------------------------------------
+// ⚠️ FIX :
+//   1. Pool patché de config/db.js (ALS + set_config auto)
+//   2. hospital_id explicite dans le POST (NOT NULL sans DEFAULT)
+// ============================================================
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-pool.on('connect', () => console.log('✅ RH - Absences : connecté à PostgreSQL'));
-
+// ============================================================
 // GET /absences – Liste avec alias
+// ============================================================
 router.get('/', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -36,7 +40,9 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// ============================================================
 // GET /absences/:id – Détail
+// ============================================================
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -64,7 +70,9 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
+// ============================================================
 // POST /absences – Création
+// ============================================================
 router.post('/', authenticate, async (req, res) => {
   try {
     const { employe_id, date, date_fin, type, motif, statut, justifiee } = req.body;
@@ -73,14 +81,14 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'employe_id, date et type sont requis' });
     }
 
-    // Si date_fin n'est pas fournie, on la met à NULL (ou à la même date)
     const finalDateFin = date_fin || null;
 
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      `INSERT INTO absences (employe_id, date_debut, date_fin, type, motif, statut, justifie)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO absences (hospital_id, employe_id, date_debut, date_fin, type, motif, statut, justifie)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id, employe_id, date_debut AS date, date_fin, type, motif, statut, justifie, created_at`,
-      [employe_id, date, finalDateFin, type, motif || null, statut || 'en_attente', justifiee || false]
+      [req.hospitalId, employe_id, date, finalDateFin, type, motif || null, statut || 'en_attente', justifiee || false]
     );
     const result = { ...rows[0], justifiee: rows[0].justifie };
     res.status(201).json(result);
@@ -90,7 +98,9 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
+// ============================================================
 // PUT /absences/:id – Modification
+// ============================================================
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { employe_id, date, date_fin, type, motif, statut, justifiee } = req.body;
@@ -124,7 +134,9 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-// DELETE /absences/:id
+// ============================================================
+// DELETE /absences/:id (admin)
+// ============================================================
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM absences WHERE id=$1', [req.params.id]);

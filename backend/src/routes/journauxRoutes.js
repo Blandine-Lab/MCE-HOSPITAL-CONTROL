@@ -1,15 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
-
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Finances - Journaux : connecté à PostgreSQL'));
 
 // GET - Tous les journaux
 router.get('/', authenticate, async (req, res) => {
@@ -38,9 +30,11 @@ router.get('/:id', authenticate, async (req, res) => {
 router.post('/', authenticate, async (req, res) => {
   try {
     const { code, nom, description } = req.body;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      'INSERT INTO journaux (code, nom, description) VALUES ($1, $2, $3) RETURNING *',
-      [code, nom, description]
+      'INSERT INTO journaux (hospital_id, code, nom, description) VALUES ($1, $2, $3, $4) RETURNING *',
+      [req.hospitalId, code, nom, description]
     );
     res.status(201).json(rows[0]);
   } catch (err) {

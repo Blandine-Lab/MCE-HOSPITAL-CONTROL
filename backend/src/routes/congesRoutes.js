@@ -1,16 +1,19 @@
+// src/routes/congesRoutes.js
+// ============================================================
+// 🏥 RH – Congés
+// ------------------------------------------------------------
+// ⚠️ FIX :
+//   1. Pool patché de config/db.js (ALS + set_config auto)
+//   2. hospital_id explicite dans le POST (NOT NULL sans DEFAULT)
+// ============================================================
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ RH - Congés : connecté à PostgreSQL'));
-
+// ============================================================
+// GET tous les congés
+// ============================================================
 router.get('/', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -23,6 +26,9 @@ router.get('/', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ============================================================
+// GET un congé par ID
+// ============================================================
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -36,18 +42,30 @@ router.get('/:id', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ============================================================
+// POST créer un congé
+// ============================================================
 router.post('/', authenticate, async (req, res) => {
   try {
     const { employe_id, date_debut, date_fin, type, statut, commentaire } = req.body;
+
+    if (!employe_id || !date_debut || !date_fin || !type) {
+      return res.status(400).json({ error: 'employe_id, date_debut, date_fin et type sont requis' });
+    }
+
+    // ✅ FIX : hospital_id explicite (colonne NOT NULL sans DEFAULT)
     const { rows } = await pool.query(
-      `INSERT INTO conges (employe_id, date_debut, date_fin, type, statut, commentaire)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [employe_id, date_debut, date_fin, type, statut || 'en_attente', commentaire]
+      `INSERT INTO conges (hospital_id, employe_id, date_debut, date_fin, type, statut, commentaire)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [req.hospitalId, employe_id, date_debut, date_fin, type, statut || 'en_attente', commentaire || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ============================================================
+// PUT modifier un congé
+// ============================================================
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { employe_id, date_debut, date_fin, type, statut, commentaire } = req.body;
@@ -61,7 +79,9 @@ router.put('/:id', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ✅ DELETE - Supprimer un congé (réservé aux administrateurs)
+// ============================================================
+// DELETE supprimer un congé (admin)
+// ============================================================
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM conges WHERE id=$1', [req.params.id]);

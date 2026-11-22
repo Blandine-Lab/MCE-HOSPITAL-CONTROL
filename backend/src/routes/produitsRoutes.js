@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Stock - Produits : connecté à PostgreSQL'));
+// ============================================================
+// Helper : pose le tenant dans la transaction courante
+// ============================================================
+async function setTenant(client, hospitalId) {
+  await client.query(
+    `SELECT set_config('app.hospital_id', $1, true)`,
+    [String(hospitalId)]
+  );
+}
 
 // ================================================================
 // ========== CATÉGORIES DE PRODUITS ==============================
@@ -80,25 +82,29 @@ router.post('/', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
+
     const { code, nom, description, categorie_id, unite, prix_achat, prix_vente, seuil_alerte } = req.body;
 
-    // ✅ Convertir categorie_id vide en NULL
     const categorieId = categorie_id && categorie_id !== '' ? parseInt(categorie_id, 10) : null;
 
+    // ✅ FIX : hospital_id dans produits
     const { rows: produitRows } = await client.query(
-      `INSERT INTO produits (code, nom, description, categorie_id, unite, prix_achat, prix_vente, seuil_alerte)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [code, nom, description, categorieId, unite, prix_achat, prix_vente, seuil_alerte]
+      `INSERT INTO produits (hospital_id, code, nom, description, categorie_id, unite, prix_achat, prix_vente, seuil_alerte)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [req.hospitalId, code, nom, description, categorieId, unite, prix_achat, prix_vente, seuil_alerte]
     );
-    // Créer une ligne de stock initiale
+
+    // ✅ FIX : hospital_id dans stocks
     await client.query(
-      `INSERT INTO stocks (produit_id, quantite, quantite_reservee) VALUES ($1, 0, 0)`,
-      [produitRows[0].id]
+      `INSERT INTO stocks (hospital_id, produit_id, quantite, quantite_reservee) VALUES ($1, $2, 0, 0)`,
+      [req.hospitalId, produitRows[0].id]
     );
+
     await client.query('COMMIT');
     res.status(201).json(produitRows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Erreur POST /produits :', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -111,7 +117,6 @@ router.put('/:id', authenticate, async (req, res) => {
   try {
     const { code, nom, description, categorie_id, unite, prix_achat, prix_vente, seuil_alerte } = req.body;
 
-    // ✅ Convertir categorie_id vide en NULL
     const categorieId = categorie_id && categorie_id !== '' ? parseInt(categorie_id, 10) : null;
 
     const { rows } = await pool.query(

@@ -1,24 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
 // ============================================================
-// 1. Connexion à PostgreSQL
-// ============================================================
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Paramédical - Actes : connecté à PostgreSQL'));
-
-// ============================================================
-// 2. Vérification et création automatique de la table actes_paramedicaux
+// 1. Vérification et création automatique de la table actes_paramedicaux
 // ============================================================
 const ensureTable = async () => {
   try {
-    // Vérifier si la table existe
     const check = await pool.query(`
       SELECT EXISTS (
         SELECT 1 FROM information_schema.tables
@@ -28,9 +17,11 @@ const ensureTable = async () => {
 
     if (!check.rows[0].exists) {
       console.log('📦 Création de la table actes_paramedicaux...');
+      // ✅ Ajout de hospital_id dans la création de table
       await pool.query(`
         CREATE TABLE IF NOT EXISTS public.actes_paramedicaux (
           id SERIAL PRIMARY KEY,
+          hospital_id UUID REFERENCES hospitals(id),
           code VARCHAR(50) NOT NULL UNIQUE,
           nom VARCHAR(200) NOT NULL,
           description TEXT,
@@ -47,17 +38,14 @@ const ensureTable = async () => {
       console.log('✅ Table actes_paramedicaux existe déjà');
     }
 
-    // Création de l'index sur la catégorie
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_actes_categorie ON public.actes_paramedicaux(categorie);
     `);
-    console.log('✅ Index actes_paramedicaux vérifiés/créés');
   } catch (err) {
     console.error('❌ Erreur lors de la vérification/création de la table actes_paramedicaux :', err.message);
   }
 };
 
-// Exécuter la vérification au démarrage
 ensureTable();
 
 // ============================================================
@@ -112,11 +100,13 @@ router.get('/:id', authenticate, async (req, res) => {
 router.post('/', authenticate, requireAdmin, async (req, res) => {
   try {
     const { code, nom, categorie, description, duree_estimee, prix, actif } = req.body;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      `INSERT INTO public.actes_paramedicaux (code, nom, categorie, description, duree_estimee, prix, actif)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO public.actes_paramedicaux (hospital_id, code, nom, categorie, description, duree_estimee, prix, actif)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [code, nom, categorie, description, duree_estimee, prix, actif !== undefined ? actif : true]
+      [req.hospitalId, code, nom, categorie, description, duree_estimee, prix, actif !== undefined ? actif : true]
     );
     res.status(201).json(rows[0]);
   } catch (err) {

@@ -1,17 +1,19 @@
+// src/routes/servicesRoutes.js
+// ============================================================
+// 🏥 RH – Services
+// ------------------------------------------------------------
+// ⚠️ FIX :
+//   1. Pool patché de config/db.js (ALS + set_config auto)
+//   2. hospital_id explicite dans le POST (NOT NULL sans DEFAULT)
+// ============================================================
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Connexion à PostgreSQL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ RH - Services : connecté à PostgreSQL'));
-
+// ============================================================
 // GET tous les services
+// ============================================================
 router.get('/', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM services ORDER BY nom');
@@ -19,7 +21,7 @@ router.get('/', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Erreur GET /services :', err);
     if (err.message.includes('relation "services" does not exist')) {
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'La table services n\'existe pas encore. Veuillez exécuter le script SQL de création.'
       });
     }
@@ -27,7 +29,9 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// ============================================================
 // GET un service par ID
+// ============================================================
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM services WHERE id = $1', [req.params.id]);
@@ -41,45 +45,46 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// POST créer un service (avec responsable)
+// ============================================================
+// POST créer un service
+// ============================================================
 router.post('/', authenticate, async (req, res) => {
   try {
     const { nom, responsable, description } = req.body;
 
-    // Validation du nom (obligatoire)
     if (!nom || nom.trim() === '') {
       return res.status(400).json({ error: 'Le nom du service est obligatoire' });
     }
 
-    // Insérer dans la base (responsable et description sont optionnels)
+    // ✅ FIX : hospital_id explicite (colonne NOT NULL sans DEFAULT)
     const { rows } = await pool.query(
-      `INSERT INTO services (nom, responsable, description)
-       VALUES ($1, $2, $3)
+      `INSERT INTO services (hospital_id, nom, responsable, description)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [nom.trim(), responsable || null, description || null]
+      [req.hospitalId, nom.trim(), responsable || null, description || null]
     );
 
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Erreur POST /services :', err);
 
-    // Gestion des erreurs spécifiques
-    if (err.code === '23505') { // Violation d'unicité sur le nom
+    if (err.code === '23505') {
       return res.status(409).json({ error: 'Un service avec ce nom existe déjà' });
     }
-    if (err.code === '23502') { // Violation NOT NULL
+    if (err.code === '23502') {
       return res.status(400).json({ error: 'Un champ obligatoire est manquant (vérifiez votre table)' });
     }
     res.status(500).json({ error: 'Erreur interne du serveur' });
   }
 });
 
+// ============================================================
 // PUT modifier un service
+// ============================================================
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { nom, responsable, description } = req.body;
 
-    // Vérifier que le nom est fourni
     if (!nom || nom.trim() === '') {
       return res.status(400).json({ error: 'Le nom est obligatoire' });
     }
@@ -105,7 +110,9 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-// DELETE supprimer un service (administrateur uniquement)
+// ============================================================
+// DELETE supprimer un service (admin uniquement)
+// ============================================================
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM services WHERE id = $1', [req.params.id]);

@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Finances - Paiements : connecté à PostgreSQL'));
+// ============================================================
+// Helper : pose le tenant dans la transaction courante
+// ============================================================
+async function setTenant(client, hospitalId) {
+  await client.query(
+    `SELECT set_config('app.hospital_id', $1, true)`,
+    [String(hospitalId)]
+  );
+}
 
 // GET - Tous les paiements avec filtres
 router.get('/', authenticate, async (req, res) => {
@@ -78,15 +80,17 @@ router.post('/', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
 
     const { facture_id, montant, date_paiement, mode_paiement, reference, notes } = req.body;
     const userId = req.user.id;
 
+    // ✅ FIX : hospital_id explicite dans paiements
     const { rows: paiementRows } = await client.query(
-      `INSERT INTO paiements (facture_id, montant, date_paiement, mode_paiement, reference, notes, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO paiements (hospital_id, facture_id, montant, date_paiement, mode_paiement, reference, notes, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [facture_id, montant, date_paiement || new Date().toISOString().split('T')[0], mode_paiement, reference, notes, userId]
+      [req.hospitalId, facture_id, montant, date_paiement || new Date().toISOString().split('T')[0], mode_paiement, reference, notes, userId]
     );
 
     await client.query(
@@ -99,7 +103,7 @@ router.post('/', authenticate, async (req, res) => {
     await client.query('COMMIT');
     res.status(201).json(paiementRows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Erreur POST /paiements :', err);
     res.status(500).json({ error: err.message });
   } finally {

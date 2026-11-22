@@ -1,9 +1,17 @@
+// frontend/src/pages/rh-planning/DemandesConge.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../axios';
 import { FaPlus, FaCheck, FaTimes, FaTrash, FaClipboardList, FaComment, FaPrint } from 'react-icons/fa';
 
+// 🔧 IMPORTANT : ajuste le chemin selon ton projet (copie depuis Home.jsx)
+// Exemples courants : '../../context/AuthContext', '../../contexts/AuthContext', '../../hooks/useAuth'
+import { useAuth } from '../../context/AuthContext';
+
 const DemandesConge = () => {
+  // 🔧 Récupère l'hôpital courant depuis le contexte auth (multi-tenant)
+  const { hopital } = useAuth();
+
   const [demandes, setDemandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState(null);
@@ -24,10 +32,29 @@ const DemandesConge = () => {
   const [selectedAction, setSelectedAction] = useState('');
   const [commentRH, setCommentRH] = useState('');
 
-  // Nom et logo de l'hôpital (personnalisables via .env)
-  const HOPITAL_NOM = import.meta.env.VITE_HOPITAL_NOM || 'Medical Center Elizabeth MCE';
-  const LOGO_PATH = '/logo.jpeg'; // ✅ Fichier logo en .jpeg
-  const LOGO_URL = window.location.origin + LOGO_PATH; // URL absolue pour l'impression
+  // 🔧 Nom et logo tenant-aware (fallback sur .env / /logo.jpeg si contexte vide)
+  const HOPITAL_NOM =
+    hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
+
+  // 🔧 Résout le logo :
+  //  - URL absolue (https://...) → utilisée telle quelle
+  //  - chemin relatif (/logo.jpeg) → préfixé par l'origine
+  //  - fallback → /logo.jpeg
+  const resolveLogoUrl = (rawLogo) => {
+    if (!rawLogo) return `${window.location.origin}/logo.jpeg`;
+    if (/^https?:\/\//i.test(rawLogo)) return rawLogo;
+    const withSlash = rawLogo.startsWith('/') ? rawLogo : `/${rawLogo}`;
+    return `${window.location.origin}${withSlash}`;
+  };
+
+  const LOGO_URL = resolveLogoUrl(hopital?.logo_url);
+  // Version relative pour les <img> à l'écran (plus rapide, gère le cache)
+  const LOGO_PATH =
+    hopital?.logo_url && !/^https?:\/\//i.test(hopital.logo_url)
+      ? hopital.logo_url.startsWith('/')
+        ? hopital.logo_url
+        : `/${hopital.logo_url}`
+      : LOGO_URL;
 
   // Récupérer les infos de l'utilisateur depuis le token JWT
   useEffect(() => {
@@ -363,7 +390,7 @@ const DemandesConge = () => {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         marginBottom: '24px'
       }}>
-        <img src={LOGO_PATH} alt="Logo hôpital" style={{ height: '60px' }} />
+        <img src={LOGO_PATH} alt={`Logo ${HOPITAL_NOM}`} style={{ height: '60px' }} />
         <div>
           <h2 style={{ margin: 0, fontSize: '24px', color: '#1e3a8a' }}>{HOPITAL_NOM}</h2>
           <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '14px' }}>

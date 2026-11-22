@@ -4,14 +4,25 @@ import { usePermissions } from '../hooks/usePermissions';
 import React from 'react';
 
 export const PermissionRoute = ({ children, permission }) => {
-  const { hasPermission, user } = usePermissions();
+  const { hasPermission, user, isBypass } = usePermissions();
 
-  // Si l'utilisateur est admin OU biologiste OU laborantin ? autoris sans vrifier la permission
-  if (user?.role === 'admin' || user?.role === 'biologiste' || user?.role === 'laborantin') {
+  // 1. Pas de token → login (pas /unauthorized)
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // 2. Bypass admin via le hook (gère super_admin + casse)
+  if (isBypass) {
     return children;
   }
 
-  // Sinon, vrifier la permission
+  // 3. Bypass métier existants (case-insensitive, corrige 'Biologiste')
+  const role = String(user.role || '').toLowerCase();
+  if (role === 'biologiste' || role === 'laborantin') {
+    return children;
+  }
+
+  // 4. Vérification classique
   if (!hasPermission(permission)) {
     return <Navigate to="/unauthorized" replace />;
   }

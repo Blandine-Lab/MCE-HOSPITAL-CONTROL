@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Stock - Mouvements : connecté à PostgreSQL'));
+// ============================================================
+// Helper : pose le tenant dans la transaction courante
+// ============================================================
+async function setTenant(client, hospitalId) {
+  await client.query(
+    `SELECT set_config('app.hospital_id', $1, true)`,
+    [String(hospitalId)]
+  );
+}
 
 // GET - Mouvements avec filtres
 router.get('/', authenticate, async (req, res) => {
@@ -45,13 +47,16 @@ router.post('/', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
+
     const { produit_id, type, quantite, reference, motif, date_mouvement } = req.body;
     const userId = req.user.id;
 
+    // ✅ FIX : hospital_id explicite dans mouvements_stock
     const { rows: movRows } = await client.query(
-      `INSERT INTO mouvements_stock (produit_id, type, quantite, reference, motif, date_mouvement, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [produit_id, type, quantite, reference, motif, date_mouvement, userId]
+      `INSERT INTO mouvements_stock (hospital_id, produit_id, type, quantite, reference, motif, date_mouvement, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [req.hospitalId, produit_id, type, quantite, reference, motif, date_mouvement, userId]
     );
 
     if (type === 'entree') {
@@ -73,7 +78,7 @@ router.post('/', authenticate, async (req, res) => {
     await client.query('COMMIT');
     res.status(201).json(movRows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Erreur POST /mouvements :', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -85,17 +90,12 @@ router.post('/', authenticate, async (req, res) => {
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    // Vérifier que le mouvement existe
     const { rows } = await pool.query('SELECT produit_id, type, quantite FROM mouvements_stock WHERE id = $1', [id]);
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Mouvement non trouvé' });
     }
-    const mouvement = rows[0];
-
-    // Annuler l'effet du mouvement sur le stock (inverser l'opération)
-    // ATTENTION : on ne peut pas toujours inverser si d'autres mouvements ont eu lieu après
-    // On va simplement supprimer sans ajuster le stock (pour éviter les incohérences)
-    // mais on avertit l'utilisateur.
+    
+    // On supprime le mouvement (le stock n'est pas ajusté automatiquement pour éviter les incohérences historiques)
     await pool.query('DELETE FROM mouvements_stock WHERE id = $1', [id]);
     res.status(204).send();
   } catch (err) {

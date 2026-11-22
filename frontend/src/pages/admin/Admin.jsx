@@ -354,8 +354,304 @@ const TypesExamensAdmin = () => {
   );
 };
 
+// ===================== COMPOSANT : BIBLIOTHÈQUE — DROITS D'UPLOAD =====================
+const LibraryPermissionsAdmin = () => {
+  const [folders, setFolders] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [selectedFolderId, setSelectedFolderId] = useState('');
+  const [userPerms, setUserPerms] = useState({});
+  const [loadingFolders, setLoadingFolders] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingPerms, setLoadingPerms] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [usersError, setUsersError] = useState(null);
+  const [rawUsersResponse, setRawUsersResponse] = useState(null);
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  // 📂 Charger l'arbre des dossiers
+  useEffect(() => {
+    api.get('/library/tree')
+      .then(res => {
+        const flat = [];
+        const walk = (nodes, depth = 0) => {
+          (nodes || []).forEach(n => {
+            flat.push({ ...n, _depth: depth });
+            if (n.children) walk(n.children, depth + 1);
+          });
+        };
+        walk(res.data.folders || []);
+        setFolders(flat);
+      })
+      .catch((err) => {
+        console.error('❌ /library/tree :', err);
+        showToast(err.response?.data?.error || 'Erreur chargement dossiers', 'error');
+      })
+      .finally(() => setLoadingFolders(false));
+  }, []);
+
+  // 👥 Charger les utilisateurs — DEBUG RENFORCÉ
+  useEffect(() => {
+    setLoadingUsers(true);
+    setUsersError(null);
+    api.get('/admin/utilisateurs')
+      .then(res => {
+        console.log('👥 /admin/utilisateurs — réponse brute :', res.data);
+        setRawUsersResponse(res.data);
+
+        // Gérer tous les formats possibles
+        let list = [];
+        if (Array.isArray(res.data)) {
+          list = res.data;
+        } else if (res.data && Array.isArray(res.data.users)) {
+          list = res.data.users;
+        } else if (res.data && Array.isArray(res.data.data)) {
+          list = res.data.data;
+        } else if (res.data && Array.isArray(res.data.utilisateurs)) {
+          list = res.data.utilisateurs;
+        } else {
+          console.warn('⚠️ Format de réponse inattendu :', res.data);
+        }
+
+        console.log(`👥 ${list.length} utilisateur(s) chargé(s)`);
+        setUsers(list);
+
+        if (list.length === 0) {
+          const userStr = localStorage.getItem('user') || '{}';
+          let userObj = {};
+          try { userObj = JSON.parse(userStr); } catch {}
+          console.warn('⚠️ Liste vide. Vérifie :');
+          console.warn('  1. Tu es connecté comme admin d\'hôpital (pas super_admin)');
+          console.warn('  2. Le user a un hospital_id :', userObj.hospital_id);
+          console.warn('  3. Le backend /admin/utilisateurs filtre correctement');
+          console.warn('  → localStorage user :', userObj);
+        }
+      })
+      .catch((err) => {
+        console.error('❌ /admin/utilisateurs :', err);
+        console.error('   Status :', err.response?.status);
+        console.error('   Data :', err.response?.data);
+        setUsersError(err.response?.data?.error || err.message);
+        setRawUsersResponse(err.response?.data || null);
+        setUsers([]);
+      })
+      .finally(() => setLoadingUsers(false));
+  }, []);
+
+  // 🔐 Charger les permissions du dossier sélectionné
+  useEffect(() => {
+    if (!selectedFolderId) { setUserPerms({}); return; }
+    setLoadingPerms(true);
+    api.get(`/library/folders/${selectedFolderId}/user-permissions`)
+      .then(res => {
+        const map = {};
+        (res.data || []).forEach(p => { map[p.user_id] = !!p.can_upload; });
+        setUserPerms(map);
+      })
+      .catch((err) => {
+        console.error('❌ /library/folders/.../user-permissions :', err);
+        showToast(err.response?.data?.error || 'Erreur chargement permissions', 'error');
+      })
+      .finally(() => setLoadingPerms(false));
+  }, [selectedFolderId]);
+
+  const toggleUser = (userId) => {
+    setUserPerms(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
+
+  const handleSave = async () => {
+    if (!selectedFolderId) return;
+    setSaving(true);
+    try {
+      const permissions = Object.entries(userPerms)
+        .filter(([_, canUpload]) => canUpload)
+        .map(([userId]) => ({ user_id: userId, can_upload: true }));
+      await api.put(`/library/folders/${selectedFolderId}/user-permissions`, { permissions });
+      showToast(`✅ ${permissions.length} utilisateur(s) autorisé(s) à uploader`);
+    } catch (err) {
+      console.error('❌ PUT user-permissions :', err);
+      showToast(err.response?.data?.error || 'Erreur lors de l\'enregistrement', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
+      {toast && (
+        <div style={{ position: 'fixed', top: '20px', right: '20px', backgroundColor: toast.type === 'success' ? '#10b981' : '#ef4444', color: 'white', padding: '12px 24px', borderRadius: '8px', zIndex: 1000 }}>
+          {toast.msg}
+        </div>
+      )}
+      <h2 style={{ marginBottom: '12px' }}>📚 Bibliothèque — Droits d'upload</h2>
+      <div style={{ padding: '12px', background: '#f0f9ff', borderLeft: '4px solid #0ea5e9', borderRadius: '4px', fontSize: 13, color: '#0c4a6e', marginBottom: '20px' }}>
+        <div>👁️ <b>Lecture + téléchargement</b> : accessibles à <b>tout le monde</b>, sur tous les dossiers.</div>
+        <div>📤 <b>Upload de documents</b> : réservé à l'admin, <b>plus</b> les utilisateurs cochés ci-dessous pour le dossier sélectionné.</div>
+        <div>🗑️ <b>Suppression de documents</b> : réservée à l'admin, jamais délégable.</div>
+      </div>
+
+      <div style={{ marginBottom: '20px' }}>
+        <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: '#334155' }}>Dossier</label>
+        <select
+          value={selectedFolderId}
+          onChange={e => setSelectedFolderId(e.target.value)}
+          disabled={loadingFolders}
+          style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}
+        >
+          <option value="">{loadingFolders ? 'Chargement des dossiers…' : '— Sélectionner un dossier —'}</option>
+          {folders.map(f => (
+            <option key={f.id} value={f.id}>
+              {'  '.repeat(f._depth)}{f._depth > 0 ? '└ ' : ''}{f.icon || '📁'} {f.nom}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {!selectedFolderId && (
+        <div style={{ padding: 40, textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: 8, border: '1px dashed #cbd5e1' }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>📂</div>
+          Sélectionnez un dossier ci-dessus pour configurer qui peut y uploader des documents.
+        </div>
+      )}
+
+      {selectedFolderId && loadingPerms && <p style={{ color: '#64748b' }}>Chargement des permissions…</p>}
+
+      {selectedFolderId && !loadingPerms && (
+        <>
+          {loadingUsers ? (
+            <p style={{ color: '#64748b' }}>Chargement des utilisateurs…</p>
+          ) : usersError ? (
+            <div style={{ padding: 20, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#991b1b', fontSize: 13 }}>
+              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>❌ Impossible de charger les utilisateurs</p>
+              <p style={{ margin: '0 0 12px' }}>{usersError}</p>
+              <details style={{ cursor: 'pointer' }}>
+                <summary style={{ fontWeight: 600, marginBottom: 6 }}>🔍 Détails techniques</summary>
+                <pre style={{ background: '#fff', padding: 10, borderRadius: 4, overflowX: 'auto', fontSize: 11, margin: 0 }}>
+                  {JSON.stringify(rawUsersResponse, null, 2)}
+                </pre>
+              </details>
+              <p style={{ margin: '12px 0 0', fontSize: 12, color: '#7f1d1d' }}>
+                💡 Ouvre la console (F12) pour plus de détails. Vérifie que tu es connecté comme admin d'hôpital.
+              </p>
+            </div>
+          ) : users.length === 0 ? (
+            <div style={{ padding: 20, background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, color: '#92400e', fontSize: 13 }}>
+              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>⚠️ Aucun utilisateur retourné par l'API</p>
+              <p style={{ margin: '0 0 12px' }}>
+                La route <code>/admin/utilisateurs</code> a renvoyé une liste vide.
+                C'est probablement parce que <b>ton compte n'est pas rattaché à un hôpital</b>, ou que le filtre par <code>hospital_id</code> ne matche aucun utilisateur.
+              </p>
+              <details style={{ cursor: 'pointer' }}>
+                <summary style={{ fontWeight: 600, marginBottom: 6 }}>🔍 Voir la réponse brute</summary>
+                <pre style={{ background: '#fff', padding: 10, borderRadius: 4, overflowX: 'auto', fontSize: 11, margin: 0 }}>
+                  {JSON.stringify(rawUsersResponse, null, 2)}
+                </pre>
+              </details>
+              <p style={{ margin: '12px 0 0', fontSize: 12 }}>
+                👉 <b>Vérifie dans la console (F12)</b> : les logs <code>👥 /admin/utilisateurs</code> vont t'afficher
+                le <code>hospital_id</code> du compte connecté et les filtres appliqués.
+                <br />
+                👉 Si tu es <b>super_admin</b>, utilise un compte <code>admin@mce</code> pour cet onglet.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 13, color: '#64748b' }}>
+                  {users.length} utilisateur(s) — {Object.values(userPerms).filter(Boolean).length} autorisé(s) à uploader
+                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => {
+                      const all = {};
+                      users.forEach(u => { all[u.id] = true; });
+                      setUserPerms(all);
+                    }}
+                    style={{ padding: '4px 10px', background: '#e5e7eb', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                  >
+                    Tout cocher
+                  </button>
+                  <button
+                    onClick={() => setUserPerms({})}
+                    style={{ padding: '4px 10px', background: '#e5e7eb', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                  >
+                    Tout décocher
+                  </button>
+                </div>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
+                <thead>
+                  <tr style={{ background: '#f1f5f9' }}>
+                    <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid #e2e8f0' }}>Utilisateur</th>
+                    <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid #e2e8f0' }}>Rôle</th>
+                    <th style={{ textAlign: 'center', padding: 10, borderBottom: '1px solid #e2e8f0', width: 130 }}>📤 Peut uploader</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9', background: userPerms[u.id] ? '#f0fdf4' : 'transparent' }}>
+                      <td style={{ padding: 10 }}>
+                        <b>{u.login || u.email || u.id}</b>
+                        {(u.nom || u.prenom) && (
+                          <span style={{ color: '#64748b', marginLeft: 6 }}>
+                            ({[u.prenom, u.nom].filter(Boolean).join(' ')})
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: 10 }}>
+                        <span style={{ background: '#e2e8f0', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>{u.role || '-'}</span>
+                      </td>
+                      <td style={{ padding: 10, textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={!!userPerms[u.id]}
+                          onChange={() => toggleUser(u.id)}
+                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <button
+              onClick={() => setSelectedFolderId('')}
+              style={{ padding: '8px 16px', backgroundColor: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || users.length === 0}
+              style={{ padding: '8px 20px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: 6, cursor: saving ? 'wait' : 'pointer', fontWeight: 600, opacity: users.length === 0 ? 0.5 : 1 }}
+            >
+              {saving ? 'Enregistrement…' : '💾 Enregistrer'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 // ===================== COMPOSANT PRINCIPAL ADMIN =====================
 const Admin = () => {
+  // 🔥 PATCH 1 — Slug de l'hôpital connecté (lu une seule fois au montage)
+  const [hospitalSlug] = useState(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      return u.hospital_slug || null;
+    } catch {
+      return null;
+    }
+  });
+
   // États existants
   const [batiments, setBatiments] = useState([]);
   const [etages, setEtages] = useState([]);
@@ -788,7 +1084,6 @@ const Admin = () => {
     }
   };
 
-  // Ouvrir le formulaire de modification
   const handleEditMedecin = (med) => {
     setEditMedecinId(med.id);
     setEditMedecinData({
@@ -797,12 +1092,11 @@ const Admin = () => {
       specialite: med.specialite || '',
       email: med.email || '',
       login: med.login || '',
-      password: '' // on ne préremplit pas le mot de passe
+      password: ''
     });
     setShowMedecinModal(true);
   };
 
-  // Soumettre la modification
   const handleUpdateMedecin = async (e) => {
     e.preventDefault();
     if (!editMedecinData.nom || !editMedecinData.prenom) {
@@ -940,7 +1234,6 @@ const Admin = () => {
 
   // ========== FONCTION D'IMPRESSION DE LA GRILLE TARIFAIRE ==========
   const handlePrintPrestations = () => {
-    // Construire le HTML de la grille à imprimer
     const tableRows = prestations.map(p => `
       <tr>
         <td style="border:1px solid #ddd; padding:8px;">${p.code}</td>
@@ -1024,7 +1317,6 @@ const Admin = () => {
     }
   }, [activeTab]);
 
-  // Quand le rôle sélectionné change dans l'onglet autorisations
   useEffect(() => {
     if (selectedRoleId) {
       fetchRoleAuthorizations(selectedRoleId);
@@ -1065,6 +1357,7 @@ const Admin = () => {
         <button onClick={() => setActiveTab('roles')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'roles' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🔑 Rôles</button>
         <button onClick={() => setActiveTab('authorizations')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'authorizations' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🔐 Autorisations</button>
         <button onClick={() => setActiveTab('typesexamens')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'typesexamens' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🔬 Types examens</button>
+        <button onClick={() => setActiveTab('library')} style={{ padding: '8px 16px', backgroundColor: activeTab === 'library' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>📚 Bibliothèque (droits)</button>
       </div>
 
       {/* SERVICES */}
@@ -1098,7 +1391,7 @@ const Admin = () => {
         </div>
       )}
 
-      {/* MÉDECINS (avec modification et suppression) */}
+      {/* MÉDECINS */}
       {activeTab === 'medecins' && (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
           <h2>Médecins référents</h2>
@@ -1363,7 +1656,6 @@ const Admin = () => {
             <button onClick={() => setPharmacySubTab('delivrance')} style={{ padding: '8px 16px', background: pharmacySubTab === 'delivrance' ? '#3b82f6' : '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Délivrance</button>
           </div>
 
-          {/* Médicaments */}
           {pharmacySubTab === 'medicaments' && (
             <div>
               {(alertes.stockCritique.length > 0 || alertes.peremptionProche.length > 0) && (
@@ -1417,7 +1709,6 @@ const Admin = () => {
             </div>
           )}
 
-          {/* Lots */}
           {pharmacySubTab === 'lots' && (
             <div>
               <select value={selectedMedicamentId} onChange={e => setSelectedMedicamentId(e.target.value)} style={{ marginBottom: '20px', padding: '8px', width: '100%' }}>
@@ -1458,7 +1749,6 @@ const Admin = () => {
             </div>
           )}
 
-          {/* Commandes */}
           {pharmacySubTab === 'commandes' && (
             <div>
               <button onClick={() => setShowCommandeForm(!showCommandeForm)} style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}><FaPlus /> Nouvelle commande</button>
@@ -1498,7 +1788,6 @@ const Admin = () => {
             </div>
           )}
 
-          {/* Délivrance */}
           {pharmacySubTab === 'delivrance' && (
             <div>
               {deliveryMessage && <div style={{ background: '#d4edda', color: '#155724', padding: '8px', borderRadius: '4px', marginBottom: '15px' }}>{deliveryMessage}</div>}
@@ -1521,40 +1810,31 @@ const Admin = () => {
         </div>
       )}
 
-      {/* FOURNISSEURS */}
       {activeTab === 'fournisseurs' && <FournisseursList />}
-
-      {/* DISPOSITIFS */}
       {activeTab === 'dispositifs' && <DispositifsList />}
-
-      {/* PHARMACOVIGILANCE */}
       {activeTab === 'pharmacovigilance' && <PharmacovigilanceList />}
-      
-      {/* RupturesSuggestions */}
       {activeTab === 'ruptures' && <RupturesSuggestions />}
-
-      {/* RecettesList */}
       {activeTab === 'recettes' && <RecettesList />}
-
-      {/* HistoriqueExecutions */}
       {activeTab === 'historique' && <HistoriqueExecutions />}
-
-      {/* PharmacyDashboard */}
       {activeTab === 'pharmadashboard' && <PharmacyDashboard />}
-
-      {/* OrdonnancesList */}
       {activeTab === 'ordonnances' && <OrdonnancesList />}
 
       {/* ========== UTILISATEURS ========== */}
       {activeTab === 'utilisateurs' && (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: '#fff' }}>
           <h2>👥 Gestion des utilisateurs</h2>
-          <button
-            onClick={() => { setEditUserId(null); setUserForm({ login: '', nom: '', prenom: '', email: '', role: '', password: '', actif: true }); setShowUserForm(true); }}
-            style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            <FaPlus /> Nouvel utilisateur
-          </button>
+          {hospitalSlug ? (
+            <button
+              onClick={() => { setEditUserId(null); setUserForm({ login: '', nom: '', prenom: '', email: '', role: '', password: '', actif: true }); setShowUserForm(true); }}
+              style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              <FaPlus /> Nouvel utilisateur
+            </button>
+          ) : (
+            <div style={{ marginBottom: '20px', padding: '12px', background: '#fef3c7', borderLeft: '4px solid #f59e0b', borderRadius: '4px', color: '#92400e', fontSize: 13 }}>
+              ⚠️ Vous êtes super administrateur. Utilisez la page <b>Super Admin</b> pour gérer les utilisateurs d'un hôpital.
+            </div>
+          )}
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#3b82f6', color: 'white' }}>
@@ -1729,8 +2009,10 @@ const Admin = () => {
         </div>
       )}
 
-      {/* ========== TYPES D'EXAMENS ========== */}
       {activeTab === 'typesexamens' && <TypesExamensAdmin />}
+
+      {/* ========== BIBLIOTHÈQUE (DROITS D'UPLOAD) ========== */}
+      {activeTab === 'library' && <LibraryPermissionsAdmin />}
 
       {/* MODAL PRESTATIONS */}
       {showPrestationModal && (
@@ -1759,7 +2041,37 @@ const Admin = () => {
             <form onSubmit={handleUserSubmit}>
               <div style={{ marginBottom: '12px' }}>
                 <label>Login *</label>
-                <input type="text" value={userForm.login} onChange={e => setUserForm({...userForm, login: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <input
+                    type="text"
+                    value={userForm.login}
+                    onChange={e => setUserForm({ ...userForm, login: e.target.value })}
+                    required
+                    placeholder={hospitalSlug ? 'ex : secretaire' : 'ex : secretaire@mce'}
+                    style={{ flex: 1, padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }}
+                  />
+                  {hospitalSlug && (
+                    <span style={{ padding: '8px 10px', background: '#f1f5f9', border: '1px solid #ccc', borderRadius: '6px', fontSize: 13, color: '#64748b', whiteSpace: 'nowrap' }}>
+                      @{hospitalSlug}
+                    </span>
+                  )}
+                </div>
+                {(() => {
+                  const raw = (userForm.login || '').trim().toLowerCase();
+                  if (!raw || !hospitalSlug) return null;
+                  const finalLogin = raw.includes('@') ? raw : `${raw}@${hospitalSlug}`;
+                  const isWrongSlug = raw.includes('@') && !raw.endsWith(`@${hospitalSlug}`);
+                  return (
+                    <p style={{ fontSize: 12, marginTop: 6, marginBottom: 0, color: isWrongSlug ? '#b91c1c' : '#0369a1' }}>
+                      Login final :{' '}
+                      <code style={{ background: isWrongSlug ? '#fee2e2' : '#e0f2fe', padding: '2px 6px', borderRadius: 3, fontWeight: 600 }}>
+                        {finalLogin}
+                      </code>
+                      {isWrongSlug && <span style={{ marginLeft: 6 }}>⚠️ doit se terminer par @{hospitalSlug}</span>}
+                      {!raw.includes('@') && <span style={{ color: '#64748b', fontStyle: 'italic', marginLeft: 6 }}>(suffixe ajouté automatiquement)</span>}
+                    </p>
+                  );
+                })()}
               </div>
               <div style={{ marginBottom: '12px' }}>
                 <label>Nom</label>
@@ -1835,7 +2147,7 @@ const Admin = () => {
         </div>
       )}
 
-      {/* ===== MODAL MODIFICATION MÉDECIN ===== */}
+      {/* MODAL MODIFICATION MÉDECIN */}
       {showMedecinModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '500px', maxWidth: '90%' }}>

@@ -1,16 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Qualité - Actions CAPA : connecté à PostgreSQL'));
-
+// GET - Toutes les actions CAPA
 router.get('/', authenticate, async (req, res) => {
   try {
     const { statut, type } = req.query;
@@ -34,6 +27,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// GET - Action CAPA par ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -51,19 +45,23 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
+// POST - Créer une action CAPA
 router.post('/', authenticate, async (req, res) => {
   try {
     const { numero_action, titre, type, signalement_id, audit_id, description,
             cause_racine, action_planifiee, responsable_id, date_prevue } = req.body;
     const userId = req.user.id;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(`
       INSERT INTO actions_capa (
-        numero_action, titre, type, signalement_id, audit_id, description,
+        hospital_id, numero_action, titre, type, signalement_id, audit_id, description,
         cause_racine, action_planifiee, responsable_id, date_prevue, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
-    `, [numero_action, titre, type, signalement_id, audit_id, description,
+    `, [req.hospitalId, numero_action, titre, type, signalement_id, audit_id, description,
         cause_racine, action_planifiee, responsable_id, date_prevue, userId]);
+        
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -71,6 +69,7 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
+// PUT - Modifier une action CAPA
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { titre, type, signalement_id, audit_id, description,

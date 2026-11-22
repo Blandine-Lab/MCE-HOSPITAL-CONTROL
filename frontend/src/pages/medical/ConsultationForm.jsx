@@ -1,7 +1,12 @@
+// src/pages/medical/ConsultationForm.jsx
 import { useState, useEffect } from 'react';
 import api from '../../axios';
+import { useAuth } from '../../context/AuthContext';
 
 const ConsultationForm = ({ patientId, medecinId, onSave }) => {
+    // 🔧 Récupère l'hôpital courant depuis le contexte auth (multi-tenant)
+    const { hopital } = useAuth();
+
     const [consultation, setConsultation] = useState({
         numero_dossier: '',
         plainte_principale: '',
@@ -28,8 +33,26 @@ const ConsultationForm = ({ patientId, medecinId, onSave }) => {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
 
-    // Logo path (dans le dossier public)
-    const logoUrl = '/logo.jpeg';
+    // 🔧 Nom, logo, adresse et ville tenant-aware
+    const HOPITAL_NOM =
+        hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
+
+    const HOPITAL_ADRESSE =
+        hopital?.adresse || hopital?.address ||
+        import.meta.env.VITE_HOPITAL_ADRESSE || '';
+
+    const HOPITAL_VILLE =
+        hopital?.ville || hopital?.city || '';
+
+    // 🔧 Résout le logo (URL absolue, robuste à l'impression)
+    const resolveLogoUrl = (rawLogo) => {
+        if (!rawLogo) return `${window.location.origin}/logo.jpeg`;
+        if (/^https?:\/\//i.test(rawLogo)) return rawLogo;
+        const withSlash = rawLogo.startsWith('/') ? rawLogo : `/${rawLogo}`;
+        return `${window.location.origin}${withSlash}`;
+    };
+
+    const LOGO_URL = resolveLogoUrl(hopital?.logo_url);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -69,7 +92,6 @@ const ConsultationForm = ({ patientId, medecinId, onSave }) => {
                 } else {
                     const now = new Date();
                     const year = now.getFullYear();
-                    // Générer un numéro de dossier (pour l'instant on incrémente un compteur)
                     const count = await api.get(`/consultations/count/${patientId}`);
                     const num = (count.data || 0) + 1;
                     setConsultation(prev => ({
@@ -157,18 +179,22 @@ const ConsultationForm = ({ patientId, medecinId, onSave }) => {
 
     return (
         <div id="consultation-print" style={{ padding: '10px', backgroundColor: 'white', fontFamily: 'serif' }}>
-            {/* En-tête avec le logo */}
+            {/* 🔧 En-tête tenant-aware */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', borderBottom: '2px solid #1e3a8a', paddingBottom: '8px', marginBottom: '16px' }}>
                 <img
-                    src={logoUrl}
-                    alt="Logo MCE"
+                    src={LOGO_URL}
+                    alt={`Logo ${HOPITAL_NOM}`}
                     style={{ height: '60px', width: 'auto', objectFit: 'contain' }}
-                    onError={(e) => { e.target.style.display = 'none'; console.warn('Logo non trouvé, vérifiez le chemin :', logoUrl); }}
+                    onError={(e) => { e.target.style.display = 'none'; }}
                 />
                 <div>
-                    <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '1px' }}>🏥 HÔPITAL MCE</h1>
-                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Medical Center Elizabeth – Bukavu</p>
-                    <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Avenue BOBZO, Quartier NDENDERE, Commune d'IBANDA, SUD-KIVU/RDC</p>
+                    <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '1px' }}>{HOPITAL_NOM}</h1>
+                    {HOPITAL_VILLE && (
+                        <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{HOPITAL_VILLE}</p>
+                    )}
+                    {HOPITAL_ADRESSE && (
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>{HOPITAL_ADRESSE}</p>
+                    )}
                 </div>
             </div>
 
@@ -330,7 +356,7 @@ const ConsultationForm = ({ patientId, medecinId, onSave }) => {
                     .no-print {
                         display: none !important;
                     }
-                    #consultation-print input, 
+                    #consultation-print input,
                     #consultation-print textarea {
                         border: none !important;
                         resize: none !important;

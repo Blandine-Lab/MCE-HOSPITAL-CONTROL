@@ -11,7 +11,7 @@ const PrescriptionCreation = () => {
   const [medecins, setMedecins] = useState([]);
   const [formData, setFormData] = useState({
     patient_id: patientId || '',
-    medecin_id: '', // ✅ renommé pour correspondre au backend
+    medecin_id: '',
     observations: '',
     lignes: [{ medicament_id: '', quantite_prescrit: 1, posologie: '' }]
   });
@@ -29,21 +29,19 @@ const PrescriptionCreation = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [patientsRes, produitsRes, stocksRes, medecinsRes] = await Promise.all([
+        // 🔧 On charge les médicaments depuis le module PHARMACIE (FK = medicaments.id)
+        const [patientsRes, medicamentsRes, medecinsRes] = await Promise.all([
           api.get('/patients'),
-          api.get('/produits'), // catégorie 1 = médicaments
-          api.get('/stocks'),
+          api.get('/pharmacy/medicaments'),           // ⚠️ adapter au vrai chemin si besoin
           api.get('/consultations/medecins/all')
         ]);
 
-        const produits = produitsRes.data || [];
-        const stocks = stocksRes.data || [];
-        // Filtrer les médicaments (catégorie_id = 1)
-        const meds = produits.filter(p => p.categorie_id === 1);
-        const medicamentsAvecStock = meds.map(m => {
-          const stock = stocks.find(s => s.produit_id === m.id);
-          return { ...m, stock: stock?.quantite || 0 };
-        });
+        // 🔧 Le stock est rattaché au médicament côté backend pharmacie
+        //    (adapter le nom du champ si ton API renvoie autre chose)
+        const medicamentsAvecStock = (medicamentsRes.data || []).map(m => ({
+          ...m,
+          stock: m.stock_actuel ?? m.stock ?? m.quantite ?? 0
+        }));
 
         setPatients(patientsRes.data || []);
         setMedicaments(medicamentsAvecStock);
@@ -60,7 +58,7 @@ const PrescriptionCreation = () => {
   // Si un patientId est passé en paramètre, le sélectionner automatiquement
   useEffect(() => {
     if (patientId && patients.length > 0) {
-      const patientExists = patients.some(p => p.id === parseInt(patientId, 10));
+      const patientExists = patients.some(p => String(p.id) === String(patientId));
       if (patientExists) {
         setFormData(prev => ({ ...prev, patient_id: patientId }));
       }
@@ -101,7 +99,9 @@ const PrescriptionCreation = () => {
       return;
     }
 
-    const validLignes = formData.lignes.filter(l => l.medicament_id && parseInt(l.quantite_prescrit, 10) > 0);
+    const validLignes = formData.lignes.filter(
+      l => l.medicament_id && parseInt(l.quantite_prescrit, 10) > 0
+    );
     if (validLignes.length === 0) {
       setError('Ajoutez au moins un médicament valide.');
       setLoading(false);
@@ -109,9 +109,9 @@ const PrescriptionCreation = () => {
     }
 
     try {
+      // ✅ medicament_id est un integer → parseInt conservé
       const payload = {
         patient_id: parseInt(formData.patient_id, 10),
-        // Le backend utilise le médecin authentifié, mais on envoie aussi medecin_id pour référence
         medecin_id: parseInt(formData.medecin_id, 10),
         observations: formData.observations,
         lignes: validLignes.map(l => ({
@@ -221,7 +221,8 @@ const PrescriptionCreation = () => {
                   <option value="">Médicament</option>
                   {medicaments.map(m => (
                     <option key={m.id} value={m.id}>
-                      {m.nom} (stock: {m.stock || 0})
+                      {/* 🔧 stock peut être null → on n'affiche la parenthèse que si dispo */}
+                      {m.nom}{m.stock != null ? ` (stock: ${m.stock})` : ''}
                     </option>
                   ))}
                 </select>

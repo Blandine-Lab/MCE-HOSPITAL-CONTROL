@@ -1,19 +1,31 @@
+// src/routes/consultations.js
+// ============================================================
+// 🩺 CONSULTATIONS – RDV, urgences, admissions, lits, médecins, etc.
+// ------------------------------------------------------------
+// ⚠️ FIX :
+//   1. Pool patché de config/db.js (ALS + set_config auto)
+//   2. set_config dans CHAQUE transaction
+//   3. hospital_id explicite dans TOUS les INSERT
+//   4. ROLLBACK avant chaque return 400/404 dans une transaction
+//   5. /ordonnances : récupération de medecin_id via user_id
+// ============================================================
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireRole, requireAdmin } = require('../middleware/auth');
 
-console.log('🔗 DATABASE_URL utilisée par le backend :', process.env.DATABASE_URL);
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
-
-pool.on('connect', () => console.log('✅ Consultations : connecté à PostgreSQL'));
+// ============================================================
+// Helper : pose le tenant dans la transaction courante
+// ============================================================
+async function setTenant(client, hospitalId) {
+  await client.query(
+    `SELECT set_config('app.hospital_id', $1, true)`,
+    [String(hospitalId)]
+  );
+}
 
 // ------------------------------------------------------------------
-// CRÉATION AUTO DES TABLES (inchangé)
+// CRÉATION AUTO DES TABLES
 // ------------------------------------------------------------------
 const ensureAdmissionTables = async () => {
   try {
@@ -178,9 +190,9 @@ router.post('/rendezvous', authenticate, async (req, res) => {
   const { patient_id, medecin_id, service_id, date_rdv, motif, type_consultation, categorie, prix } = req.body;
   try {
     const { rows } = await pool.query(`
-      INSERT INTO "public"."rendez_vous" (patient_id, medecin_id, service_id, date_rdv, motif, type_consultation, categorie, prix)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
-    `, [patient_id, medecin_id, service_id, date_rdv, motif, type_consultation || 'générale', categorie || 'ambulatoire', prix || 50.00]);
+      INSERT INTO "public"."rendez_vous" (hospital_id, patient_id, medecin_id, service_id, date_rdv, motif, type_consultation, categorie, prix)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
+    `, [req.hospitalId, patient_id, medecin_id, service_id, date_rdv, motif, type_consultation || 'générale', categorie || 'ambulatoire', prix || 50.00]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('❌ POST /rendezvous :', err);
@@ -258,9 +270,9 @@ router.post('/urgences', authenticate, async (req, res) => {
     }
 
     const { rows } = await pool.query(`
-      INSERT INTO "public"."urgences" (patient_id, niveau, priorite, motif, heure_arrivee, statut)
-      VALUES ($1, $2, $3, $4, NOW(), 'en_attente') RETURNING *
-    `, [patientIdNum, niveau, priorite, motif]);
+      INSERT INTO "public"."urgences" (hospital_id, patient_id, niveau, priorite, motif, heure_arrivee, statut)
+      VALUES ($1, $2, $3, $4, $5, NOW(), 'en_attente') RETURNING *
+    `, [req.hospitalId, patientIdNum, niveau, priorite, motif]);
 
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -315,20 +327,22 @@ router.post('/admissions', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);
+
     const { rows } = await client.query(`
-      INSERT INTO "public"."admissions" (patient_id, lit_id, date_admission, motif, service_id, medecin_referent_id, type)
-      VALUES ($1, $2, NOW(), $3, $4, $5, 'admission') RETURNING *
-    `, [patient_id, lit_id, motif, service_id, medecin_referent_id || null]);
+      INSERT INTO "public"."admissions" (hospital_id, patient_id, lit_id, date_admission, motif, service_id, medecin_referent_id, type)
+      VALUES ($1, $2, $3, NOW(), $4, $5, $6, 'admission') RETURNING *
+    `, [req.hospitalId, patient_id, lit_id, motif, service_id, medecin_referent_id || null]);
     await client.query(`UPDATE "public"."lits" SET statut = 'occupe' WHERE id = $1`, [lit_id]);
     await client.query(`UPDATE "public"."patients" SET lit_id = $1, statut = 'hospitalise' WHERE id = $2`, [lit_id, patient_id]);
     await client.query(`
-      INSERT INTO "public"."sejours" (patient_id, admission_id, lit_id, date_debut, statut)
-      VALUES ($1, $2, $3, NOW(), 'en_cours')
-    `, [patient_id, rows[0].id, lit_id]);
+      INSERT INTO "public"."sejours" (hospital_id, patient_id, admission_id, lit_id, date_debut, statut)
+      VALUES ($1, $2, $3, $4, NOW(), 'en_cours')
+    `, [req.hospitalId, patient_id, rows[0].id, lit_id]);
     await client.query('COMMIT');
     res.status(201).json(rows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ POST /admissions :', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -454,11 +468,11 @@ router.get('/ordonnances/patient/:patientId', authenticate, async (req, res) => 
   try {
     const { rows } = await pool.query(`
       SELECT o.*, 
-             u.nom AS medecin_nom, u.prenom AS medecin_prenom
+             m.nom AS medecin_nom, m.prenom AS medecin_prenom
       FROM "public"."ordonnances" o
-      LEFT JOIN "public"."utilisateurs" u ON o.medecin_id = u.id
+      LEFT JOIN "public"."medecins" m ON o.medecin_id = m.id
       WHERE o.patient_id = $1
-      ORDER BY o.date_prescription DESC
+      ORDER BY o.created_at DESC
     `, [req.params.patientId]);
     res.json(rows);
   } catch (err) {
@@ -473,27 +487,32 @@ router.post('/transferts', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);
+
     const ancienLitRes = await client.query('SELECT lit_id FROM "public"."patients" WHERE id = $1', [patient_id]);
     const ancienLitId = ancienLitRes.rows[0]?.lit_id;
-    if (!ancienLitId) return res.status(400).json({ error: 'Patient non hospitalisé' });
+    if (!ancienLitId) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Patient non hospitalisé' });
+    }
     const ancienServiceRes = await client.query('SELECT service_id FROM "public"."lits" WHERE id = $1', [ancienLitId]);
     const ancienServiceId = ancienServiceRes.rows[0]?.service_id;
     const newAdmission = await client.query(`
-      INSERT INTO "public"."admissions" (patient_id, lit_id, date_admission, motif, service_id, type, source_service_id)
-      VALUES ($1, $2, NOW(), $3, $4, 'transfert', $5) RETURNING id
-    `, [patient_id, nouveau_lit_id, motif, nouveau_service_id, ancienServiceId]);
+      INSERT INTO "public"."admissions" (hospital_id, patient_id, lit_id, date_admission, motif, service_id, type, source_service_id)
+      VALUES ($1, $2, $3, NOW(), $4, $5, 'transfert', $6) RETURNING id
+    `, [req.hospitalId, patient_id, nouveau_lit_id, motif, nouveau_service_id, ancienServiceId]);
     await client.query('UPDATE "public"."lits" SET statut = $1 WHERE id = $2', ['libre', ancienLitId]);
     await client.query('UPDATE "public"."lits" SET statut = $1 WHERE id = $2', ['occupe', nouveau_lit_id]);
     await client.query('UPDATE "public"."patients" SET lit_id = $1 WHERE id = $2', [nouveau_lit_id, patient_id]);
     await client.query(`UPDATE "public"."sejours" SET date_fin = NOW(), statut = 'termine' WHERE patient_id = $1 AND statut = 'en_cours'`, [patient_id]);
     await client.query(`
-      INSERT INTO "public"."sejours" (patient_id, admission_id, lit_id, date_debut, statut)
-      VALUES ($1, $2, $3, NOW(), 'en_cours')
-    `, [patient_id, newAdmission.rows[0].id, nouveau_lit_id]);
+      INSERT INTO "public"."sejours" (hospital_id, patient_id, admission_id, lit_id, date_debut, statut)
+      VALUES ($1, $2, $3, $4, NOW(), 'en_cours')
+    `, [req.hospitalId, patient_id, newAdmission.rows[0].id, nouveau_lit_id]);
     await client.query('COMMIT');
     res.status(201).json({ message: 'Transfert effectué' });
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ POST /transferts :', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -507,6 +526,8 @@ router.post('/sorties', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);
+
     const litRes = await client.query('SELECT lit_id FROM "public"."patients" WHERE id = $1', [patient_id]);
     const litId = litRes.rows[0]?.lit_id;
     if (litId) {
@@ -515,13 +536,13 @@ router.post('/sorties', authenticate, async (req, res) => {
     await client.query('UPDATE "public"."patients" SET date_sortie = NOW(), statut = $1, lit_id = NULL WHERE id = $2', ['sorti', patient_id]);
     await client.query(`UPDATE "public"."sejours" SET date_fin = NOW(), statut = 'termine' WHERE patient_id = $1 AND statut = 'en_cours'`, [patient_id]);
     await client.query(`
-      INSERT INTO "public"."sorties" (admission_id, date_sortie, mode_sortie, remarques)
-      VALUES ($1, NOW(), $2, $3)
-    `, [admission_id, mode_sortie, remarques]);
+      INSERT INTO "public"."sorties" (hospital_id, admission_id, date_sortie, mode_sortie, remarques)
+      VALUES ($1, $2, NOW(), $3, $4)
+    `, [req.hospitalId, admission_id, mode_sortie, remarques]);
     await client.query('COMMIT');
     res.status(201).json({ message: 'Sortie enregistrée' });
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ POST /sorties :', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -589,7 +610,10 @@ router.post('/services', authenticate, requireRole(['admin']), async (req, res) 
   const { nom } = req.body;
   if (!nom) return res.status(400).json({ error: 'Nom requis' });
   try {
-    const { rows } = await pool.query('INSERT INTO "public"."services" (nom) VALUES ($1) RETURNING *', [nom]);
+    const { rows } = await pool.query(
+      'INSERT INTO "public"."services" (hospital_id, nom) VALUES ($1, $2) RETURNING *',
+      [req.hospitalId, nom]
+    );
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('❌ POST /services :', err);
@@ -633,7 +657,6 @@ router.get('/medecins/all', authenticate, async (req, res) => {
   }
 });
 
-// ---------- ROUTE RÉCUPÉRER UN MÉDECIN PAR USER_ID ----------
 router.get('/medecins/by-user/:userId', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -655,8 +678,8 @@ router.post('/medecins', authenticate, requireRole(['admin']), async (req, res) 
   if (!nom || !prenom) return res.status(400).json({ error: 'Nom et prénom requis' });
   try {
     const { rows } = await pool.query(
-      'INSERT INTO "public"."medecins" (nom, prenom, specialite, email) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nom, prenom, specialite, email]
+      'INSERT INTO "public"."medecins" (hospital_id, nom, prenom, specialite, email) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [req.hospitalId, nom, prenom, specialite, email]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -707,7 +730,10 @@ router.get('/batiments', authenticate, async (req, res) => {
 router.post('/batiments', authenticate, requireRole(['admin']), async (req, res) => {
   const { nom } = req.body;
   try {
-    const { rows } = await pool.query('INSERT INTO "public"."batiments" (nom) VALUES ($1) RETURNING *', [nom]);
+    const { rows } = await pool.query(
+      'INSERT INTO "public"."batiments" (hospital_id, nom) VALUES ($1, $2) RETURNING *',
+      [req.hospitalId, nom]
+    );
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('❌ POST /batiments :', err);
@@ -745,8 +771,8 @@ router.post('/etages', authenticate, requireRole(['admin']), async (req, res) =>
   const { batiment_id, numero } = req.body;
   try {
     const { rows } = await pool.query(
-      'INSERT INTO "public"."etages" (batiment_id, numero) VALUES ($1, $2) RETURNING *',
-      [batiment_id, numero]
+      'INSERT INTO "public"."etages" (hospital_id, batiment_id, numero) VALUES ($1, $2, $3) RETURNING *',
+      [req.hospitalId, batiment_id, numero]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -786,9 +812,9 @@ router.post('/chambres', authenticate, requireRole(['admin']), async (req, res) 
   const { nom, batiment_id, etage_id, type, capacite } = req.body;
   try {
     const { rows } = await pool.query(`
-      INSERT INTO "public"."chambres" (nom, batiment_id, etage_id, type, capacite)
-      VALUES ($1, $2, $3, $4, $5) RETURNING *
-    `, [nom, batiment_id, etage_id, type, capacite]);
+      INSERT INTO "public"."chambres" (hospital_id, nom, batiment_id, etage_id, type, capacite)
+      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
+    `, [req.hospitalId, nom, batiment_id, etage_id, type, capacite]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('❌ POST /chambres :', err);
@@ -833,10 +859,10 @@ router.post('/lits', authenticate, requireRole(['admin']), async (req, res) => {
   }
   try {
     const { rows } = await pool.query(`
-      INSERT INTO "public"."lits" (chambre_id, numero, statut)
-      VALUES ($1, $2, $3)
+      INSERT INTO "public"."lits" (hospital_id, chambre_id, numero, statut)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [chambre_id, numero, statut || 'libre']);
+    `, [req.hospitalId, chambre_id, numero, statut || 'libre']);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('❌ POST /lits :', err);
@@ -888,27 +914,52 @@ router.get('/interventions', authenticate, async (req, res) => {
 });
 
 // ---------- ORDONNANCES (POST) ----------
+// ✅ FIX : Utilise le medecin_id envoyé par le formulaire, tout en gardant la restriction de rôle
 router.post('/ordonnances', authenticate, requireRole(['medecin', 'admin']), async (req, res) => {
-  const { patient_id, lignes, observations } = req.body;
+  const { patient_id, medecin_id, lignes, observations } = req.body;
   const client = await pool.connect();
+  
   try {
     await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);
+
+    // ✅ 1. On prend le médecin sélectionné dans le formulaire
+    let finalMedecinId = medecin_id;
+
+    // ✅ 2. Si aucun n'est sélectionné, on cherche le profil du user connecté
+    if (!finalMedecinId) {
+      const medecinRes = await client.query(
+        'SELECT id FROM medecins WHERE user_id = $1',
+        [req.user.id]
+      );
+      if (medecinRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Aucun médecin sélectionné et profil médecin introuvable pour cet utilisateur.' 
+        });
+      }
+      finalMedecinId = medecinRes.rows[0].id;
+    }
+
     const numero = `ORD-${Date.now()}`;
     const ordonnance = await client.query(`
-      INSERT INTO "public"."ordonnances" (patient_id, medecin_id, numero_ordonnance, observations, created_by)
-      VALUES ($1, $2, $3, $4, $5) RETURNING *
-    `, [patient_id, req.user.id, numero, observations, req.user.id]);
+      INSERT INTO "public"."ordonnances" (hospital_id, patient_id, medecin_id, numero_ordonnance, observations, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
+    `, [req.hospitalId, patient_id, finalMedecinId, numero, observations, req.user.id]);
+    
     const ordonnanceId = ordonnance.rows[0].id;
+    
     for (const ligne of lignes) {
       await client.query(`
-        INSERT INTO "public"."ligne_ordonnances" (ordonnance_id, medicament_id, quantite_prescrit, posologie)
-        VALUES ($1, $2, $3, $4)
-      `, [ordonnanceId, ligne.medicament_id, ligne.quantite_prescrit, ligne.posologie]);
+        INSERT INTO "public"."ligne_ordonnances" (hospital_id, ordonnance_id, medicament_id, quantite_prescrit, posologie)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [req.hospitalId, ordonnanceId, ligne.medicament_id, ligne.quantite_prescrit, ligne.posologie]);
     }
+    
     await client.query('COMMIT');
     res.status(201).json(ordonnance.rows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ POST /ordonnances :', err);
     res.status(500).json({ error: err.message });
   } finally {
@@ -971,30 +1022,6 @@ router.delete('/admissions/:id', authenticate, requireAdmin, async (req, res) =>
     res.sendStatus(204);
   } catch (err) {
     console.error('❌ DELETE /admissions/:id :', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ---------- HISTORIQUE COMPLET DES SORTIES ----------
-router.get('/sorties', authenticate, async (req, res) => {
-  try {
-    const { rows } = await pool.query(`
-      SELECT 
-        s.id,
-        s.admission_id,
-        s.date_sortie,
-        s.mode_sortie,
-        s.remarques,
-        p.nom || ' ' || p.prenom AS patient_nom,
-        a.patient_id
-      FROM "public"."sorties" s
-      LEFT JOIN "public"."admissions" a ON s.admission_id = a.id
-      LEFT JOIN "public"."patients" p ON a.patient_id = p.id
-      ORDER BY s.date_sortie DESC
-    `);
-    res.json(rows);
-  } catch (err) {
-    console.error('❌ GET /sorties :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1074,7 +1101,6 @@ router.post('/', authenticate, requireRole(['medecin', 'admin']), async (req, re
   }
 
   try {
-    // Vérifier si une consultation existe déjà pour ce patient
     const existing = await pool.query(
       'SELECT id FROM consultations WHERE patient_id = $1 ORDER BY date DESC LIMIT 1',
       [patient_id]
@@ -1082,7 +1108,6 @@ router.post('/', authenticate, requireRole(['medecin', 'admin']), async (req, re
 
     let result;
     if (existing.rows.length > 0) {
-      // Mise à jour de la consultation existante
       const { rows } = await pool.query(`
         UPDATE consultations SET
           medecin_id = COALESCE($1, medecin_id),
@@ -1115,9 +1140,9 @@ router.post('/', authenticate, requireRole(['medecin', 'admin']), async (req, re
       ]);
       result = rows[0];
     } else {
-      // Nouvelle consultation
       const { rows } = await pool.query(`
         INSERT INTO consultations (
+          hospital_id,
           patient_id,
           medecin_id,
           numero_dossier,
@@ -1130,9 +1155,10 @@ router.post('/', authenticate, requireRole(['medecin', 'admin']), async (req, re
           bilan,
           cat,
           medecin_consultant
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
       `, [
+        req.hospitalId,
         patient_id,
         medecin_id || null,
         numero_dossier || null,

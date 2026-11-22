@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+﻿import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
@@ -8,7 +8,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://localhost:5000'   // seule /api doit aller au backend
+      '/api': 'http://localhost:5000',
+      '/uploads': 'http://localhost:5000',
     }
   }
 })

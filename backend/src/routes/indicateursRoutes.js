@@ -1,16 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Qualité - Indicateurs : connecté à PostgreSQL'));
-
+// GET - Tous les indicateurs
 router.get('/', authenticate, async (req, res) => {
   try {
     const { statut, categorie } = req.query;
@@ -28,6 +21,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// GET - Indicateur par ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM indicateurs_qualite WHERE id = $1', [req.params.id]);
@@ -39,18 +33,22 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
+// POST - Créer un indicateur
 router.post('/', authenticate, async (req, res) => {
   try {
     const { code, nom, description, categorie, unite, cible, seuil_alerte, formule, periode, statut } = req.body;
     const userId = req.user.id;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(`
       INSERT INTO indicateurs_qualite (
-        code, nom, description, categorie, unite, cible, seuil_alerte,
+        hospital_id, code, nom, description, categorie, unite, cible, seuil_alerte,
         formule, periode, statut, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
-    `, [code, nom, description, categorie, unite, cible, seuil_alerte,
+    `, [req.hospitalId, code, nom, description, categorie, unite, cible, seuil_alerte,
         formule, periode, statut || 'actif', userId]);
+        
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -58,6 +56,7 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
+// PUT - Modifier un indicateur
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { code, nom, description, categorie, unite, cible, seuil_alerte, formule, periode, statut } = req.body;
@@ -105,11 +104,14 @@ router.post('/:id/valeurs', authenticate, async (req, res) => {
   try {
     const { date_valeur, valeur, commentaire } = req.body;
     const userId = req.user.id;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(`
-      INSERT INTO valeurs_indicateurs (indicateur_id, date_valeur, valeur, commentaire, created_by)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO valeurs_indicateurs (hospital_id, indicateur_id, date_valeur, valeur, commentaire, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [req.params.id, date_valeur, valeur, commentaire, userId]);
+    `, [req.hospitalId, req.params.id, date_valeur, valeur, commentaire, userId]);
+    
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -120,7 +122,7 @@ router.post('/:id/valeurs', authenticate, async (req, res) => {
 // ✅ DELETE - Supprimer un indicateur (réservé aux administrateurs)
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
-    // Supprimer d'abord les valeurs associées (cascade)
+    // Supprimer d'abord les valeurs associées
     await pool.query('DELETE FROM valeurs_indicateurs WHERE indicateur_id = $1', [req.params.id]);
     const { rowCount } = await pool.query('DELETE FROM indicateurs_qualite WHERE id = $1', [req.params.id]);
     if (rowCount === 0) return res.status(404).json({ error: 'Indicateur non trouvé' });

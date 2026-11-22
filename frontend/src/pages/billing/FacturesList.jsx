@@ -1,9 +1,14 @@
+// src/pages/billing/FacturesList.jsx
 import { useEffect, useState } from 'react';
 import api from '../../axios';
 import { Link } from 'react-router-dom';
 import { FaEye, FaFileInvoice, FaEuroSign, FaCalendarAlt, FaPlusCircle, FaHospital, FaUserMd, FaFileAlt, FaPrint } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
 
 const FacturesList = () => {
+  // 🔧 Récupère l'hôpital courant depuis le contexte auth (multi-tenant)
+  const { hopital } = useAuth();
+
   const [factures, setFactures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -12,6 +17,28 @@ const FacturesList = () => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [recapData, setRecapData] = useState(null);
   const [showRecapModal, setShowRecapModal] = useState(false);
+
+  // 🔧 Nom + logo tenant-aware
+  const HOPITAL_NOM =
+    hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
+
+  // 🔧 Résout le logo en URL absolue (nécessaire pour la fenêtre d'impression)
+  const resolveLogoUrl = (rawLogo) => {
+    if (!rawLogo) return `${window.location.origin}/logo.jpeg`;
+    if (/^https?:\/\//i.test(rawLogo)) return rawLogo;
+    const withSlash = rawLogo.startsWith('/') ? rawLogo : `/${rawLogo}`;
+    return `${window.location.origin}${withSlash}`;
+  };
+
+  const LOGO_URL = resolveLogoUrl(hopital?.logo_url);
+
+  // À l'écran, on peut utiliser un chemin relatif (cache navigateur)
+  const LOGO_PATH =
+    hopital?.logo_url && !/^https?:\/\//i.test(hopital.logo_url)
+      ? hopital.logo_url.startsWith('/')
+        ? hopital.logo_url
+        : `/${hopital.logo_url}`
+      : LOGO_URL;
 
   useEffect(() => {
     fetchFactures();
@@ -88,8 +115,17 @@ const FacturesList = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     const content = document.getElementById('recap-content').innerHTML;
+
+    // 🔧 On réinjecte le logo en URL ABSOLUE dans la fenêtre d'impression,
+    // car un chemin relatif dans un window.open('') ne se résout pas
+    // de façon fiable (pas de base URL). On le remplace par LOGO_URL.
+    const safeContent = content.replace(
+      /src="[^"]*\/logo\.jpeg"/g,
+      `src="${LOGO_URL}"`
+    );
+
     printWindow.document.write(`
-      <html><head><title>Récapitulatif factures</title>
+      <html><head><title>Récapitulatif factures - ${HOPITAL_NOM}</title>
       <style>
         body { font-family: Arial, sans-serif; padding: 40px; }
         .header { text-align: center; margin-bottom: 30px; }
@@ -102,9 +138,9 @@ const FacturesList = () => {
         .no-print { display: none; }
       </style>
       </head><body>
-      ${content}
+      ${safeContent}
       <div style="text-align:center; margin-top:30px; color:#6b7280; font-size:12px;">
-        Document généré le ${new Date().toLocaleString()}
+        Document généré le ${new Date().toLocaleString('fr-FR')} — ${HOPITAL_NOM}
       </div>
       <script>
         window.onload = function() { window.print(); }
@@ -245,9 +281,15 @@ const FacturesList = () => {
             overflow: 'auto'
           }}>
             <div id="recap-content">
+              {/* 🔧 En-tête tenant-aware du récapitulatif */}
               <div className="header" style={{ textAlign: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '20px' }}>
-                <img src="/logo.jpeg" alt="Logo" style={{ height: '60px' }} />
-                <h2 style={{ margin: '5px 0', color: '#1e3a8a' }}>Medical Center Elizabeth MCE</h2>
+                <img
+                  src={LOGO_PATH}
+                  alt={`Logo ${HOPITAL_NOM}`}
+                  style={{ height: '60px' }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+                <h2 style={{ margin: '5px 0', color: '#1e3a8a' }}>{HOPITAL_NOM}</h2>
                 <p style={{ margin: 0 }}>Récapitulatif des factures</p>
               </div>
 

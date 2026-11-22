@@ -1,22 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireRole, requireAdmin } = require('../middleware/auth');
 
 // ============================================================
-// 1. DIAGNOSTIC : afficher l'URL de connexion
-// ============================================================
-console.log('🔗 DATABASE_URL (bloc) :', process.env.DATABASE_URL);
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Bloc : connecté à PostgreSQL'));
-
-// ============================================================
-// 2. VÉRIFICATION ET CRÉATION AUTOMATIQUE DES TABLES / COLONNES
+// 1. VÉRIFICATION ET CRÉATION AUTOMATIQUE DES TABLES / COLONNES
 // ============================================================
 const ensureBlocTables = async () => {
   try {
@@ -32,6 +20,7 @@ const ensureBlocTables = async () => {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS public.employes (
           id SERIAL PRIMARY KEY,
+          hospital_id UUID REFERENCES hospitals(id),
           nom VARCHAR(100),
           prenom VARCHAR(100)
         )
@@ -51,6 +40,7 @@ const ensureBlocTables = async () => {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS public.salles_bloc (
           id SERIAL PRIMARY KEY,
+          hospital_id UUID REFERENCES hospitals(id),
           nom VARCHAR(100) NOT NULL,
           numero VARCHAR(50),
           disponible BOOLEAN DEFAULT TRUE,
@@ -70,6 +60,7 @@ const ensureBlocTables = async () => {
         console.log('📦 Ajout des colonnes manquantes à salles_bloc...');
         await pool.query(`
           ALTER TABLE salles_bloc
+            ADD COLUMN IF NOT EXISTS hospital_id UUID REFERENCES hospitals(id),
             ADD COLUMN IF NOT EXISTS numero VARCHAR(50),
             ADD COLUMN IF NOT EXISTS localisation TEXT,
             ADD COLUMN IF NOT EXISTS notes TEXT,
@@ -93,6 +84,7 @@ const ensureBlocTables = async () => {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS public.interventions (
           id SERIAL PRIMARY KEY,
+          hospital_id UUID REFERENCES hospitals(id),
           patient_id INTEGER REFERENCES patients(id),
           salle_id INTEGER REFERENCES salles_bloc(id),
           type_intervention VARCHAR(200),
@@ -124,6 +116,7 @@ const ensureBlocTables = async () => {
         console.log('📦 Ajout des colonnes manquantes à interventions...');
         await pool.query(`
           ALTER TABLE interventions
+            ADD COLUMN IF NOT EXISTS hospital_id UUID REFERENCES hospitals(id),
             ADD COLUMN IF NOT EXISTS type_intervention VARCHAR(200),
             ADD COLUMN IF NOT EXISTS priorite VARCHAR(20) DEFAULT 'normale',
             ADD COLUMN IF NOT EXISTS chirurgien_principal_id INTEGER,
@@ -151,7 +144,7 @@ const ensureBlocTables = async () => {
 ensureBlocTables();
 
 // ============================================================
-// 3. TOUTES LES ROUTES (authentification requise)
+// 2. TOUTES LES ROUTES (authentification requise)
 // ============================================================
 router.use(authenticate);
 
@@ -175,10 +168,11 @@ router.post('/salles', requireRole(['admin', 'medecin', 'Administrateur']), asyn
   const { nom, numero, disponible, localisation, notes } = req.body;
   if (!nom) return res.status(400).json({ error: 'Nom requis' });
   try {
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(`
-      INSERT INTO salles_bloc (nom, numero, disponible, localisation, notes)
-      VALUES ($1, $2, $3, $4, $5) RETURNING *
-    `, [nom, numero, disponible !== undefined ? disponible : true, localisation, notes]);
+      INSERT INTO salles_bloc (hospital_id, nom, numero, disponible, localisation, notes)
+      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
+    `, [req.hospitalId, nom, numero, disponible !== undefined ? disponible : true, localisation, notes]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('❌ POST /salles :', err);
@@ -344,14 +338,16 @@ router.post('/interventions', requireRole(['admin', 'medecin', 'Administrateur']
   }
 
   try {
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(`
       INSERT INTO interventions (
-        patient_id, salle_id, type_intervention, date_prevue, duree_estimee,
+        hospital_id, patient_id, salle_id, type_intervention, date_prevue, duree_estimee,
         priorite, chirurgien_principal_id, co_chirurgiens, infirmiere_scolper,
         infirmiere_circulante, anesthesiste_id, notes_preoperatoires, motifs
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [
+      req.hospitalId,
       patient_id, 
       sanitizedSalleId,
       type_intervention, 

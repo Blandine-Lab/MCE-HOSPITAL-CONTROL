@@ -1,17 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const axios = require('axios');
 const crypto = require('crypto');
-
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Interopérabilité : connecté à PostgreSQL'));
 
 // ============================================================
 // 1. SYSTÈMES EXTERNES
@@ -38,10 +30,12 @@ router.get('/systemes/:id', authenticate, async (req, res) => {
 router.post('/systemes', authenticate, async (req, res) => {
   try {
     const { nom, code, description, type, url_base, auth_type, auth_config, actif } = req.body;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      `INSERT INTO systemes_externes (nom, code, description, type, url_base, auth_type, auth_config, actif)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [nom, code, description, type, url_base, auth_type, auth_config, actif !== undefined ? actif : true]
+      `INSERT INTO systemes_externes (hospital_id, nom, code, description, type, url_base, auth_type, auth_config, actif)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [req.hospitalId, nom, code, description, type, url_base, auth_type, auth_config, actif !== undefined ? actif : true]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -112,10 +106,12 @@ router.get('/flux/:id', authenticate, async (req, res) => {
 router.post('/flux', authenticate, async (req, res) => {
   try {
     const { code, nom, description, systeme_source_id, systeme_destination_id, type_flux, format_donnees, mapping_config, periodicite } = req.body;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      `INSERT INTO flux_interoperabilite (code, nom, description, systeme_source_id, systeme_destination_id, type_flux, format_donnees, mapping_config, periodicite, statut)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'actif') RETURNING *`,
-      [code, nom, description, systeme_source_id, systeme_destination_id, type_flux, format_donnees, mapping_config, periodicite]
+      `INSERT INTO flux_interoperabilite (hospital_id, code, nom, description, systeme_source_id, systeme_destination_id, type_flux, format_donnees, mapping_config, periodicite, statut)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'actif') RETURNING *`,
+      [req.hospitalId, code, nom, description, systeme_source_id, systeme_destination_id, type_flux, format_donnees, mapping_config, periodicite]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -203,9 +199,12 @@ router.post('/webhooks', authenticate, async (req, res) => {
   try {
     const { nom, description, url_callback } = req.body;
     const token = crypto.randomBytes(32).toString('hex');
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      `INSERT INTO webhooks_entrants (nom, description, url_callback, token, actif) VALUES ($1, $2, $3, $4, true) RETURNING *`,
-      [nom, description, url_callback, token]
+      `INSERT INTO webhooks_entrants (hospital_id, nom, description, url_callback, token, actif) 
+       VALUES ($1, $2, $3, $4, $5, true) RETURNING *`,
+      [req.hospitalId, nom, description, url_callback, token]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -232,10 +231,14 @@ router.post('/webhook/:token', async (req, res) => {
     if (rows.length === 0) {
       return res.status(401).json({ error: 'Token invalide ou webhook inactif' });
     }
+    
+    // ✅ FIX : on récupère le hospital_id depuis le webhook pour alimenter les logs
+    const webhook = rows[0];
+    
     await pool.query(
-      `INSERT INTO logs_interoperabilite (direction, requete, status_code)
-       VALUES ('IN', $1, 200)`,
-      [JSON.stringify(req.body)]
+      `INSERT INTO logs_interoperabilite (hospital_id, direction, requete, status_code)
+       VALUES ($1, 'IN', $2, 200)`,
+      [webhook.hospital_id, JSON.stringify(req.body)]
     );
     // Ici, vous pouvez appeler un traitement interne ou url_callback
     res.status(200).json({ message: 'Webhook reçu avec succès', data: req.body });
@@ -273,18 +276,21 @@ router.post('/proxy', authenticate, async (req, res) => {
       });
     } catch (err) {
       const duree = Date.now() - startTime;
+      // ✅ FIX : hospital_id explicite dans les logs d'erreur
       await pool.query(
-        `INSERT INTO logs_interoperabilite (systeme_id, direction, requete, reponse, status_code, erreur, duree_ms)
-         VALUES ($1, 'OUT', $2, $3, $4, $5, $6)`,
-        [systeme_id, JSON.stringify({ url, method, data, headers: requestHeaders }), JSON.stringify(err.response?.data || err.message), err.response?.status || 500, err.message, duree]
+        `INSERT INTO logs_interoperabilite (hospital_id, systeme_id, direction, requete, reponse, status_code, erreur, duree_ms)
+         VALUES ($1, $2, 'OUT', $3, $4, $5, $6, $7)`,
+        [req.hospitalId, systeme_id, JSON.stringify({ url, method, data, headers: requestHeaders }), JSON.stringify(err.response?.data || err.message), err.response?.status || 500, err.message, duree]
       );
       return res.status(500).json({ error: 'Erreur lors de l\'appel externe', detail: err.message });
     }
     const duree = Date.now() - startTime;
+    
+    // ✅ FIX : hospital_id explicite dans les logs de succès
     await pool.query(
-      `INSERT INTO logs_interoperabilite (systeme_id, direction, requete, reponse, status_code, duree_ms)
-       VALUES ($1, 'OUT', $2, $3, $4, $5)`,
-      [systeme_id, JSON.stringify({ url, method, data, headers: requestHeaders }), JSON.stringify(response.data), response.status, duree]
+      `INSERT INTO logs_interoperabilite (hospital_id, systeme_id, direction, requete, reponse, status_code, duree_ms)
+       VALUES ($1, $2, 'OUT', $3, $4, $5, $6)`,
+      [req.hospitalId, systeme_id, JSON.stringify({ url, method, data, headers: requestHeaders }), JSON.stringify(response.data), response.status, duree]
     );
     res.json(response.data);
   } catch (err) {

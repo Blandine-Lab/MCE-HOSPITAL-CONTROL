@@ -1,16 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Stock - Fournisseurs : connecté à PostgreSQL'));
-
+// GET - Liste des fournisseurs
 router.get('/', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM fournisseurs ORDER BY nom');
@@ -21,6 +14,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// GET - Fournisseur par ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM fournisseurs WHERE id = $1', [req.params.id]);
@@ -32,12 +26,15 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
+// POST - Créer un fournisseur
 router.post('/', authenticate, async (req, res) => {
   try {
     const { nom, contact, telephone, email, adresse } = req.body;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      'INSERT INTO fournisseurs (nom, contact, telephone, email, adresse) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-      [nom, contact, telephone, email, adresse]
+      'INSERT INTO fournisseurs (hospital_id, nom, contact, telephone, email, adresse) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+      [req.hospitalId, nom, contact, telephone, email, adresse]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -46,6 +43,7 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
+// PUT - Modifier un fournisseur
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { nom, contact, telephone, email, adresse } = req.body;

@@ -1,17 +1,10 @@
+// backend/src/routes/biRoutes.js
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const fs = require('fs');
 const path = require('path');
-
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ BI : connecté à PostgreSQL'));
 
 // ============================================================
 //  FONCTIONS UTILITAIRES DE VÉRIFICATION
@@ -121,8 +114,18 @@ router.get('/dashboard', authenticate, async (req, res) => {
 
     // 5. Occupation des lits
     if (await tableExists('lits')) {
-      const occRes = await pool.query('SELECT COUNT(*) as occupes FROM lits WHERE disponible = false');
-      const totalRes = await pool.query('SELECT COUNT(*) as total FROM lits');
+      // On suppose que la colonne 'disponible' existe, sinon on utilise 'statut'
+      const hasDisponible = await columnExists('lits', 'disponible');
+      let occQuery, totalQuery;
+      if (hasDisponible) {
+        occQuery = 'SELECT COUNT(*) as occupes FROM lits WHERE disponible = false';
+        totalQuery = 'SELECT COUNT(*) as total FROM lits';
+      } else {
+        occQuery = "SELECT COUNT(*) as occupes FROM lits WHERE statut = 'occupe'";
+        totalQuery = 'SELECT COUNT(*) as total FROM lits';
+      }
+      const occRes = await pool.query(occQuery);
+      const totalRes = await pool.query(totalQuery);
       result.litsOccupes = parseInt(occRes.rows[0].occupes || 0);
       result.totalLits = parseInt(totalRes.rows[0].total || 0);
     } else {
@@ -220,11 +223,12 @@ router.get('/factures-evolution', authenticate, async (req, res) => {
 router.get('/occupation-lits', authenticate, async (req, res) => {
   try {
     if (!await tableExists('lits')) return res.json([]);
+    const hasDisponible = await columnExists('lits', 'disponible');
     const query = `
       SELECT 
         COALESCE(s.nom, 'Sans service') as service,
         COUNT(l.id) as total,
-        COUNT(l.id) FILTER (WHERE l.disponible = false) as occupes
+        COUNT(l.id) FILTER (WHERE ${hasDisponible ? 'l.disponible = false' : "l.statut = 'occupe'"}) as occupes
       FROM lits l
       LEFT JOIN services s ON l.service_id = s.id
       GROUP BY s.id, s.nom
@@ -262,7 +266,7 @@ router.get('/motifs-admission', authenticate, async (req, res) => {
 });
 
 // ============================================================
-//  RAPPORTS (CRUD) – avec vérification des tables
+//  RAPPORTS (CRUD)
 // ============================================================
 
 // GET /bi/rapports
@@ -289,9 +293,11 @@ router.get('/rapports', authenticate, async (req, res) => {
 router.post('/rapports', authenticate, async (req, res) => {
   try {
     const { nom, description, type, categorie, date_debut, date_fin, config } = req.body;
+    
     await pool.query(`
       CREATE TABLE IF NOT EXISTS rapports (
         id SERIAL PRIMARY KEY,
+        hospital_id UUID REFERENCES hospitals(id),
         nom VARCHAR(255) NOT NULL,
         description TEXT,
         type VARCHAR(50) DEFAULT 'dashboard',
@@ -303,10 +309,12 @@ router.post('/rapports', authenticate, async (req, res) => {
         date_creation TIMESTAMP DEFAULT NOW()
       )
     `);
+
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      `INSERT INTO rapports (nom, description, type, categorie, date_debut, date_fin, config, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [nom, description, type, categorie, date_debut, date_fin, config || {}, req.user.id]
+      `INSERT INTO rapports (hospital_id, nom, description, type, categorie, date_debut, date_fin, config, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [req.hospitalId, nom, description, type, categorie, date_debut, date_fin, config || {}, req.user.id]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -340,7 +348,6 @@ router.put('/rapports/:id', authenticate, async (req, res) => {
 router.delete('/rapports/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    // L'admin peut supprimer n'importe quel rapport (pas de vérification created_by)
     const result = await pool.query('DELETE FROM rapports WHERE id = $1', [id]);
     if (result.rowCount === 0) return res.status(404).json({ error: 'Rapport non trouvé' });
     res.sendStatus(204);
@@ -382,6 +389,7 @@ router.post('/exports', authenticate, async (req, res) => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS exports (
         id SERIAL PRIMARY KEY,
+        hospital_id UUID REFERENCES hospitals(id),
         nom_fichier VARCHAR(255) NOT NULL,
         format VARCHAR(20) NOT NULL,
         taille BIGINT,
@@ -399,10 +407,11 @@ router.post('/exports', authenticate, async (req, res) => {
     const filepath = path.join(uploadDir, filename);
     fs.writeFileSync(filepath, `Export ${type} généré le ${new Date().toISOString()}`);
 
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      `INSERT INTO exports (nom_fichier, format, taille, type, filtre, statut, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'termine', $6) RETURNING *`,
-      [filename, format, fs.statSync(filepath).size, type, JSON.stringify(filters || {}), req.user.id]
+      `INSERT INTO exports (hospital_id, nom_fichier, format, taille, type, filtre, statut, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, 'termine', $7) RETURNING *`,
+      [req.hospitalId, filename, format, fs.statSync(filepath).size, type, JSON.stringify(filters || {}), req.user.id]
     );
 
     res.status(201).json(rows[0]);
@@ -471,10 +480,11 @@ router.post('/export', authenticate, async (req, res) => {
     const filepath = path.join(uploadDir, filename);
     fs.writeFileSync(filepath, content);
 
+    // ✅ FIX : hospital_id explicite
     const exportRes = await pool.query(
-      `INSERT INTO exports (nom_fichier, format, taille, type, filtre, statut, created_by)
-       VALUES ($1, $2, $3, 'rapport', $4, 'termine', $5) RETURNING id`,
-      [filename, format, fs.statSync(filepath).size, JSON.stringify({ rapport_id }), req.user.id]
+      `INSERT INTO exports (hospital_id, nom_fichier, format, taille, type, filtre, statut, created_by)
+       VALUES ($1, $2, $3, $4, 'rapport', $5, 'termine', $6) RETURNING id`,
+      [req.hospitalId, filename, format, fs.statSync(filepath).size, JSON.stringify({ rapport_id }), req.user.id]
     );
 
     res.json({ 

@@ -1,16 +1,19 @@
+// src/routes/planningsRoutes.js
+// ============================================================
+// 🏥 RH – Plannings
+// ------------------------------------------------------------
+// ⚠️ FIX :
+//   1. Pool patché de config/db.js (ALS + set_config auto)
+//   2. hospital_id explicite dans le POST (NOT NULL sans DEFAULT)
+// ============================================================
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// Connexion PostgreSQL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-pool.on('connect', () => console.log('✅ RH - Plannings : connecté à PostgreSQL'));
-
-// GET tous les plannings (avec filtres) – LEFT JOIN pour garder les plannings orphelins
+// ============================================================
+// GET tous les plannings (avec filtres)
+// ============================================================
 router.get('/', authenticate, async (req, res) => {
   try {
     const { employe_id, date_debut, date_fin } = req.query;
@@ -35,7 +38,9 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// GET un planning par ID – LEFT JOIN également
+// ============================================================
+// GET un planning par ID
+// ============================================================
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -54,29 +59,30 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// POST – Créer un planning (champs: employe_id, date, heure_debut, heure_fin, type, notes)
+// ============================================================
+// POST – Créer un planning
+// ============================================================
 router.post('/', authenticate, async (req, res) => {
   try {
     const { employe_id, date, heure_debut, heure_fin, type, notes } = req.body;
 
-    // Validation – on exige employe_id, date et type
     if (!employe_id || !date || !type) {
       return res.status(400).json({ error: 'employe_id, date et type sont requis' });
     }
 
-    // Vérifier que l'employé existe (pour la création, on refuse si inexistant)
+    // ✅ Vérification employé (RLS filtre déjà sur le tenant)
     const empCheck = await pool.query('SELECT id FROM employes WHERE id = $1', [employe_id]);
     if (empCheck.rowCount === 0) {
       return res.status(400).json({ error: 'Employé inexistant' });
     }
 
-    const query = `
-      INSERT INTO plannings (employe_id, date, heure_debut, heure_fin, type, notes)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
-    `;
-    const values = [employe_id, date, heure_debut || null, heure_fin || null, type, notes || null];
-    const { rows } = await pool.query(query, values);
+    // ✅ FIX : hospital_id explicite
+    const { rows } = await pool.query(
+      `INSERT INTO plannings (hospital_id, employe_id, date, heure_debut, heure_fin, type, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [req.hospitalId, employe_id, date, heure_debut || null, heure_fin || null, type, notes || null]
+    );
     res.status(201).json(rows[0]);
 
   } catch (err) {
@@ -85,7 +91,9 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
-// PUT – Mettre à jour un planning (champs: employe_id, date, heure_debut, heure_fin, type, notes)
+// ============================================================
+// PUT – Mettre à jour un planning
+// ============================================================
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { employe_id, date, heure_debut, heure_fin, type, notes } = req.body;
@@ -94,8 +102,8 @@ router.put('/:id', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'employe_id, date et type sont requis' });
     }
 
-    const query = `
-      UPDATE plannings SET
+    const { rows } = await pool.query(
+      `UPDATE plannings SET
         employe_id = $1,
         date = $2,
         heure_debut = $3,
@@ -103,10 +111,9 @@ router.put('/:id', authenticate, async (req, res) => {
         type = $5,
         notes = $6
       WHERE id = $7
-      RETURNING *
-    `;
-    const values = [employe_id, date, heure_debut || null, heure_fin || null, type, notes || null, req.params.id];
-    const { rows } = await pool.query(query, values);
+      RETURNING *`,
+      [employe_id, date, heure_debut || null, heure_fin || null, type, notes || null, req.params.id]
+    );
     if (!rows.length) return res.status(404).json({ error: 'Planning non trouvé' });
     res.json(rows[0]);
   } catch (err) {
@@ -115,7 +122,9 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-// DELETE – Supprimer un planning (admin uniquement)
+// ============================================================
+// DELETE – Supprimer un planning (admin)
+// ============================================================
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM plannings WHERE id = $1', [req.params.id]);

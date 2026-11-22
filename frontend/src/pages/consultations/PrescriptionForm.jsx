@@ -7,6 +7,7 @@ const PrescriptionForm = () => {
   const navigate = useNavigate();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);       // 🔧 anti double-clic
   const [medicaments, setMedicaments] = useState([]);
   const [lignes, setLignes] = useState([
     { medicament_id: '', quantite_prescrit: 1, posologie: '' }
@@ -21,30 +22,33 @@ const PrescriptionForm = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // ✅ 1. Charger le patient
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Charger le patient
-        let patientData = null;
-        if (patientId) {
-          const patientRes = await api.get(`/patients/${patientId}`);
-          patientData = patientRes.data;
-        }
-
-        // Charger les médicaments (depuis la pharmacie)
-        const medsRes = await api.get('/pharmacy/medicaments');
-        setMedicaments(medsRes.data || []);
-
-        setPatient(patientData);
-        setLoading(false);
-      } catch (err) {
-        console.error('Erreur chargement :', err);
-        showToast('Erreur de chargement des données', 'error');
-        setLoading(false);
-      }
-    };
-    fetchData();
+    if (!patientId) {
+      setLoading(false);
+      return;
+    }
+    api.get(`/patients/${patientId}`)
+      .then(res => setPatient(res.data))
+      .catch(err => {
+        console.error('❌ Erreur chargement patient :', err);
+        showToast('Patient introuvable', 'error');
+      })
+      .finally(() => setLoading(false));
   }, [patientId]);
+
+  // ✅ 2. Charger les médicaments depuis le module pharmacie
+  useEffect(() => {
+    api.get('/pharmacy/medicaments')
+      .then(res => {
+        console.log('💊 Médicaments chargés :', res.data?.length);
+        setMedicaments(res.data || []);
+      })
+      .catch(err => {
+        console.error('❌ Erreur chargement médicaments :', err);
+        showToast('Erreur de chargement des médicaments', 'error');
+      });
+  }, []);
 
   const addLigne = () => {
     setLignes([...lignes, { medicament_id: '', quantite_prescrit: 1, posologie: '' }]);
@@ -64,16 +68,25 @@ const PrescriptionForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Vérifier qu'au moins une ligne a un médicament sélectionné
-    const validLignes = lignes.filter(l => l.medicament_id && parseInt(l.quantite_prescrit) > 0);
+    // 🔧 Garde-fou : patientId doit exister et être un entier
+    const patientIdNum = parseInt(patientId, 10);
+    if (!Number.isInteger(patientIdNum) || patientIdNum <= 0) {
+      showToast('Patient invalide dans l’URL.', 'error');
+      return;
+    }
+
+    const validLignes = lignes.filter(
+      l => l.medicament_id && parseInt(l.quantite_prescrit, 10) > 0
+    );
     if (validLignes.length === 0) {
       showToast('Ajoutez au moins un médicament valide.', 'error');
       return;
     }
 
+    setSubmitting(true);
     try {
       const payload = {
-        patient_id: parseInt(patientId, 10),
+        patient_id: patientIdNum,
         lignes: validLignes.map(l => ({
           medicament_id: parseInt(l.medicament_id, 10),
           quantite_prescrit: parseInt(l.quantite_prescrit, 10),
@@ -87,8 +100,13 @@ const PrescriptionForm = () => {
       setTimeout(() => navigate('/doctor/prescriptions'), 1500);
     } catch (err) {
       console.error('Erreur création prescription:', err);
-      const msg = err.response?.data?.error || 'Erreur lors de la création.';
+      const msg =
+        err.response?.data?.error ||
+        err.response?.data?.detail ||
+        'Erreur lors de la création.';
       showToast('❌ ' + msg, 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -128,7 +146,8 @@ const PrescriptionForm = () => {
       )}
 
       <h1 style={{ fontSize: '28px', marginBottom: '16px' }}>📝 Nouvelle prescription</h1>
-      {patient && (
+
+      {patient ? (
         <div style={{
           background: '#f0f4ff',
           padding: '12px 16px',
@@ -138,10 +157,20 @@ const PrescriptionForm = () => {
         }}>
           <strong>Patient :</strong> {patient.prenom} {patient.nom} (IPP: {patient.ipp || 'N/A'})
         </div>
+      ) : (
+        <div style={{
+          background: '#fef3c7',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          borderLeft: '4px solid #f59e0b',
+          color: '#92400e'
+        }}>
+          ⚠️ Aucun patient sélectionné dans l'URL.
+        </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* Les médicaments */}
         {lignes.map((ligne, index) => (
           <div
             key={index}
@@ -179,7 +208,8 @@ const PrescriptionForm = () => {
                 <option value="">Sélectionner un médicament</option>
                 {medicaments.map(m => (
                   <option key={m.id} value={m.id}>
-                    {m.nom} (stock: {m.stock})
+                    {/* 🔧 stock peut être absent/null → on protège */}
+                    {m.nom}{m.stock != null ? ` (stock: ${m.stock})` : ''}
                   </option>
                 ))}
               </select>
@@ -193,7 +223,7 @@ const PrescriptionForm = () => {
                 <input
                   type="number"
                   value={ligne.quantite_prescrit}
-                  onChange={(e) => handleLigneChange(index, 'quantite_prescrit', parseInt(e.target.value) || 1)}
+                  onChange={(e) => handleLigneChange(index, 'quantite_prescrit', parseInt(e.target.value, 10) || 1)}
                   min="1"
                   required
                   style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
@@ -247,6 +277,7 @@ const PrescriptionForm = () => {
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
             type="submit"
+            disabled={submitting}
             style={{
               backgroundColor: '#16a34a',
               color: 'white',
@@ -254,11 +285,12 @@ const PrescriptionForm = () => {
               border: 'none',
               borderRadius: '8px',
               fontWeight: 'bold',
-              cursor: 'pointer',
-              fontSize: '16px'
+              cursor: submitting ? 'wait' : 'pointer',
+              fontSize: '16px',
+              opacity: submitting ? 0.6 : 1
             }}
           >
-            💾 Créer la prescription
+            {submitting ? '💾 Création...' : '💾 Créer la prescription'}
           </button>
           <button
             type="button"

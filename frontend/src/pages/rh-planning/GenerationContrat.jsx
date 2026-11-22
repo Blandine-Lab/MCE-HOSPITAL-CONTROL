@@ -1,10 +1,15 @@
+// src/pages/rh-planning/GenerationContrat.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../axios';
 import { FaArrowLeft, FaSave, FaPrint, FaFileAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const GenerationContrat = () => {
+  // 🔧 Récupère l'hôpital courant depuis le contexte auth (multi-tenant)
+  const { hopital } = useAuth();
+
   const navigate = useNavigate();
   const [employes, setEmployes] = useState([]);
   const [modeles, setModeles] = useState([]);
@@ -19,15 +24,40 @@ const GenerationContrat = () => {
   const [employeDetail, setEmployeDetail] = useState(null);
   const [contenuContrat, setContenuContrat] = useState('');
 
+  // 🔧 Nom, adresse et ville tenant-aware (fallbacks si contexte vide)
+  const HOPITAL_NOM =
+    hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
+
+  const HOPITAL_ADRESSE =
+    hopital?.adresse || hopital?.address || '';
+
+  const HOPITAL_VILLE =
+    hopital?.ville || hopital?.city || 'Bukavu';
+
+  // 🔧 Résout le logo :
+  //  - URL absolue (https://...) → utilisée telle quelle
+  //  - chemin relatif (/logo.jpeg) → préfixé par l'origine
+  //  - fallback → /logo.jpeg
+  const resolveLogoUrl = (rawLogo) => {
+    if (!rawLogo) return `${window.location.origin}/logo.jpeg`;
+    if (/^https?:\/\//i.test(rawLogo)) return rawLogo;
+    const withSlash = rawLogo.startsWith('/') ? rawLogo : `/${rawLogo}`;
+    return `${window.location.origin}${withSlash}`;
+  };
+
+  const LOGO_PATH =
+    hopital?.logo_url && !/^https?:\/\//i.test(hopital.logo_url)
+      ? hopital.logo_url.startsWith('/')
+        ? hopital.logo_url
+        : `/${hopital.logo_url}`
+      : resolveLogoUrl(hopital?.logo_url);
+
   // Fonction pour convertir le Markdown de base (gras, italique, sauts de ligne) en HTML
   const markdownToHtml = (texte) => {
     if (!texte) return '';
     let html = texte;
-    // Gras : **texte** -> <strong>texte</strong>
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    // Italique : *texte* -> <em>texte</em>
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    // Sauts de ligne : \n -> <br />
     html = html.replace(/\n/g, '<br />');
     return html;
   };
@@ -152,8 +182,6 @@ const GenerationContrat = () => {
     window.print();
   };
 
-  const logoUrl = '/logo.jpeg';
-
   return (
     <div>
       <div style={{ marginBottom: 24 }} className="no-print">
@@ -215,20 +243,23 @@ const GenerationContrat = () => {
           </div>
 
           <div id="contrat-print" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-            {/* En-tête */}
+            {/* 🔧 En-tête tenant-aware : logo + nom + adresse */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', borderBottom: '3px solid #2563eb', paddingBottom: '16px', marginBottom: '24px' }}>
               <img
-                src={logoUrl}
-                alt="Logo MCE"
+                src={LOGO_PATH}
+                alt={`Logo ${HOPITAL_NOM}`}
                 style={{ height: '60px', width: 'auto', objectFit: 'contain' }}
                 onError={(e) => e.target.style.display = 'none'}
               />
               <div>
-                <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '2px' }}>HÔPITAL MCE</h1>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Medical Center Elizabeth – Bukavu</p>
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                  Avenue BOBZO, Quartier NDENDERE, Commune d'IBANDA, SUD-KIVU/RDC
-                </p>
+                <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a', margin: 0, letterSpacing: '2px' }}>
+                  {HOPITAL_NOM}
+                </h1>
+                {HOPITAL_ADRESSE && (
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                    {HOPITAL_ADRESSE}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -276,7 +307,7 @@ const GenerationContrat = () => {
             {/* Signatures */}
             <div style={{ marginTop: '40px', borderTop: '2px solid #e2e8f0', paddingTop: '20px' }}>
               <p style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280', marginBottom: '24px' }}>
-                Fait à Bukavu, le {new Date().toLocaleDateString('fr-FR')}
+                Fait à {HOPITAL_VILLE}, le {new Date().toLocaleDateString('fr-FR')}
               </p>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '40px' }}>
                 <div style={{ flex: 1 }}>
@@ -293,7 +324,7 @@ const GenerationContrat = () => {
                 </div>
               </div>
               <p style={{ marginTop: '20px', fontSize: '10px', color: '#94a3b8', textAlign: 'center' }}>
-                Document généré par le système MCE
+                Document généré par le système {HOPITAL_NOM}
               </p>
             </div>
           </div>

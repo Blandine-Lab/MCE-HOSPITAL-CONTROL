@@ -1,16 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Qualité - Non-conformités : connecté à PostgreSQL'));
-
+// GET - Toutes les non-conformités
 router.get('/', authenticate, async (req, res) => {
   try {
     const { statut, gravite, source } = req.query;
@@ -35,6 +28,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// GET - Non-conformité par ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -52,19 +46,23 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
+// POST - Créer une non-conformité
 router.post('/', authenticate, async (req, res) => {
   try {
     const { numero_nc, date_detection, source, source_id, description,
             gravite, service_id, action_immediate } = req.body;
     const userId = req.user.id;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(`
       INSERT INTO non_conformites (
-        numero_nc, date_detection, source, source_id, description,
+        hospital_id, numero_nc, date_detection, source, source_id, description,
         gravite, service_id, action_immediate, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
-    `, [numero_nc, date_detection, source, source_id, description,
+    `, [req.hospitalId, numero_nc, date_detection, source, source_id, description,
         gravite, service_id, action_immediate, userId]);
+        
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -72,6 +70,7 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
+// PUT - Modifier une non-conformité
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { source, source_id, description, gravite, service_id,

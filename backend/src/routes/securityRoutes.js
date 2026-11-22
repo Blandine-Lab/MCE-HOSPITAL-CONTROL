@@ -1,15 +1,22 @@
+// src/routes/securityRoutes.js
+// ============================================================
+// 🔐 SÉCURITÉ – Rôles, permissions, logs, sessions
+// ------------------------------------------------------------
+// ⚠️ FIX :
+//   1. Pool patché de config/db.js (ALS + set_config auto)
+//   2. hospital_id explicite dans logAction (logs_securite a RLS)
+//
+// ℹ️ NOTE : roles / permissions / role_permissions sont des
+//    tables GLOBALES (sans hospital_id, sans RLS). Pas besoin
+//    de set_config ni de hospital_id dans les INSERT sur ces
+//    tables. Les requêtes sur utilisateurs / logs_securite /
+//    sessions / tentatives_connexion héritent du tenant via
+//    patchedQuery.
+// ============================================================
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireRole } = require('../middleware/auth');
-
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Sécurité : connecté à PostgreSQL'));
 
 // ============================================================
 // ============== GESTION DES RÔLES ===========================
@@ -54,7 +61,7 @@ router.get('/roles/:id', authenticate, requireRole(['admin']), async (req, res) 
   }
 });
 
-// POST - Créer un rôle (description et permissions sont optionnelles)
+// POST - Créer un rôle (roles = table globale, pas de hospital_id)
 router.post('/roles', authenticate, requireRole(['admin']), async (req, res) => {
   try {
     const { nom, description = null, permission_ids } = req.body;
@@ -83,7 +90,7 @@ router.post('/roles', authenticate, requireRole(['admin']), async (req, res) => 
   }
 });
 
-// PUT - Modifier un rôle (mise à jour partielle : nom, description, permissions)
+// PUT - Modifier un rôle (roles = table globale, pas de set_config)
 router.put('/roles/:id', authenticate, requireRole(['admin']), async (req, res) => {
   const client = await pool.connect();
   try {
@@ -132,7 +139,7 @@ router.put('/roles/:id', authenticate, requireRole(['admin']), async (req, res) 
     await client.query('COMMIT');
     res.json({ success: true });
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     if (err.code === '23505') {
       return res.status(409).json({ error: 'Ce nom de rôle est déjà utilisé' });
     }
@@ -145,6 +152,7 @@ router.put('/roles/:id', authenticate, requireRole(['admin']), async (req, res) 
 // DELETE - Supprimer un rôle
 router.delete('/roles/:id', authenticate, requireRole(['admin']), async (req, res) => {
   try {
+    // ⚠️ utilisateurs a RLS → pool.query hérite du tenant via patchedQuery
     const { rows: users } = await pool.query(
       'SELECT id FROM utilisateurs WHERE role = (SELECT nom FROM roles WHERE id = $1)',
       [req.params.id]
@@ -255,7 +263,7 @@ router.get('/tentatives-connexion', authenticate, requireRole(['admin']), async 
 });
 
 // ============================================================
-// ============== NOUVELLES ROUTES POUR AUTORISATIONS ========
+// ============== ROUTES POUR AUTORISATIONS ==================
 // ============================================================
 
 router.get('/modules', authenticate, requireRole(['admin']), async (req, res) => {
@@ -321,6 +329,11 @@ router.put('/roles/:id/authorizations', authenticate, requireRole(['admin']), as
   try {
     const { id } = req.params;
     const { authorizations } = req.body;
+
+    // ⚠️ Pas de set_config nécessaire : roles/permissions/role_permissions
+    //    n'ont pas de RLS. On garde la transaction pour l'atomicité.
+    await client.query('BEGIN');
+
     const permissionIdsToAssign = [];
     for (const auth of authorizations) {
       const { module, level } = auth;
@@ -336,7 +349,7 @@ router.put('/roles/:id/authorizations', authenticate, requireRole(['admin']), as
         if (managePerm) permissionIdsToAssign.push(managePerm.id);
       }
     }
-    await client.query('BEGIN');
+
     await client.query('DELETE FROM role_permissions WHERE role_id = $1', [id]);
     for (const pid of permissionIdsToAssign) {
       await client.query(
@@ -347,7 +360,7 @@ router.put('/roles/:id/authorizations', authenticate, requireRole(['admin']), as
     await client.query('COMMIT');
     res.json({ success: true });
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -363,10 +376,12 @@ const logAction = async (req, action, ressource, ressourceId, details = {}) => {
     const userId = req.user ? req.user.id : null;
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'] || '';
+    // ✅ FIX : hospital_id explicite (logs_securite a RLS + NOT NULL)
+    const hospitalId = req.hospitalId || req.user?.hospital_id || null;
     await pool.query(
-      `INSERT INTO logs_securite (utilisateur_id, action, ressource, ressource_id, details, ip, user_agent)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [userId, action, ressource, ressourceId, details, ip, userAgent]
+      `INSERT INTO logs_securite (hospital_id, utilisateur_id, action, ressource, ressource_id, details, ip, user_agent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [hospitalId, userId, action, ressource, ressourceId, details, ip, userAgent]
     );
   } catch (err) {
     console.error('Erreur journalisation:', err);

@@ -1,4 +1,4 @@
-const pool = require('../../config/db');
+const pool = require('../config/db');
 
 /**
  * Ajoute un examen validé à une facture du patient

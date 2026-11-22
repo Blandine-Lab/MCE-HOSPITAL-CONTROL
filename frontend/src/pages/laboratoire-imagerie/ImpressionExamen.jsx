@@ -2,14 +2,44 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../axios';
-
-// Chemin vers le logo (fichier dans le dossier public)
-const logoPath = '/logo.jpeg'; // ou '/logo.svg' selon votre format
+import { useAuth } from '../../context/AuthContext';
 
 const ImpressionExamen = () => {
+  // 🔧 Récupère l'hôpital courant depuis le contexte auth (multi-tenant)
+  const { hopital } = useAuth();
+
   const { id } = useParams();
   const [examen, setExamen] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // 🔧 Infos tenant-aware (fallback .env / valeurs par défaut si contexte vide)
+  const HOPITAL_NOM =
+    hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
+
+  const HOPITAL_ADRESSE =
+    hopital?.adresse || hopital?.address ||
+    import.meta.env.VITE_HOPITAL_ADRESSE || '';
+
+  const HOPITAL_TEL =
+    hopital?.telephone || hopital?.phone ||
+    import.meta.env.VITE_HOPITAL_TELEPHONE || '';
+
+  const HOPITAL_EMAIL =
+    hopital?.email || hopital?.email_contact ||
+    import.meta.env.VITE_HOPITAL_EMAIL || '';
+
+  const HOPITAL_VILLE =
+    hopital?.ville || hopital?.city || '';
+
+  // 🔧 Résout le logo en URL absolue (obligatoire pour la fenêtre d'impression)
+  const resolveLogoUrl = (rawLogo) => {
+    if (!rawLogo) return `${window.location.origin}/logo.jpeg`;
+    if (/^https?:\/\//i.test(rawLogo)) return rawLogo;
+    const withSlash = rawLogo.startsWith('/') ? rawLogo : `/${rawLogo}`;
+    return `${window.location.origin}${withSlash}`;
+  };
+
+  const LOGO_URL = resolveLogoUrl(hopital?.logo_url);
 
   useEffect(() => {
     api.get(`/examens/${id}`)
@@ -62,13 +92,30 @@ const ImpressionExamen = () => {
 
   return (
     <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
-      {/* En-tête avec logo et nom de l'hôpital */}
+      {/* 🔧 En-tête tenant-aware */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid #2563eb', paddingBottom: '10px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <img src={logoPath} alt="Logo Hôpital" style={{ height: '60px', width: 'auto' }} />
+          <img
+            src={LOGO_URL}
+            alt={`Logo ${HOPITAL_NOM}`}
+            style={{ height: '60px', width: 'auto' }}
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
           <div>
-            <h1 style={{ margin: 0, color: '#1e3a8a', fontSize: '24px' }}>Medical Center Elizabeth MCE</h1>
+            <h1 style={{ margin: 0, color: '#1e3a8a', fontSize: '24px' }}>{HOPITAL_NOM}</h1>
             <p style={{ margin: 0, color: '#475569', fontSize: '14px' }}>Laboratoire & Imagerie Médicale</p>
+            {(HOPITAL_ADRESSE || HOPITAL_TEL) && (
+              <p style={{ margin: 0, color: '#64748b', fontSize: '12px' }}>
+                {[HOPITAL_ADRESSE, HOPITAL_VILLE].filter(Boolean).join(', ')}
+                {HOPITAL_ADRESSE && HOPITAL_TEL && ' · '}
+                {HOPITAL_TEL && `Tél : ${HOPITAL_TEL}`}
+              </p>
+            )}
+            {HOPITAL_EMAIL && (
+              <p style={{ margin: 0, color: '#64748b', fontSize: '12px' }}>
+                {HOPITAL_EMAIL}
+              </p>
+            )}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -221,10 +268,10 @@ const ImpressionExamen = () => {
         </div>
       )}
 
-      {/* Pied de page */}
+      {/* 🔧 Pied de page tenant-aware */}
       <div style={{ marginTop: '40px', borderTop: '1px solid #e2e8f0', paddingTop: '10px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>
         <p>Ce document est un compte-rendu officiel. Il est délivré sous la responsabilité du laboratoire.</p>
-        <p>MCE - Hôpital Elizabeth</p>
+        <p>{HOPITAL_NOM}{HOPITAL_VILLE ? ` — ${HOPITAL_VILLE}` : ''}</p>
         {examen.statut && (
           <p>
             Statut : {examen.statut === 'realise' ? '✅ Réalisé' :

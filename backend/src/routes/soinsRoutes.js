@@ -1,24 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
-
-// ============================================================
-// 1. Connexion à PostgreSQL
-// ============================================================
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ Paramédical - Soins : connecté à PostgreSQL'));
 
 // ============================================================
 // 2. Vérification et création automatique de la table soins
 // ============================================================
 const ensureTable = async () => {
   try {
-    // Vérifier si la table existe
     const check = await pool.query(`
       SELECT EXISTS (
         SELECT 1 FROM information_schema.tables
@@ -28,9 +17,11 @@ const ensureTable = async () => {
 
     if (!check.rows[0].exists) {
       console.log('📦 Création de la table soins...');
+      // ✅ Ajout de hospital_id dans la création de table
       await pool.query(`
         CREATE TABLE IF NOT EXISTS public.soins (
           id SERIAL PRIMARY KEY,
+          hospital_id UUID REFERENCES hospitals(id),
           patient_id INTEGER NOT NULL,
           acte_id INTEGER,
           type_soin VARCHAR(100),
@@ -50,26 +41,22 @@ const ensureTable = async () => {
       console.log('✅ Table soins existe déjà');
     }
 
-    // Création des index (si non existants)
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_soins_patient ON public.soins(patient_id);
       CREATE INDEX IF NOT EXISTS idx_soins_date ON public.soins(date_soin);
       CREATE INDEX IF NOT EXISTS idx_soins_statut ON public.soins(statut);
     `);
-    console.log('✅ Index soins vérifiés/créés');
   } catch (err) {
     console.error('❌ Erreur lors de la vérification/création de la table soins :', err.message);
   }
 };
 
-// Exécuter la vérification au démarrage
 ensureTable();
 
 // ============================================================
 // 3. ROUTES
 // ============================================================
 
-// Route de test pour vérifier que le routeur est actif
 router.get('/test', authenticate, (req, res) => {
   res.json({ message: 'Route soins fonctionne' });
 });
@@ -131,11 +118,13 @@ router.get('/:id', authenticate, async (req, res) => {
 router.post('/', authenticate, async (req, res) => {
   try {
     const { patient_id, type_soin, description, date_soin, heure_soin, prestataire, statut, notes } = req.body;
+    
+    // ✅ FIX : hospital_id explicite
     const { rows } = await pool.query(
-      `INSERT INTO public.soins (patient_id, type_soin, description, date_soin, heure_soin, prestataire, statut, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO public.soins (hospital_id, patient_id, type_soin, description, date_soin, heure_soin, prestataire, statut, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [patient_id, type_soin, description, date_soin, heure_soin, prestataire, statut || 'planifié', notes]
+      [req.hospitalId, patient_id, type_soin, description, date_soin, heure_soin, prestataire, statut || 'planifié', notes]
     );
     res.status(201).json(rows[0]);
   } catch (err) {

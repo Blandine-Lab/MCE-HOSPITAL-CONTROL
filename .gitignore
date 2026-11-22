@@ -1,7 +1,40 @@
-node_modules/ 
-.env 
-.DS_Store 
-dist/ 
-build/ 
-*.log 
-*.sql 
+# ── Node.js ──
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ── Builds ──
+dist/
+build/
+.next/
+
+# ── Variables d'environnement ──
+.env
+.env.*
+!.env.example
+
+# ── IDE / OS ──
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Credentials locaux / debug (ne JAMAIS pousser) ──
+backend/login.json
+backend/login2.json
+backend/dupont.json
+backend/badlogin.json
+backend/scope-report.txt
+backend/reset-password.js
+backend/scripts/
+backend/src/back route/
+frontend/badlogin.json
+
+# ── Uploads utilisateurs ──
+backend/uploads/logos/*
+!backend/uploads/logos/.gitkeep
+
+# ── Scripts SQL locaux / seeds / debug ──
+backend/insert_data*.sql
+backend/seed.log
+migration_multitenant.sql

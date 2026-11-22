@@ -1,16 +1,16 @@
+// src/routes/employesRoutes.js
+// ============================================================
+// 🏥 RH – Employés
+// ------------------------------------------------------------
+// ⚠️ FIX CRITIQUE : on utilise le pool PATCHÉ de config/db.js
+//    (et non un `new Pool(...)` local) pour que `patchedQuery`
+//    pose `app.hospital_id` via AsyncLocalStorage → RLS OK.
+// ============================================================
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../config/db');                       // ✅ pool patché (ALS + set_config)
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const upload = require('../../config/multer');
-
-// ✅ Création directe du pool avec DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-pool.on('connect', () => console.log('✅ RH - Employés : connecté à PostgreSQL'));
 
 // ============================================================
 //  PROTECTION : toutes les routes nécessitent un token
@@ -30,6 +30,7 @@ router.get('/', async (req, res) => {
     `);
     res.json(rows);
   } catch (err) {
+    console.error('❌ GET /employes :', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -48,12 +49,17 @@ router.get('/:id', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Employé non trouvé' });
     res.json(rows[0]);
   } catch (err) {
+    console.error('❌ GET /employes/:id :', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 // ============================================================
 //  POST / – Créer un employé (avec photo)
+//  ⚠️ hospital_id est injecté par RLS : on ne le met PAS dans l'INSERT.
+//     Si la colonne est NOT NULL sans DEFAULT, ajoute
+//     `hospital_id = current_setting('app.hospital_id')::uuid` côté DB,
+//     ou passe-le explicitement via req.hospitalId (voir note plus bas).
 // ============================================================
 router.post('/', upload.single('photo'), async (req, res) => {
   try {
@@ -61,13 +67,20 @@ router.post('/', upload.single('photo'), async (req, res) => {
     const photo = req.file ? `/uploads/${req.file.filename}` : null;
 
     const { rows } = await pool.query(
-      `INSERT INTO employes (nom, prenom, email, telephone, poste, service_id, date_embauche, statut, photo)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [nom, prenom, email, telephone, poste, service_id, date_embauche, statut || 'actif', photo]
+      `INSERT INTO employes
+         (hospital_id, nom, prenom, email, telephone, poste, service_id, date_embauche, statut, photo)
+       VALUES
+         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING *`,
+      [
+        req.hospitalId,                                      // ✅ tenant explicite (NOT NULL)
+        nom, prenom, email, telephone, poste,
+        service_id, date_embauche, statut || 'actif', photo,
+      ]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
-    console.error('Erreur création employé:', err);
+    console.error('❌ POST /employes :', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -78,14 +91,14 @@ router.post('/', upload.single('photo'), async (req, res) => {
 router.put('/:id', upload.single('photo'), async (req, res) => {
   try {
     const { nom, prenom, email, telephone, poste, service_id, date_embauche, statut } = req.body;
-    
+
     let photo = req.body.photo;
     if (req.file) {
       photo = `/uploads/${req.file.filename}`;
     }
 
     const { rows } = await pool.query(
-      `UPDATE employes SET 
+      `UPDATE employes SET
         nom = COALESCE($1, nom),
         prenom = COALESCE($2, prenom),
         email = COALESCE($3, email),
@@ -102,18 +115,24 @@ router.put('/:id', upload.single('photo'), async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Employé non trouvé' });
     res.json(rows[0]);
   } catch (err) {
-    console.error('Erreur modification employé:', err);
+    console.error('❌ PUT /employes/:id :', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ DELETE /:id – Supprimer un employé (réservé aux administrateurs)
+// ============================================================
+//  DELETE /:id – Supprimer un employé (réservé aux administrateurs)
+// ============================================================
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
-    const { rowCount } = await pool.query('DELETE FROM employes WHERE id=$1', [req.params.id]);
+    const { rowCount } = await pool.query(
+      'DELETE FROM employes WHERE id = $1',
+      [req.params.id]
+    );
     if (!rowCount) return res.status(404).json({ error: 'Employé non trouvé' });
     res.status(204).send();
   } catch (err) {
+    console.error('❌ DELETE /employes/:id :', err.message);
     res.status(500).json({ error: err.message });
   }
 });
