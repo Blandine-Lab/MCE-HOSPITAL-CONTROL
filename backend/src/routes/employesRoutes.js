@@ -5,6 +5,10 @@
 // Le pool patché pose `app.hospital_id` via ALS, MAIS depuis que
 // le RLS est en NO FORCE + policy supprimée, la DB ne filtre plus.
 // → filtrage explicite côté backend sur `req.hospitalId` (JWT).
+//
+// ✅ Photo : utilise upload.publicUrl(slug, filename) pour que le
+//    chemin stocké en base inclue le sous-dossier tenant
+//    (uploads/<slug>/xxx.png) — cohérent avec multer.js.
 // ============================================================
 const express = require('express');
 const router = express.Router();
@@ -87,13 +91,19 @@ router.post('/', upload.single('photo'), async (req, res) => {
       nom, prenom, email, telephone, poste,
       service_id, date_embauche, statut,
     } = req.body;
-    const photo = req.file ? `/uploads/${req.file.filename}` : null;
+
+    // ✅ FIX : inclut le slug tenant dans le chemin
+    const photo = req.file
+      ? upload.publicUrl(req.hospitalSlug || 'mce', req.file.filename)
+      : null;
 
     // 🔍 Log de diagnostic (temporaire — retirez après résolution)
     console.log('🔍 POST /employes — reçu :', {
       service_id,
       service_id_type: typeof service_id,
       hospitalId: req.hospitalId,
+      hospitalSlug: req.hospitalSlug,
+      photo,
       body_keys: Object.keys(req.body),
     });
 
@@ -145,13 +155,16 @@ router.put('/:id', upload.single('photo'), async (req, res) => {
 
     let photo = req.body.photo;
     if (req.file) {
-      photo = `/uploads/${req.file.filename}`;
+      // ✅ FIX : inclut le slug tenant dans le chemin
+      photo = upload.publicUrl(req.hospitalSlug || 'mce', req.file.filename);
     }
 
     console.log('🔍 PUT /employes/:id — reçu :', {
       service_id,
       service_id_type: typeof service_id,
       hospitalId: req.hospitalId,
+      hospitalSlug: req.hospitalSlug,
+      photo,
       id: req.params.id,
     });
 
