@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import api from '../../axios';
 import SignesVitauxForm from '../consultations/SignesVitauxForm';
 
+// Utilitaire : accepte un tableau brut OU { data: [...] }
+const asArray = (d) =>
+  Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+
 const RendezVousList = () => {
   const [rdvs, setRdvs] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -15,13 +19,13 @@ const RendezVousList = () => {
     motif: '',
     type_consultation: 'générale',
     categorie: 'ambulatoire',
-    prix: 50.00,
+    prix: 50.0,
   });
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState('success');
-  const [selectedPatientId, setSelectedPatientId] = useState(null); // pour le formulaire
-  const [selectedPatientFromList, setSelectedPatientFromList] = useState(null); // pour le bouton dans le tableau
+  const [selectedPatientId, setSelectedPatientId] = useState(null); // formulaire
+  const [selectedPatientFromList, setSelectedPatientFromList] = useState(null); // tableau
 
   const showToast = (msg, type = 'success') => {
     setToast(msg);
@@ -29,35 +33,65 @@ const RendezVousList = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // ================== CHARGEMENT INITIAL ==================
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        await Promise.all([
-          api.get('/patients').then(res => setPatients(res.data)),
-          api.get('/consultations/medecins').then(res => setMedecins(res.data)),
-          api.get('/consultations/services').then(res => setServices(res.data))
-        ]);
-        setLoaded(true);
-      } catch (err) {
-        console.error('Erreur chargement données initiales:', err);
-        showToast('Erreur de chargement des données', 'error');
+      // allSettled : une erreur sur une route n'annule pas les autres
+      const results = await Promise.allSettled([
+        api.get('/admin/patients'),
+        api.get('/consultations/medecins/all'),
+        api.get('/consultations/services/all'),
+      ]);
+
+      if (results[0].status === 'fulfilled') {
+        setPatients(asArray(results[0].value.data));
+      } else {
+        console.error('❌ /admin/patients :', results[0].reason);
+        showToast('Erreur chargement patients', 'error');
       }
+
+      if (results[1].status === 'fulfilled') {
+        setMedecins(asArray(results[1].value.data));
+      } else {
+        console.error('❌ /consultations/medecins/all :', results[1].reason);
+        showToast('Erreur chargement médecins', 'error');
+      }
+
+      if (results[2].status === 'fulfilled') {
+        setServices(asArray(results[2].value.data));
+      } else {
+        console.error('❌ /consultations/services/all :', results[2].reason);
+        showToast('Erreur chargement services', 'error');
+      }
+
+      setLoaded(true);
     };
+
     fetchData();
     fetchRdvs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ================== FETCH RDV ==================
   const fetchRdvs = async () => {
     try {
       const res = await api.get('/consultations/rendezvous');
-      setRdvs(res.data);
+      setRdvs(asArray(res.data));
     } catch (err) {
       console.error('Erreur fetch rdvs:', err);
-      const msg = err.response?.data?.error || 'Erreur chargement rendez-vous';
-      showToast('❌ ' + msg, 'error');
+      // Fallback si la route exacte change
+      try {
+        const res2 = await api.get('/consultations/rendezvous/all');
+        setRdvs(asArray(res2.data));
+      } catch (err2) {
+        console.error('Fallback rdvs échoué:', err2);
+        const msg = err.response?.data?.error || 'Erreur chargement rendez-vous';
+        showToast('❌ ' + msg, 'error');
+      }
     }
   };
 
+  // ================== SOUMISSION ==================
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -69,7 +103,7 @@ const RendezVousList = () => {
         motif: form.motif || '',
         type_consultation: form.type_consultation || 'générale',
         categorie: form.categorie || 'ambulatoire',
-        prix: form.prix || 50.00
+        prix: form.prix || 50.0,
       };
 
       await api.post('/consultations/rendezvous', payload);
@@ -81,18 +115,19 @@ const RendezVousList = () => {
         motif: '',
         type_consultation: 'générale',
         categorie: 'ambulatoire',
-        prix: 50.00,
+        prix: 50.0,
       });
       setSelectedPatientId(null);
       await fetchRdvs();
       showToast('Rendez-vous ajouté avec succès');
     } catch (err) {
       console.error('Erreur ajout rendez-vous:', err);
-      const msg = err.response?.data?.error || 'Erreur lors de l\'ajout';
+      const msg = err.response?.data?.error || "Erreur lors de l'ajout";
       showToast('❌ ' + msg, 'error');
     }
   };
 
+  // ================== STATUT ==================
   const updateStatut = async (id, statut) => {
     try {
       await api.put(`/consultations/rendezvous/${id}`, { statut });
@@ -106,17 +141,14 @@ const RendezVousList = () => {
     }
   };
 
-  // Styles (inchangés)
+  // ================== STYLES ==================
   const containerStyle = {
     minHeight: '100vh',
     backgroundColor: '#f0f9ff',
     padding: '32px',
     fontFamily: 'system-ui, -apple-system, sans-serif',
   };
-  const innerStyle = {
-    maxWidth: '1400px',
-    margin: '0 auto',
-  };
+  const innerStyle = { maxWidth: '1400px', margin: '0 auto' };
   const titleStyle = {
     fontSize: '32px',
     fontWeight: 'bold',
@@ -183,7 +215,15 @@ const RendezVousList = () => {
       annule: { bg: '#fee2e2', text: '#991b1b' },
     };
     const s = colors[statut] || colors.planifie;
-    return { backgroundColor: s.bg, color: s.text, padding: '4px 8px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block' };
+    return {
+      backgroundColor: s.bg,
+      color: s.text,
+      padding: '4px 8px',
+      borderRadius: '20px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      display: 'inline-block',
+    };
   };
   const actionButtonStyle = (color) => ({
     backgroundColor: color,
@@ -200,55 +240,111 @@ const RendezVousList = () => {
   const getServiceName = (rdv) => {
     if (rdv.service_nom) return rdv.service_nom;
     if (rdv.service_id) {
-      const service = services.find(s => s.id === rdv.service_id);
+      const service = services.find((s) => s.id === rdv.service_id);
       return service ? service.nom : '-';
     }
     return '-';
   };
 
+  // ================== RENDER ==================
   return (
     <div style={containerStyle}>
       {toast && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          backgroundColor: toastType === 'success' ? '#10b981' : '#ef4444',
-          color: 'white',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          zIndex: 1000,
-          animation: 'slideIn 0.3s ease-out',
-        }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            backgroundColor: toastType === 'success' ? '#10b981' : '#ef4444',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            zIndex: 1000,
+            animation: 'slideIn 0.3s ease-out',
+          }}
+        >
           {toast}
         </div>
       )}
+
       <div style={innerStyle}>
         <h1 style={titleStyle}>📅 Planification des rendez-vous</h1>
 
-        {/* FORMULAIRE DE RENDEZ-VOUS */}
+        {/* ============ FORMULAIRE ============ */}
         <form onSubmit={handleSubmit} style={formStyle}>
-          <select required value={form.patient_id} onChange={e => {
-            const val = e.target.value;
-            setForm({...form, patient_id: val});
-            setSelectedPatientId(val || null);
-          }} style={inputStyle}>
-            <option value="">Patient</option>
-            {patients.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
+          {/* PATIENTS */}
+          <select
+            required
+            value={form.patient_id}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm({ ...form, patient_id: val });
+              setSelectedPatientId(val || null);
+            }}
+            style={inputStyle}
+          >
+            <option value="">Patient ({patients.length})</option>
+            {patients.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nom} {p.prenom}
+              </option>
+            ))}
           </select>
-          <select value={form.medecin_id} onChange={e => setForm({...form, medecin_id: e.target.value})} style={inputStyle}>
-            <option value="">Médecin</option>
-            {medecins.map(m => <option key={m.id} value={m.id}>{m.nom} {m.prenom}</option>)}
-          </select>
-          <select value={form.service_id} onChange={e => setForm({...form, service_id: e.target.value})} style={inputStyle}>
-            <option value="">Service</option>
-            {services.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
-          </select>
-          <input type="datetime-local" required value={form.date_rdv} onChange={e => setForm({...form, date_rdv: e.target.value})} style={inputStyle} />
-          <input type="text" placeholder="Motif" value={form.motif} onChange={e => setForm({...form, motif: e.target.value})} style={inputStyle} />
 
-          <select value={form.type_consultation} onChange={e => setForm({...form, type_consultation: e.target.value})} style={inputStyle}>
+          {/* MEDECINS */}
+          <select
+            value={form.medecin_id}
+            onChange={(e) => setForm({ ...form, medecin_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">Médecin ({medecins.length})</option>
+            {medecins.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nom} {m.prenom}
+                {m.specialite ? ` — ${m.specialite}` : ''}
+              </option>
+            ))}
+          </select>
+
+          {/* SERVICES */}
+          <select
+            value={form.service_id}
+            onChange={(e) => setForm({ ...form, service_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">Service ({services.length})</option>
+            {services.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nom}
+              </option>
+            ))}
+          </select>
+
+          {/* DATE */}
+          <input
+            type="datetime-local"
+            required
+            value={form.date_rdv}
+            onChange={(e) => setForm({ ...form, date_rdv: e.target.value })}
+            style={inputStyle}
+          />
+
+          {/* MOTIF */}
+          <input
+            type="text"
+            placeholder="Motif"
+            value={form.motif}
+            onChange={(e) => setForm({ ...form, motif: e.target.value })}
+            style={inputStyle}
+          />
+
+          {/* TYPE */}
+          <select
+            value={form.type_consultation}
+            onChange={(e) => setForm({ ...form, type_consultation: e.target.value })}
+            style={inputStyle}
+          >
             <option value="générale">Générale</option>
             <option value="spécialiste">Spécialiste</option>
             <option value="urgence">Urgence</option>
@@ -256,38 +352,51 @@ const RendezVousList = () => {
             <option value="téléconsultation">Téléconsultation</option>
           </select>
 
-          <select value={form.categorie} onChange={e => setForm({...form, categorie: e.target.value})} style={inputStyle}>
+          {/* CATEGORIE */}
+          <select
+            value={form.categorie}
+            onChange={(e) => setForm({ ...form, categorie: e.target.value })}
+            style={inputStyle}
+          >
             <option value="ambulatoire">Ambulatoire</option>
             <option value="hospitalisation">Hospitalisation</option>
           </select>
 
+          {/* PRIX */}
           <input
             type="number"
             step="0.01"
             min="0"
             placeholder="Prix (FC)"
             value={form.prix}
-            onChange={e => setForm({...form, prix: parseFloat(e.target.value) || 0})}
+            onChange={(e) =>
+              setForm({ ...form, prix: parseFloat(e.target.value) || 0 })
+            }
             style={inputStyle}
           />
 
-          <button type="submit" style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = '#1d4ed8'} onMouseLeave={e => e.target.style.backgroundColor = '#2563eb'}>
+          <button
+            type="submit"
+            style={buttonStyle}
+            onMouseEnter={(e) => (e.target.style.backgroundColor = '#1d4ed8')}
+            onMouseLeave={(e) => (e.target.style.backgroundColor = '#2563eb')}
+          >
             ➕ Ajouter RDV
           </button>
         </form>
 
-        {/* AFFICHAGE DES SIGNES VITAUX SI UN PATIENT EST SÉLECTIONNÉ DANS LE FORMULAIRE */}
+        {/* ============ SIGNES VITAUX (depuis formulaire) ============ */}
         {selectedPatientId && (
           <div style={{ marginTop: 20, marginBottom: 30 }}>
-            <SignesVitauxForm 
-              patientId={parseInt(selectedPatientId)} 
+            <SignesVitauxForm
+              patientId={parseInt(selectedPatientId)}
               consultationId={null}
               onSuccess={() => console.log('Signes vitaux mis à jour')}
             />
           </div>
         )}
 
-        {/* TABLEAU DES RENDEZ-VOUS */}
+        {/* ============ TABLEAU ============ */}
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
             <thead>
@@ -305,30 +414,64 @@ const RendezVousList = () => {
               </tr>
             </thead>
             <tbody>
+              {rdvs.length === 0 && (
+                <tr>
+                  <td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: 24, color: '#64748b' }}>
+                    {loaded ? 'Aucun rendez-vous pour le moment.' : 'Chargement…'}
+                  </td>
+                </tr>
+              )}
               {rdvs.map((r, idx) => (
-                <tr key={r.id} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#f8fafc'}>
+                <tr
+                  key={r.id}
+                  style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = '#f1f5f9')
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor =
+                      idx % 2 === 0 ? '#ffffff' : '#f8fafc')
+                  }
+                >
                   <td style={tdStyle}>{new Date(r.date_rdv).toLocaleString()}</td>
-                  <td style={tdStyle}>{r.patient_nom} {r.patient_prenom}</td>
-                  <td style={tdStyle}>{r.medecin_nom} {r.medecin_prenom}</td>
+                  <td style={tdStyle}>
+                    {r.patient_nom} {r.patient_prenom}
+                  </td>
+                  <td style={tdStyle}>
+                    {r.medecin_nom} {r.medecin_prenom}
+                  </td>
                   <td style={tdStyle}>{getServiceName(r)}</td>
                   <td style={tdStyle}>{r.motif}</td>
                   <td style={tdStyle}>{r.type_consultation || 'générale'}</td>
                   <td style={tdStyle}>{r.categorie || 'ambulatoire'}</td>
-                  <td style={tdStyle}>{r.prix ? parseFloat(r.prix).toFixed(2) + ' FC' : '50.00 FC'}</td>
-                  <td style={tdStyle}><span style={statusBadge(r.statut)}>{r.statut}</span></td>
+                  <td style={tdStyle}>
+                    {r.prix ? parseFloat(r.prix).toFixed(2) + ' FC' : '50.00 FC'}
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={statusBadge(r.statut)}>{r.statut || 'planifie'}</span>
+                  </td>
                   <td style={tdStyle}>
                     {r.statut === 'planifie' && (
                       <>
-                        <button onClick={() => updateStatut(r.id, 'confirme')} style={actionButtonStyle('#22c55e')} onMouseEnter={e => e.target.style.opacity = 0.8} onMouseLeave={e => e.target.style.opacity = 1}>
+                        <button
+                          onClick={() => updateStatut(r.id, 'confirme')}
+                          style={actionButtonStyle('#22c55e')}
+                          onMouseEnter={(e) => (e.target.style.opacity = 0.8)}
+                          onMouseLeave={(e) => (e.target.style.opacity = 1)}
+                        >
                           Confirmer
                         </button>
-                        <button onClick={() => updateStatut(r.id, 'annule')} style={actionButtonStyle('#ef4444')} onMouseEnter={e => e.target.style.opacity = 0.8} onMouseLeave={e => e.target.style.opacity = 1}>
+                        <button
+                          onClick={() => updateStatut(r.id, 'annule')}
+                          style={actionButtonStyle('#ef4444')}
+                          onMouseEnter={(e) => (e.target.style.opacity = 0.8)}
+                          onMouseLeave={(e) => (e.target.style.opacity = 1)}
+                        >
                           Annuler
                         </button>
                       </>
                     )}
-                    {/* 👇 NOUVEAU BOUTON : Signes vitaux */}
-                    <button 
+                    <button
                       onClick={() => setSelectedPatientFromList(r.patient_id)}
                       style={{
                         backgroundColor: '#8b5cf6',
@@ -338,7 +481,7 @@ const RendezVousList = () => {
                         borderRadius: '6px',
                         cursor: 'pointer',
                         fontSize: '12px',
-                        marginLeft: '6px'
+                        marginLeft: '6px',
                       }}
                     >
                       📊 Signes vitaux
@@ -350,12 +493,27 @@ const RendezVousList = () => {
           </table>
         </div>
 
-        {/* AFFICHAGE DES SIGNES VITAUX POUR LE PATIENT SÉLECTIONNÉ DEPUIS LE TABLEAU */}
+        {/* ============ SIGNES VITAUX (depuis tableau) ============ */}
         {selectedPatientFromList && (
-          <div style={{ marginTop: 30, padding: '20px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div
+            style={{
+              marginTop: 30,
+              padding: '20px',
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '16px',
+              }}
+            >
               <h3 style={{ margin: 0 }}>📊 Signes vitaux du patient</h3>
-              <button 
+              <button
                 onClick={() => setSelectedPatientFromList(null)}
                 style={{
                   backgroundColor: '#ef4444',
@@ -363,24 +521,25 @@ const RendezVousList = () => {
                   border: 'none',
                   padding: '6px 12px',
                   borderRadius: '6px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
                 }}
               >
                 ✕ Fermer
               </button>
             </div>
-            <SignesVitauxForm 
-              patientId={parseInt(selectedPatientFromList)} 
+            <SignesVitauxForm
+              patientId={parseInt(selectedPatientFromList)}
               consultationId={null}
               onSuccess={() => console.log('Signes vitaux mis à jour')}
             />
           </div>
         )}
       </div>
+
       <style>{`
         @keyframes slideIn {
           from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
+          to   { transform: translateX(0);    opacity: 1; }
         }
       `}</style>
     </div>

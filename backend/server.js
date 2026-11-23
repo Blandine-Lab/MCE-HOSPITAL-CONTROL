@@ -75,6 +75,9 @@ module.exports.pool = pool;
 // 🔥 CHAT LIVE — chemin CORRIGÉ : ./src/routes/chat (comme les autres)
 const chatRoutes = require('./src/routes/chat');
 
+// 🔥 AJOUT FORMATION — chat de formation DPI (fichier isolé)
+const chatFormationRoutes = require('./src/routes/chatFormation');
+
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -216,6 +219,11 @@ app.use('/api/hospitals', hospitalRegisterRoute);
 
 // 💬 CHAT LIVE — PUBLIC (visiteur anonyme autorisé) — APRÈS express.json()
 app.use('/api/chat', chatRoutes);
+
+// 🔥 AJOUT FORMATION — chat de formation DPI (whitelist interne au fichier)
+//    Protégé par vérification JWT manuelle dans chatFormation.js
+//    Ne touche PAS au chat existant ci-dessus.
+app.use('/api/chat-formation', chatFormationRoutes);
 
 // ============================================================
 // 8. ROUTES PROTÉGÉES
@@ -371,6 +379,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`👑 Super admin : http://0.0.0.0:${PORT}/api/platform/*`);
   console.log(`📚 Bibliothèque : http://0.0.0.0:${PORT}/api/library/*`);
   console.log(`💬 Chat live : http://0.0.0.0:${PORT}/api/chat/*`);
+  console.log(`🎓 Chat formation : http://0.0.0.0:${PORT}/api/chat-formation/*`);
   if (!PLATFORM_DOMAIN) {
     console.warn('⚠️ PLATFORM_DOMAIN non défini — les sous-domaines seront bloqués par CORS.');
   }

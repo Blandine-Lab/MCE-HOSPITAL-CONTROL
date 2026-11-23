@@ -1,4 +1,3 @@
-import Library from './pages/Library';
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -8,6 +7,10 @@ import Dashboard from './pages/dashboard/Dashboard';
 import './index.css';
 import UIShowcase from './pages/ui/UIShowcase';
 import Badge from './pages/rh-planning/Badge';
+import Library from './pages/Library';
+
+// 🎓 AJOUT FORMATION — chat public (Nathan/Dorca, sans compte)
+import FormationChat from './pages/FormationChat';
 
 // ========== IMPORTS UI/UX (Providers) ==========
 import { ThemeProvider } from './context/ThemeContext';
@@ -370,6 +373,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/ui" element={<UIShowcase />} />
                 <Route path="/test" element={<div style={{ color: 'green', fontSize: '2rem' }}>Test OK</div>} />
                 <Route path="/rdv-partenaire/:token" element={<RendezVousPartenaire />} />
+
+                {/* 🎓 FORMATION — public, identification par nom dans le composant */}
+                {/*    Sécurité réelle côté backend (normalizeFormateurName + ACCESS_CODE) */}
+                <Route path="/formation" element={<FormationChat />} />
 
                 {/* ===== Routes d'impression (sans Layout) ===== */}
                 {/* 🔧 Alias "s" pour l'impression des prescriptions */}
