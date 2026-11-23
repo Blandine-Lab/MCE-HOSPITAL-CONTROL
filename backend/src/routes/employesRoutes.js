@@ -5,9 +5,6 @@
 // Le pool patché pose `app.hospital_id` via ALS, MAIS depuis que
 // le RLS est en NO FORCE + policy supprimée, la DB ne filtre plus.
 // → filtrage explicite côté backend sur `req.hospitalId` (JWT).
-//
-// ✅ requireHospital vient de middleware/auth.js (une seule source).
-// ✅ JOIN services scopé par hospital_id (pas de fuite du nom).
 // ============================================================
 const express = require('express');
 const router = express.Router();
@@ -15,10 +12,21 @@ const pool = require('../config/db');
 const { authenticate, requireHospital, requireAdmin } = require('../middleware/auth');
 const upload = require('../../config/multer');
 
-// ============================================================
-//  Toutes les routes nécessitent un token + un tenant
-// ============================================================
 router.use(authenticate, requireHospital);
+
+// ============================================================
+//  Helper : vérifie qu'un service appartient au tenant
+// ============================================================
+async function serviceBelongsToHospital(service_id, hospitalId) {
+  if (!service_id || service_id === '' || service_id === 'null' || service_id === 'undefined') {
+    return true; // pas de service → OK
+  }
+  const { rows } = await pool.query(
+    'SELECT id FROM services WHERE id = $1 AND hospital_id = $2',
+    [service_id, hospitalId]
+  );
+  return rows.length > 0;
+}
 
 // ============================================================
 //  GET / – Liste des employés du tenant uniquement
@@ -81,16 +89,29 @@ router.post('/', upload.single('photo'), async (req, res) => {
     } = req.body;
     const photo = req.file ? `/uploads/${req.file.filename}` : null;
 
-    // Vérification : le service demandé appartient-il au tenant ?
-    if (service_id) {
-      const svc = await pool.query(
-        'SELECT id FROM services WHERE id = $1 AND hospital_id = $2',
-        [service_id, req.hospitalId]
-      );
-      if (!svc.rows.length) {
-        return res.status(400).json({ error: 'Service inconnu pour cet hôpital' });
-      }
+    // 🔍 Log de diagnostic (temporaire — retirez après résolution)
+    console.log('🔍 POST /employes — reçu :', {
+      service_id,
+      service_id_type: typeof service_id,
+      hospitalId: req.hospitalId,
+      body_keys: Object.keys(req.body),
+    });
+
+    // ✅ Vérifie que le service demandé appartient bien au tenant
+    if (!(await serviceBelongsToHospital(service_id, req.hospitalId))) {
+      return res.status(400).json({
+        error: `Service inconnu pour cet hôpital (reçu: "${service_id}", type: ${typeof service_id})`,
+        code: 'SERVICE_NOT_IN_TENANT',
+        service_id_recu: service_id,
+        hospital_id: req.hospitalId,
+      });
     }
+
+    // ✅ Normalise : "" / "null" / undefined → NULL
+    const cleanServiceId =
+      service_id === '' || service_id === 'null' || service_id === 'undefined' || service_id === null || service_id === undefined
+        ? null
+        : service_id;
 
     const { rows } = await pool.query(
       `INSERT INTO employes
@@ -102,7 +123,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
       [
         req.hospitalId,
         nom, prenom, email, telephone, poste,
-        service_id, date_embauche, statut || 'actif', photo,
+        cleanServiceId, date_embauche, statut || 'actif', photo,
       ]
     );
     res.status(201).json(rows[0]);
@@ -127,16 +148,28 @@ router.put('/:id', upload.single('photo'), async (req, res) => {
       photo = `/uploads/${req.file.filename}`;
     }
 
-    // Vérification : si service_id change, il doit être du tenant
-    if (service_id) {
-      const svc = await pool.query(
-        'SELECT id FROM services WHERE id = $1 AND hospital_id = $2',
-        [service_id, req.hospitalId]
-      );
-      if (!svc.rows.length) {
-        return res.status(400).json({ error: 'Service inconnu pour cet hôpital' });
+    console.log('🔍 PUT /employes/:id — reçu :', {
+      service_id,
+      service_id_type: typeof service_id,
+      hospitalId: req.hospitalId,
+      id: req.params.id,
+    });
+
+    // ✅ Vérifie le service si fourni
+    if (service_id && service_id !== '' && service_id !== 'null' && service_id !== 'undefined') {
+      if (!(await serviceBelongsToHospital(service_id, req.hospitalId))) {
+        return res.status(400).json({
+          error: `Service inconnu pour cet hôpital (reçu: "${service_id}")`,
+          code: 'SERVICE_NOT_IN_TENANT',
+          service_id_recu: service_id,
+        });
       }
     }
+
+    const cleanServiceId =
+      service_id === '' || service_id === 'null' || service_id === 'undefined'
+        ? null
+        : service_id;
 
     const { rows } = await pool.query(
       `UPDATE employes SET
@@ -153,7 +186,7 @@ router.put('/:id', upload.single('photo'), async (req, res) => {
        RETURNING *`,
       [
         nom, prenom, email, telephone, poste,
-        service_id, date_embauche, statut, photo,
+        cleanServiceId, date_embauche, statut, photo,
         req.params.id,
         req.hospitalId,
       ]
