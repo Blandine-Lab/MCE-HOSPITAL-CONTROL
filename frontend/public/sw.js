@@ -1,5 +1,5 @@
 // frontend/public/sw.js
-const CACHE_VERSION = 'v5';   // Bump pour forcer le remplacement de l'ancien SW
+const CACHE_VERSION = 'v6';   // Bump pour forcer le remplacement de l'ancien SW
 const CACHE_NAME = `globalmind-cache-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [
