@@ -1,6 +1,7 @@
 // src/pages/laboratoire-imagerie/ExamenForm.jsx
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+// ✅ FIX : ajout de useSearchParams
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../../axios';
 import { useAuth } from '../../context/AuthContext';
 import { FaArrowLeft, FaSave, FaFlask, FaXRay, FaExclamationTriangle, FaPlus, FaTrash } from 'react-icons/fa';
@@ -9,12 +10,17 @@ import { Link } from 'react-router-dom';
 const ExamenForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  // ✅ FIX : lecture des query params
+  const [searchParams] = useSearchParams();
   const isEdit = !!id;
   const { user } = useAuth();
 
+  // ✅ FIX : récupération du patient depuis l'URL (uniquement en création)
+  const patientFromUrl = !isEdit ? (searchParams.get('patient') || '') : '';
+
   // État commun (patient, consultation, etc.)
   const [formData, setFormData] = useState({
-    patient_id: '',
+    patient_id: patientFromUrl, // ✅ FIX : pré-remplissage
     consultation_id: '',
     service_id: '',
     medecin_prescripteur: '',
@@ -98,11 +104,9 @@ const ExamenForm = () => {
               ? new Date(examen.date_demande).toISOString().split('T')[0]
               : new Date().toISOString().split('T')[0],
           });
-          // Uniformisation des paramètres : on utilise 'valeur' pour tous
           const params = (examen.parametres || []).map((p) => ({
             ...p,
             type_parametre: p.type_parametre || 'quantitatif',
-            // On fusionne valeur_texte dans valeur si nécessaire
             valeur: p.valeur || p.valeur_texte || '',
           }));
           setExamens([
@@ -187,7 +191,6 @@ const ExamenForm = () => {
     const newExamens = [...examens];
     newExamens[index][field] = value;
 
-    // Lorsque le type d'examen change, charger les paramètres par défaut
     if (field === 'type_examen_id') {
       const type = typesExamens.find((t) => t.id === parseInt(value));
       if (type) {
@@ -210,7 +213,7 @@ const ExamenForm = () => {
               ref_max: p.ref_max || '',
               interpretation: p.interpretation || '',
               type_parametre: p.type_parametre || 'quantitatif',
-              valeurs_possibles: p.valeurs_possibles || '', // pour les qualitatifs
+              valeurs_possibles: p.valeurs_possibles || '',
             }));
           }
         }
@@ -248,7 +251,6 @@ const ExamenForm = () => {
     const param = newExamens[examenIndex].parametres[paramIndex];
     param[field] = value;
 
-    // Si quantitatif, auto-interprétation basée sur les références
     if (param.type_parametre === 'quantitatif' && field === 'valeur') {
       const val = parseFloat(value);
       const min = parseFloat(param.ref_min);
@@ -1013,7 +1015,6 @@ const ExamenForm = () => {
                         onChange={(e) => {
                           const newType = e.target.value;
                           updateParametre(idx, pIdx, 'type_parametre', newType);
-                          // Réinitialiser interprétation si on passe à qualitatif
                           if (newType === 'qualitatif') {
                             updateParametre(idx, pIdx, 'interpretation', '');
                           }
@@ -1100,7 +1101,6 @@ const ExamenForm = () => {
                         </>
                       ) : (
                         <>
-                          {/* Pour qualitatif : champ texte ou select si valeurs_possibles */}
                           {p.valeurs_possibles ? (
                             <select
                               value={p.valeur || ''}

@@ -672,8 +672,9 @@ const PatientMedicalRecord = () => {
         >
           <FaStethoscope /> Consultations
         </Link>
+        {/* ✅ FIX : route corrigée vers /laboratoire/examen/nouveau */}
         <Link 
-          to={`/examen/new?patient=${patient.id}`}
+          to={`/laboratoire/examen/nouveau?patient=${patient.id}`}
           style={{
             backgroundColor: '#f59e0b',
             color: 'white',
