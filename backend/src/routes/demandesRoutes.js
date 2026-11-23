@@ -4,16 +4,20 @@
 // ------------------------------------------------------------
 // ⚠️ FIX :
 //   1. require('../config/db') au lieu de require('../../server').pool
-//      (évite la dépendance circulaire et garantit le pool patché)
 //   2. hospital_id explicite dans les INSERT employes (×2)
 //   3. hospital_id explicite dans INSERT demandes
+//   4. requireHospital sur TOUTES les routes (req.hospitalId fiable)
+//   5. Filtre hospital_id sur GET / en mode admin (fuite cross-tenant)
+//   6. Filtre hospital_id sur PUT /:id et DELETE /:id (modif/suppression cross-tenant)
+//   7. Recherche employe scopée au tenant
 // ============================================================
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');                       // ✅ pool patché (propre)
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireHospital } = require('../middleware/auth');
 
 router.use(authenticate);
+router.use(requireHospital);   // ✅ FIX : req.hospitalId fiable partout
 
 const isAdmin = (req, res, next) => {
   if (req.user?.role === 'admin') return next();
@@ -31,13 +35,15 @@ router.get('/', async (req, res) => {
   try {
     const userId = req.user.id;
     const userRole = req.user.role;
+    const hospitalId = req.hospitalId;
 
     let employeId = null;
 
     if (userRole !== 'admin') {
-      let empRes = await pool.query(
-        'SELECT id FROM employes WHERE user_id = $1',
-        [userId]
+      // ✅ FIX : employé du tenant uniquement
+      const empRes = await pool.query(
+        'SELECT id FROM employes WHERE user_id = $1 AND hospital_id = $2',
+        [userId, hospitalId]
       );
 
       if (empRes.rowCount === 0) {
@@ -47,7 +53,7 @@ router.get('/', async (req, res) => {
           VALUES ($1, $2, $3, $4, $5, 'Employé', NULL, NOW(), 'actif')
           RETURNING id
         `, [
-          req.hospitalId,
+          hospitalId,
           req.user.nom || 'Inconnu',
           req.user.prenom || 'Inconnu',
           req.user.email || null,
@@ -59,15 +65,18 @@ router.get('/', async (req, res) => {
       }
     }
 
+    // ✅ FIX : filtre tenant TOUJOURS appliqué (admin comme non-admin)
     let query = `
       SELECT d.*, e.nom AS employe_nom, e.prenom AS employe_prenom
       FROM demandes d
       LEFT JOIN employes e ON d.employe_id = e.id
+      WHERE d.hospital_id = $1
     `;
-    const params = [];
+    const params = [hospitalId];
+    let idx = 2;
 
     if (userRole !== 'admin' && hasId(employeId)) {
-      query += ` WHERE d.employe_id = $1`;
+      query += ` AND d.employe_id = $${idx++}`;
       params.push(employeId);
     }
     query += ` ORDER BY d.created_at DESC`;
@@ -88,11 +97,12 @@ router.post('/', async (req, res) => {
   try {
     const { type, date_debut, date_fin, description } = req.body;
     const user = req.user;
+    const hospitalId = req.hospitalId;
 
-    // 1. Trouver ou créer l'employé à partir de user_id
+    // 1. Trouver ou créer l'employé à partir de user_id (scopé tenant)
     let empRes = await pool.query(
-      'SELECT id FROM employes WHERE user_id = $1',
-      [user.id]
+      'SELECT id FROM employes WHERE user_id = $1 AND hospital_id = $2',
+      [user.id, hospitalId]
     );
     if (empRes.rowCount === 0) {
       // ✅ FIX : hospital_id explicite
@@ -101,7 +111,7 @@ router.post('/', async (req, res) => {
         VALUES ($1, $2, $3, $4, $5, 'Employé', NULL, NOW(), 'actif')
         RETURNING id
       `, [
-        req.hospitalId,
+        hospitalId,
         user.nom || 'Inconnu',
         user.prenom || 'Inconnu',
         user.email || null,
@@ -124,14 +134,13 @@ router.post('/', async (req, res) => {
     }
 
     // 3. Insertion
-    // ✅ FIX : hospital_id explicite
     const query = `
       INSERT INTO demandes (hospital_id, employe_id, type, date_debut, date_fin, commentaire, statut, date_demande)
       VALUES ($1, $2, $3, $4, $5, $6, 'en_attente', NOW())
       RETURNING id
     `;
     const { rows } = await pool.query(query, [
-      req.hospitalId,
+      hospitalId,
       employe_id,
       type,
       date_debut,
@@ -146,12 +155,13 @@ router.post('/', async (req, res) => {
 });
 
 // ============================================================
-// PUT — met à jour le statut (admin uniquement)
+// PUT — met à jour le statut (admin uniquement, scopé tenant)
 // ============================================================
 router.put('/:id', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { statut, commentaire_rh } = req.body;
+    const hospitalId = req.hospitalId;
 
     if (!hasId(id)) {
       return res.status(400).json({ error: 'ID de demande invalide' });
@@ -160,9 +170,10 @@ router.put('/:id', isAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Statut invalide' });
     }
 
+    // ✅ FIX : UPDATE scopé tenant
     const result = await pool.query(
-      'UPDATE demandes SET statut = $1, commentaire_rh = $2 WHERE id = $3',
-      [statut, commentaire_rh || null, id]
+      'UPDATE demandes SET statut = $1, commentaire_rh = $2 WHERE id = $3 AND hospital_id = $4',
+      [statut, commentaire_rh || null, id, hospitalId]
     );
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Demande non trouvée' });
@@ -175,17 +186,22 @@ router.put('/:id', isAdmin, async (req, res) => {
 });
 
 // ============================================================
-// DELETE — supprime une demande (admin uniquement)
+// DELETE — supprime une demande (admin uniquement, scopé tenant)
 // ============================================================
 router.delete('/:id', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const hospitalId = req.hospitalId;
 
     if (!hasId(id)) {
       return res.status(400).json({ error: 'ID de demande invalide' });
     }
 
-    const result = await pool.query('DELETE FROM demandes WHERE id = $1', [id]);
+    // ✅ FIX : DELETE scopé tenant
+    const result = await pool.query(
+      'DELETE FROM demandes WHERE id = $1 AND hospital_id = $2',
+      [id, hospitalId]
+    );
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Demande non trouvée' });
     }

@@ -5,7 +5,15 @@ const jwt = require('jsonwebtoken');
 const { authQueryWithRetry } = require('../config/db');
 const { logAudit } = require('../utils/audit');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'une_cle_par_defaut_mais_changez_la';
+// ✅ FIX P0 : pas de fallback en production
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: JWT_SECRET manquant en production — arrêt du serveur');
+  }
+  console.warn('⚠️ JWT_SECRET absent — fallback DEV uniquement (NE PAS utiliser en prod)');
+}
+const EFFECTIVE_SECRET = JWT_SECRET || 'dev-only-do-not-use-in-prod';
 
 const PLATFORM_ADMIN_LOGINS = (process.env.PLATFORM_ADMIN_LOGINS || '')
   .split(',')
@@ -39,11 +47,21 @@ router.post('/login', async (req, res) => {
 
   try {
     // ============================================================
-    // 📌 Parsing "user" ou "user@slug" (robuste, indexOf)
+    // 📌 Parsing "user" ou "user@slug"
     // ============================================================
     const rawLogin = String(login).trim();
     const atIdx = rawLogin.indexOf('@');
-    const hasSlug = atIdx > 0 && atIdx < rawLogin.length - 1;
+
+    // ✅ FIX P2 : rejeter @ en fin de login
+    if (atIdx === rawLogin.length - 1) {
+      return res.status(400).json({ error: 'Login invalide' });
+    }
+    // ✅ Rejeter @ multiples
+    if (rawLogin.split('@').length > 2) {
+      return res.status(400).json({ error: 'Login invalide (un seul @ autorisé)' });
+    }
+
+    const hasSlug = atIdx > 0;
     const userPart = hasSlug ? rawLogin.slice(0, atIdx) : rawLogin;
     const slugPart = hasSlug ? rawLogin.slice(atIdx + 1).toLowerCase() : null;
 
@@ -56,15 +74,15 @@ router.post('/login', async (req, res) => {
         `SELECT id, nom, slug, logo_url, couleur FROM hospitals WHERE slug = $1`,
         [slugPart]
       );
+      // ✅ FIX P1 : message identique pour ne pas révéler l'existence du slug
       if (hRows.length === 0) {
-        return res.status(401).json({ error: 'Hôpital introuvable' });
+        return res.status(401).json({ error: 'Identifiants invalides' });
       }
       hopitalBySlug = hRows[0];
     }
 
     // ============================================================
     // 📌 2. Chercher l'utilisateur
-    //    ⚠️ FIX : rawLogin (admin@mce), pas userPart (admin)
     // ============================================================
     let userQuery, userParams;
     if (hopitalBySlug) {
@@ -97,6 +115,19 @@ router.post('/login', async (req, res) => {
     // ============================================================
     // 📌 3. Mot de passe
     // ============================================================
+    // ✅ FIX P1 : password_hash null → 401 explicite (pas de 500 bcrypt)
+    if (!user.password_hash) {
+      console.warn(`⚠️ Login sans password_hash : ${user.login} (id=${user.id})`);
+      safeLogAudit({
+        userId: user.id,
+        action: 'LOGIN_FAILED',
+        details: { login: user.login, reason: 'no_password_hash' },
+        ip: req.ip,
+        hospitalId: user.hospital_id,
+      }).catch(() => {});
+      return res.status(401).json({ error: 'Identifiants invalides' });
+    }
+
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       safeLogAudit({
@@ -110,7 +141,7 @@ router.post('/login', async (req, res) => {
     }
 
     // ============================================================
-    // 📌 4. Permissions (admin = ALL)
+    // 📌 4. Permissions
     // ============================================================
     let permissions = [];
     const adminRoles = ['admin', 'Administrateur', 'super_admin'];
@@ -151,10 +182,8 @@ router.post('/login', async (req, res) => {
     // 📌 6. JWT
     // ============================================================
     const hospitalId = hopital?.id || user.hospital_id || null;
-    // ⚠️ FIX : plus de fallback 'mce' qui polluait les super_admin
     const hospitalSlug = hopital?.slug || null;
 
-    // ⚠️ FIX : is_super_admin aussi basé sur role + colonne DB
     const isSuperAdmin =
       user.role === 'super_admin' ||
       user.is_super_admin === true ||
@@ -168,7 +197,7 @@ router.post('/login', async (req, res) => {
         hospital_id: hospitalId, hospital_slug: hospitalSlug,
         is_super_admin: isSuperAdmin,
       },
-      JWT_SECRET,
+      EFFECTIVE_SECRET,
       { expiresIn: '8h' }
     );
 

@@ -2,12 +2,10 @@
 // ============================================================
 // 🩺 CONSULTATIONS – RDV, urgences, admissions, lits, médecins, etc.
 // ------------------------------------------------------------
-// ⚠️ FIX :
-//   1. Pool patché de config/db.js (ALS + set_config auto)
-//   2. set_config dans CHAQUE transaction
-//   3. hospital_id explicite dans TOUS les INSERT
-//   4. ROLLBACK avant chaque return 400/404 dans une transaction
-//   5. /ordonnances : récupération de medecin_id via user_id
+// ⚠️ Le pool patché pose `app.hospital_id` via ALS, MAIS le RLS
+//    a été mis en NO FORCE + policy tenant_isolation supprimée.
+//    On filtre donc explicitement TOUTES les routes sur
+//    `req.hospitalId` (JWT) pour garantir l'isolation tenant.
 // ============================================================
 const express = require('express');
 const router = express.Router();
@@ -15,7 +13,7 @@ const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requireRole, requireAdmin } = require('../middleware/auth');
 
 // ============================================================
-// Helper : pose le tenant dans la transaction courante
+// Helpers
 // ============================================================
 async function setTenant(client, hospitalId) {
   await client.query(
@@ -24,8 +22,18 @@ async function setTenant(client, hospitalId) {
   );
 }
 
+function requireHospital(req, res, next) {
+  if (!req.hospitalId) {
+    return res.status(403).json({
+      error: 'Contexte hôpital manquant',
+      code: 'TENANT_MISSING',
+    });
+  }
+  next();
+}
+
 // ------------------------------------------------------------------
-// CRÉATION AUTO DES TABLES
+// CRÉATION AUTO DES TABLES (ajout hospital_id pour nouvelles installs)
 // ------------------------------------------------------------------
 const ensureAdmissionTables = async () => {
   try {
@@ -33,43 +41,43 @@ const ensureAdmissionTables = async () => {
       SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'batiments')
     `);
     if (!checkBat.rows[0].exists) {
-      await pool.query(`CREATE TABLE IF NOT EXISTS public.batiments (id SERIAL PRIMARY KEY, nom VARCHAR(100) NOT NULL)`);
+      await pool.query(`CREATE TABLE IF NOT EXISTS public.batiments (id SERIAL PRIMARY KEY, hospital_id UUID, nom VARCHAR(100) NOT NULL)`);
     }
     const checkEtages = await pool.query(`
       SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'etages')
     `);
     if (!checkEtages.rows[0].exists) {
-      await pool.query(`CREATE TABLE IF NOT EXISTS public.etages (id SERIAL PRIMARY KEY, batiment_id INTEGER REFERENCES batiments(id), numero INTEGER)`);
+      await pool.query(`CREATE TABLE IF NOT EXISTS public.etages (id SERIAL PRIMARY KEY, hospital_id UUID, batiment_id INTEGER REFERENCES batiments(id), numero INTEGER)`);
     }
     const checkChambres = await pool.query(`
       SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'chambres')
     `);
     if (!checkChambres.rows[0].exists) {
-      await pool.query(`CREATE TABLE IF NOT EXISTS public.chambres (id SERIAL PRIMARY KEY, nom VARCHAR(100), batiment_id INTEGER REFERENCES batiments(id), etage_id INTEGER REFERENCES etages(id), type VARCHAR(50), capacite INTEGER)`);
+      await pool.query(`CREATE TABLE IF NOT EXISTS public.chambres (id SERIAL PRIMARY KEY, hospital_id UUID, nom VARCHAR(100), batiment_id INTEGER REFERENCES batiments(id), etage_id INTEGER REFERENCES etages(id), type VARCHAR(50), capacite INTEGER)`);
     }
     const checkLits = await pool.query(`
       SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'lits')
     `);
     if (!checkLits.rows[0].exists) {
-      await pool.query(`CREATE TABLE IF NOT EXISTS public.lits (id SERIAL PRIMARY KEY, numero VARCHAR(20) NOT NULL, chambre_id INTEGER REFERENCES chambres(id), service_id INTEGER REFERENCES services(id), statut VARCHAR(20) DEFAULT 'libre')`);
+      await pool.query(`CREATE TABLE IF NOT EXISTS public.lits (id SERIAL PRIMARY KEY, hospital_id UUID, numero VARCHAR(20) NOT NULL, chambre_id INTEGER REFERENCES chambres(id), service_id INTEGER REFERENCES services(id), statut VARCHAR(20) DEFAULT 'libre')`);
     }
     const checkAdmissions = await pool.query(`
       SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'admissions')
     `);
     if (!checkAdmissions.rows[0].exists) {
-      await pool.query(`CREATE TABLE IF NOT EXISTS public.admissions (id SERIAL PRIMARY KEY, patient_id INTEGER NOT NULL REFERENCES patients(id), lit_id INTEGER REFERENCES lits(id), date_admission TIMESTAMP DEFAULT NOW(), motif TEXT, service_id INTEGER REFERENCES services(id), medecin_referent_id INTEGER REFERENCES medecins(id), type VARCHAR(50) DEFAULT 'admission', source_service_id INTEGER)`);
+      await pool.query(`CREATE TABLE IF NOT EXISTS public.admissions (id SERIAL PRIMARY KEY, hospital_id UUID, patient_id INTEGER NOT NULL REFERENCES patients(id), lit_id INTEGER REFERENCES lits(id), date_admission TIMESTAMP DEFAULT NOW(), motif TEXT, service_id INTEGER REFERENCES services(id), medecin_referent_id INTEGER REFERENCES medecins(id), type VARCHAR(50) DEFAULT 'admission', source_service_id INTEGER)`);
     }
     const checkSejours = await pool.query(`
       SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sejours')
     `);
     if (!checkSejours.rows[0].exists) {
-      await pool.query(`CREATE TABLE IF NOT EXISTS public.sejours (id SERIAL PRIMARY KEY, patient_id INTEGER NOT NULL REFERENCES patients(id), admission_id INTEGER REFERENCES admissions(id), lit_id INTEGER REFERENCES lits(id), date_debut TIMESTAMP DEFAULT NOW(), date_fin TIMESTAMP, statut VARCHAR(20) DEFAULT 'en_cours')`);
+      await pool.query(`CREATE TABLE IF NOT EXISTS public.sejours (id SERIAL PRIMARY KEY, hospital_id UUID, patient_id INTEGER NOT NULL REFERENCES patients(id), admission_id INTEGER REFERENCES admissions(id), lit_id INTEGER REFERENCES lits(id), date_debut TIMESTAMP DEFAULT NOW(), date_fin TIMESTAMP, statut VARCHAR(20) DEFAULT 'en_cours')`);
     }
     const checkSorties = await pool.query(`
       SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sorties')
     `);
     if (!checkSorties.rows[0].exists) {
-      await pool.query(`CREATE TABLE IF NOT EXISTS public.sorties (id SERIAL PRIMARY KEY, admission_id INTEGER REFERENCES admissions(id), date_sortie TIMESTAMP DEFAULT NOW(), mode_sortie VARCHAR(50), remarques TEXT)`);
+      await pool.query(`CREATE TABLE IF NOT EXISTS public.sorties (id SERIAL PRIMARY KEY, hospital_id UUID, admission_id INTEGER REFERENCES admissions(id), date_sortie TIMESTAMP DEFAULT NOW(), mode_sortie VARCHAR(50), remarques TEXT)`);
     }
   } catch (err) {
     console.error('❌ Erreur init tables admission :', err.message);
@@ -116,6 +124,7 @@ const initializeRendezVous = async () => {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS public.rendez_vous (
           id SERIAL PRIMARY KEY,
+          hospital_id UUID,
           patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
           medecin_id INTEGER REFERENCES medecins(id),
           service_id INTEGER REFERENCES services(id),
@@ -139,6 +148,7 @@ const initializeRendezVous = async () => {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS public.urgences (
           id SERIAL PRIMARY KEY,
+          hospital_id UUID,
           patient_id INTEGER REFERENCES patients(id),
           niveau VARCHAR(50),
           priorite INTEGER,
@@ -165,7 +175,7 @@ const initializeRendezVous = async () => {
 // ============================================================
 
 // ---------- RENDEZ-VOUS ----------
-router.get('/rendezvous', authenticate, async (req, res) => {
+router.get('/rendezvous', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT rv.*, 
@@ -177,8 +187,9 @@ router.get('/rendezvous', authenticate, async (req, res) => {
       JOIN "public"."patients" p ON rv.patient_id = p.id
       LEFT JOIN "public"."medecins" m ON rv.medecin_id = m.id
       LEFT JOIN "public"."services" s ON rv.service_id = s.id
+      WHERE rv.hospital_id = $1
       ORDER BY rv.date_rdv DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /rendezvous :', err);
@@ -186,7 +197,7 @@ router.get('/rendezvous', authenticate, async (req, res) => {
   }
 });
 
-router.post('/rendezvous', authenticate, async (req, res) => {
+router.post('/rendezvous', authenticate, requireHospital, async (req, res) => {
   const { patient_id, medecin_id, service_id, date_rdv, motif, type_consultation, categorie, prix } = req.body;
   try {
     const { rows } = await pool.query(`
@@ -200,13 +211,15 @@ router.post('/rendezvous', authenticate, async (req, res) => {
   }
 });
 
-router.put('/rendezvous/:id', authenticate, async (req, res) => {
+router.put('/rendezvous/:id', authenticate, requireHospital, async (req, res) => {
   const { statut, rappel_envoye, email_envoye, sms_envoye } = req.body;
   try {
-    await pool.query(`
-      UPDATE "public"."rendez_vous" SET statut=$1, rappel_envoye=$2, email_envoye=$3, sms_envoye=$4
-      WHERE id=$5
-    `, [statut, rappel_envoye, email_envoye, sms_envoye, req.params.id]);
+    const result = await pool.query(`
+      UPDATE "public"."rendez_vous"
+      SET statut=$1, rappel_envoye=$2, email_envoye=$3, sms_envoye=$4
+      WHERE id=$5 AND hospital_id=$6
+    `, [statut, rappel_envoye, email_envoye, sms_envoye, req.params.id, req.hospitalId]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Rendez-vous non trouvé' });
     res.sendStatus(200);
   } catch (err) {
     console.error('❌ PUT /rendezvous/:id :', err);
@@ -214,7 +227,7 @@ router.put('/rendezvous/:id', authenticate, async (req, res) => {
   }
 });
 
-router.get('/rendezvous/patient/:patientId', authenticate, async (req, res) => {
+router.get('/rendezvous/patient/:patientId', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT rv.id, rv.date_rdv, rv.motif, rv.medecin_id, rv.service_id,
@@ -226,9 +239,10 @@ router.get('/rendezvous/patient/:patientId', authenticate, async (req, res) => {
       JOIN "public"."patients" p ON rv.patient_id = p.id
       LEFT JOIN "public"."medecins" m ON rv.medecin_id = m.id
       WHERE rv.patient_id = $1
+        AND rv.hospital_id = $2
         AND rv.statut != 'annule'
       ORDER BY rv.date_rdv DESC
-    `, [req.params.patientId]);
+    `, [req.params.patientId, req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /rendezvous/patient/:patientId :', err);
@@ -237,15 +251,16 @@ router.get('/rendezvous/patient/:patientId', authenticate, async (req, res) => {
 });
 
 // ---------- URGENCES ----------
-router.get('/urgences', authenticate, async (req, res) => {
+router.get('/urgences', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.*,
         (SELECT nom FROM patients WHERE id = u.patient_id) AS patient_nom,
         (SELECT prenom FROM patients WHERE id = u.patient_id) AS patient_prenom
       FROM "public"."urgences" u
+      WHERE u.hospital_id = $1
       ORDER BY u.priorite ASC, u.heure_arrivee DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /urgences :', err);
@@ -253,7 +268,7 @@ router.get('/urgences', authenticate, async (req, res) => {
   }
 });
 
-router.post('/urgences', authenticate, async (req, res) => {
+router.post('/urgences', authenticate, requireHospital, async (req, res) => {
   const { patient_id, niveau, priorite, motif } = req.body;
 
   const patientIdNum = Number(patient_id);
@@ -262,10 +277,13 @@ router.post('/urgences', authenticate, async (req, res) => {
   }
 
   try {
-    const patientExists = await pool.query('SELECT id FROM patients WHERE id = $1', [patientIdNum]);
+    const patientExists = await pool.query(
+      'SELECT id FROM patients WHERE id = $1 AND hospital_id = $2',
+      [patientIdNum, req.hospitalId]
+    );
     if (patientExists.rows.length === 0) {
       return res.status(400).json({
-        error: `Le patient avec l'ID ${patientIdNum} n'existe pas. Veuillez créer le patient d'abord.`
+        error: `Le patient avec l'ID ${patientIdNum} n'existe pas dans votre établissement.`
       });
     }
 
@@ -281,12 +299,15 @@ router.post('/urgences', authenticate, async (req, res) => {
   }
 });
 
-router.put('/urgences/:id', authenticate, async (req, res) => {
+router.put('/urgences/:id', authenticate, requireHospital, async (req, res) => {
   const { statut, triage_effectue_par } = req.body;
   try {
-    await pool.query(`
-      UPDATE "public"."urgences" SET statut=$1, triage_effectue_par=$2 WHERE id=$3
-    `, [statut, triage_effectue_par, req.params.id]);
+    const result = await pool.query(`
+      UPDATE "public"."urgences"
+      SET statut=$1, triage_effectue_par=$2
+      WHERE id=$3 AND hospital_id=$4
+    `, [statut, triage_effectue_par, req.params.id, req.hospitalId]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Urgence non trouvée' });
     res.sendStatus(200);
   } catch (err) {
     console.error('❌ PUT /urgences/:id :', err);
@@ -295,7 +316,7 @@ router.put('/urgences/:id', authenticate, async (req, res) => {
 });
 
 // ---------- LITS DISPONIBLES ----------
-router.get('/lits/disponibles', authenticate, async (req, res) => {
+router.get('/lits/disponibles', authenticate, requireHospital, async (req, res) => {
   const { service_id } = req.query;
   try {
     let query = `
@@ -303,11 +324,11 @@ router.get('/lits/disponibles', authenticate, async (req, res) => {
       FROM "public"."lits" l
       LEFT JOIN "public"."services" s ON l.service_id = s.id
       LEFT JOIN "public"."chambres" c ON l.chambre_id = c.id
-      WHERE l.statut = 'libre'
+      WHERE l.hospital_id = $1 AND l.statut = 'libre'
     `;
-    const params = [];
+    const params = [req.hospitalId];
     if (service_id) {
-      query += ` AND l.service_id = $1`;
+      query += ` AND l.service_id = $2`;
       params.push(service_id);
     }
     const { rows } = await pool.query(query, params);
@@ -319,7 +340,7 @@ router.get('/lits/disponibles', authenticate, async (req, res) => {
 });
 
 // ---------- ADMISSIONS (POST) ----------
-router.post('/admissions', authenticate, async (req, res) => {
+router.post('/admissions', authenticate, requireHospital, async (req, res) => {
   const { patient_id, lit_id, service_id, motif, medecin_referent_id } = req.body;
   if (!patient_id || !lit_id || !service_id || !motif) {
     return res.status(400).json({ error: 'patient_id, lit_id, service_id et motif sont requis' });
@@ -329,16 +350,37 @@ router.post('/admissions', authenticate, async (req, res) => {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
 
+    // ✅ Vérifier patient + lit appartiennent au tenant
+    const patCheck = await client.query(
+      'SELECT id FROM patients WHERE id = $1 AND hospital_id = $2',
+      [patient_id, req.hospitalId]
+    );
+    if (patCheck.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Patient non trouvé dans cet établissement' });
+    }
+    const litCheck = await client.query(
+      'SELECT id FROM lits WHERE id = $1 AND hospital_id = $2',
+      [lit_id, req.hospitalId]
+    );
+    if (litCheck.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Lit non trouvé dans cet établissement' });
+    }
+
     const { rows } = await client.query(`
       INSERT INTO "public"."admissions" (hospital_id, patient_id, lit_id, date_admission, motif, service_id, medecin_referent_id, type)
       VALUES ($1, $2, $3, NOW(), $4, $5, $6, 'admission') RETURNING *
     `, [req.hospitalId, patient_id, lit_id, motif, service_id, medecin_referent_id || null]);
-    await client.query(`UPDATE "public"."lits" SET statut = 'occupe' WHERE id = $1`, [lit_id]);
-    await client.query(`UPDATE "public"."patients" SET lit_id = $1, statut = 'hospitalise' WHERE id = $2`, [lit_id, patient_id]);
+
+    await client.query(`UPDATE "public"."lits" SET statut = 'occupe' WHERE id = $1 AND hospital_id = $2`, [lit_id, req.hospitalId]);
+    await client.query(`UPDATE "public"."patients" SET lit_id = $1, statut = 'hospitalise' WHERE id = $2 AND hospital_id = $3`, [lit_id, patient_id, req.hospitalId]);
+
     await client.query(`
       INSERT INTO "public"."sejours" (hospital_id, patient_id, admission_id, lit_id, date_debut, statut)
       VALUES ($1, $2, $3, $4, NOW(), 'en_cours')
     `, [req.hospitalId, patient_id, rows[0].id, lit_id]);
+
     await client.query('COMMIT');
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -351,7 +393,7 @@ router.post('/admissions', authenticate, async (req, res) => {
 });
 
 // ---------- LISTE COMPLÈTE DES ADMISSIONS ----------
-router.get('/admissions', authenticate, async (req, res) => {
+router.get('/admissions', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT a.*, 
@@ -362,8 +404,9 @@ router.get('/admissions', authenticate, async (req, res) => {
       JOIN "public"."patients" p ON a.patient_id = p.id
       LEFT JOIN "public"."services" s ON a.service_id = s.id
       LEFT JOIN "public"."medecins" m ON a.medecin_referent_id = m.id
+      WHERE a.hospital_id = $1
       ORDER BY a.date_admission DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /admissions :', err);
@@ -372,15 +415,15 @@ router.get('/admissions', authenticate, async (req, res) => {
 });
 
 // ---------- LISTE DES PATIENTS HOSPITALISÉS ----------
-router.get('/patients/hospitalises', authenticate, async (req, res) => {
+router.get('/patients/hospitalises', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT p.id, p.nom, p.prenom, p.ipp, l.id AS lit_id, l.numero AS lit_numero, c.nom AS chambre_nom
       FROM "public"."patients" p
       JOIN "public"."lits" l ON p.lit_id = l.id
       LEFT JOIN "public"."chambres" c ON l.chambre_id = c.id
-      WHERE p.statut = 'hospitalise'
-    `);
+      WHERE p.hospital_id = $1 AND p.statut = 'hospitalise'
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /patients/hospitalises :', err);
@@ -389,15 +432,15 @@ router.get('/patients/hospitalises', authenticate, async (req, res) => {
 });
 
 // ---------- ADMISSIONS EN COURS ----------
-router.get('/admissions/en_cours', authenticate, async (req, res) => {
+router.get('/admissions/en_cours', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT a.id, a.date_admission, s.nom AS service_nom
       FROM "public"."admissions" a
       JOIN "public"."services" s ON a.service_id = s.id
-      WHERE a.type != 'sortie'
+      WHERE a.hospital_id = $1 AND a.type != 'sortie'
       ORDER BY a.date_admission DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /admissions/en_cours :', err);
@@ -406,15 +449,15 @@ router.get('/admissions/en_cours', authenticate, async (req, res) => {
 });
 
 // ---------- ADMISSIONS D'UN PATIENT ----------
-router.get('/admissions/patient/:patientId', authenticate, async (req, res) => {
+router.get('/admissions/patient/:patientId', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT a.id, a.date_admission, s.nom AS service_nom
       FROM "public"."admissions" a
       JOIN "public"."services" s ON a.service_id = s.id
-      WHERE a.patient_id = $1
+      WHERE a.patient_id = $1 AND a.hospital_id = $2
       ORDER BY a.date_admission DESC
-    `, [req.params.patientId]);
+    `, [req.params.patientId, req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /admissions/patient/:patientId :', err);
@@ -423,7 +466,7 @@ router.get('/admissions/patient/:patientId', authenticate, async (req, res) => {
 });
 
 // ---------- CONSULTATIONS D'UN PATIENT ----------
-router.get('/patient/:patientId', authenticate, async (req, res) => {
+router.get('/patient/:patientId', authenticate, requireHospital, async (req, res) => {
   try {
     const { patientId } = req.params;
     const { rows } = await pool.query(`
@@ -431,9 +474,9 @@ router.get('/patient/:patientId', authenticate, async (req, res) => {
              m.nom AS medecin_nom, m.prenom AS medecin_prenom
       FROM "public"."consultations" c
       LEFT JOIN "public"."medecins" m ON c.medecin_id = m.id
-      WHERE c.patient_id = $1
+      WHERE c.patient_id = $1 AND c.hospital_id = $2
       ORDER BY c.date DESC
-    `, [patientId]);
+    `, [patientId, req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /patient/:patientId :', err);
@@ -442,7 +485,7 @@ router.get('/patient/:patientId', authenticate, async (req, res) => {
 });
 
 // ---------- PRESCRIPTIONS D'UN PATIENT ----------
-router.get('/prescriptions/patient/:patientId', authenticate, async (req, res) => {
+router.get('/prescriptions/patient/:patientId', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT p.*, 
@@ -453,9 +496,9 @@ router.get('/prescriptions/patient/:patientId', authenticate, async (req, res) =
              ) AS items
       FROM "public"."prescriptions" p
       LEFT JOIN "public"."utilisateurs" u ON p.doctor_id = u.id
-      WHERE p.patient_id = $1
+      WHERE p.patient_id = $1 AND p.hospital_id = $2
       ORDER BY p.date_creation DESC
-    `, [req.params.patientId]);
+    `, [req.params.patientId, req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /prescriptions/patient/:patientId :', err);
@@ -464,16 +507,16 @@ router.get('/prescriptions/patient/:patientId', authenticate, async (req, res) =
 });
 
 // ---------- ORDONNANCES D'UN PATIENT ----------
-router.get('/ordonnances/patient/:patientId', authenticate, async (req, res) => {
+router.get('/ordonnances/patient/:patientId', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT o.*, 
              m.nom AS medecin_nom, m.prenom AS medecin_prenom
       FROM "public"."ordonnances" o
       LEFT JOIN "public"."medecins" m ON o.medecin_id = m.id
-      WHERE o.patient_id = $1
+      WHERE o.patient_id = $1 AND o.hospital_id = $2
       ORDER BY o.created_at DESC
-    `, [req.params.patientId]);
+    `, [req.params.patientId, req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /ordonnances/patient/:patientId :', err);
@@ -482,33 +525,55 @@ router.get('/ordonnances/patient/:patientId', authenticate, async (req, res) => 
 });
 
 // ---------- TRANSFERT ----------
-router.post('/transferts', authenticate, async (req, res) => {
+router.post('/transferts', authenticate, requireHospital, async (req, res) => {
   const { patient_id, nouveau_lit_id, nouveau_service_id, motif } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
 
-    const ancienLitRes = await client.query('SELECT lit_id FROM "public"."patients" WHERE id = $1', [patient_id]);
-    const ancienLitId = ancienLitRes.rows[0]?.lit_id;
+    const patientRes = await client.query(
+      'SELECT lit_id FROM "public"."patients" WHERE id = $1 AND hospital_id = $2',
+      [patient_id, req.hospitalId]
+    );
+    if (patientRes.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Patient non trouvé' });
+    }
+    const ancienLitId = patientRes.rows[0]?.lit_id;
     if (!ancienLitId) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Patient non hospitalisé' });
     }
-    const ancienServiceRes = await client.query('SELECT service_id FROM "public"."lits" WHERE id = $1', [ancienLitId]);
+
+    // ✅ Vérifier le nouveau lit appartient au tenant
+    const newLitRes = await client.query(
+      'SELECT id FROM "public"."lits" WHERE id = $1 AND hospital_id = $2',
+      [nouveau_lit_id, req.hospitalId]
+    );
+    if (newLitRes.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Nouveau lit non trouvé dans cet établissement' });
+    }
+
+    const ancienServiceRes = await client.query('SELECT service_id FROM "public"."lits" WHERE id = $1 AND hospital_id = $2', [ancienLitId, req.hospitalId]);
     const ancienServiceId = ancienServiceRes.rows[0]?.service_id;
+
     const newAdmission = await client.query(`
       INSERT INTO "public"."admissions" (hospital_id, patient_id, lit_id, date_admission, motif, service_id, type, source_service_id)
       VALUES ($1, $2, $3, NOW(), $4, $5, 'transfert', $6) RETURNING id
     `, [req.hospitalId, patient_id, nouveau_lit_id, motif, nouveau_service_id, ancienServiceId]);
-    await client.query('UPDATE "public"."lits" SET statut = $1 WHERE id = $2', ['libre', ancienLitId]);
-    await client.query('UPDATE "public"."lits" SET statut = $1 WHERE id = $2', ['occupe', nouveau_lit_id]);
-    await client.query('UPDATE "public"."patients" SET lit_id = $1 WHERE id = $2', [nouveau_lit_id, patient_id]);
-    await client.query(`UPDATE "public"."sejours" SET date_fin = NOW(), statut = 'termine' WHERE patient_id = $1 AND statut = 'en_cours'`, [patient_id]);
+
+    await client.query('UPDATE "public"."lits" SET statut = $1 WHERE id = $2 AND hospital_id = $3', ['libre', ancienLitId, req.hospitalId]);
+    await client.query('UPDATE "public"."lits" SET statut = $1 WHERE id = $2 AND hospital_id = $3', ['occupe', nouveau_lit_id, req.hospitalId]);
+    await client.query('UPDATE "public"."patients" SET lit_id = $1 WHERE id = $2 AND hospital_id = $3', [nouveau_lit_id, patient_id, req.hospitalId]);
+    await client.query(`UPDATE "public"."sejours" SET date_fin = NOW(), statut = 'termine' WHERE patient_id = $1 AND hospital_id = $2 AND statut = 'en_cours'`, [patient_id, req.hospitalId]);
+
     await client.query(`
       INSERT INTO "public"."sejours" (hospital_id, patient_id, admission_id, lit_id, date_debut, statut)
       VALUES ($1, $2, $3, $4, NOW(), 'en_cours')
     `, [req.hospitalId, patient_id, newAdmission.rows[0].id, nouveau_lit_id]);
+
     await client.query('COMMIT');
     res.status(201).json({ message: 'Transfert effectué' });
   } catch (err) {
@@ -521,24 +586,33 @@ router.post('/transferts', authenticate, async (req, res) => {
 });
 
 // ---------- SORTIE ----------
-router.post('/sorties', authenticate, async (req, res) => {
+router.post('/sorties', authenticate, requireHospital, async (req, res) => {
   const { patient_id, admission_id, mode_sortie, remarques } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
 
-    const litRes = await client.query('SELECT lit_id FROM "public"."patients" WHERE id = $1', [patient_id]);
+    const litRes = await client.query(
+      'SELECT lit_id FROM "public"."patients" WHERE id = $1 AND hospital_id = $2',
+      [patient_id, req.hospitalId]
+    );
+    if (litRes.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Patient non trouvé' });
+    }
     const litId = litRes.rows[0]?.lit_id;
     if (litId) {
-      await client.query('UPDATE "public"."lits" SET statut = $1 WHERE id = $2', ['libre', litId]);
+      await client.query('UPDATE "public"."lits" SET statut = $1 WHERE id = $2 AND hospital_id = $3', ['libre', litId, req.hospitalId]);
     }
-    await client.query('UPDATE "public"."patients" SET date_sortie = NOW(), statut = $1, lit_id = NULL WHERE id = $2', ['sorti', patient_id]);
-    await client.query(`UPDATE "public"."sejours" SET date_fin = NOW(), statut = 'termine' WHERE patient_id = $1 AND statut = 'en_cours'`, [patient_id]);
+    await client.query('UPDATE "public"."patients" SET date_sortie = NOW(), statut = $1, lit_id = NULL WHERE id = $2 AND hospital_id = $3', ['sorti', patient_id, req.hospitalId]);
+    await client.query(`UPDATE "public"."sejours" SET date_fin = NOW(), statut = 'termine' WHERE patient_id = $1 AND hospital_id = $2 AND statut = 'en_cours'`, [patient_id, req.hospitalId]);
+
     await client.query(`
       INSERT INTO "public"."sorties" (hospital_id, admission_id, date_sortie, mode_sortie, remarques)
       VALUES ($1, $2, NOW(), $3, $4)
     `, [req.hospitalId, admission_id, mode_sortie, remarques]);
+
     await client.query('COMMIT');
     res.status(201).json({ message: 'Sortie enregistrée' });
   } catch (err) {
@@ -551,22 +625,19 @@ router.post('/sorties', authenticate, async (req, res) => {
 });
 
 // ---------- LISTE COMPLÈTE DES SORTIES (HISTORIQUE) ----------
-router.get('/sorties', authenticate, async (req, res) => {
+router.get('/sorties', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT 
-        s.id,
-        s.admission_id,
-        s.date_sortie,
-        s.mode_sortie,
-        s.remarques,
+        s.id, s.admission_id, s.date_sortie, s.mode_sortie, s.remarques,
         p.nom || ' ' || p.prenom AS patient_nom,
         a.patient_id
       FROM "public"."sorties" s
       LEFT JOIN "public"."admissions" a ON s.admission_id = a.id
       LEFT JOIN "public"."patients" p ON a.patient_id = p.id
+      WHERE s.hospital_id = $1
       ORDER BY s.date_sortie DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /sorties :', err);
@@ -574,10 +645,13 @@ router.get('/sorties', authenticate, async (req, res) => {
   }
 });
 
-// ---------- SERVICES & MÉDECINS (public) ----------
-router.get('/services', async (req, res) => {
+// ---------- SERVICES & MÉDECINS (anciennement "public", désormais authentifiés) ----------
+router.get('/services', authenticate, requireHospital, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT id, nom FROM "public"."services" ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT id, nom FROM "public"."services" WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /services :', err);
@@ -585,9 +659,12 @@ router.get('/services', async (req, res) => {
   }
 });
 
-router.get('/medecins', async (req, res) => {
+router.get('/medecins', authenticate, requireHospital, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT id, nom, prenom FROM "public"."medecins" ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT id, nom, prenom FROM "public"."medecins" WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /medecins :', err);
@@ -596,9 +673,12 @@ router.get('/medecins', async (req, res) => {
 });
 
 // ---------- CRUD SERVICES ----------
-router.get('/services/all', authenticate, async (req, res) => {
+router.get('/services/all', authenticate, requireHospital, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT id, nom FROM "public"."services" ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT id, nom FROM "public"."services" WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /services/all :', err);
@@ -606,7 +686,7 @@ router.get('/services/all', authenticate, async (req, res) => {
   }
 });
 
-router.post('/services', authenticate, requireRole(['admin']), async (req, res) => {
+router.post('/services', authenticate, requireHospital, requireRole(['admin']), async (req, res) => {
   const { nom } = req.body;
   if (!nom) return res.status(400).json({ error: 'Nom requis' });
   try {
@@ -621,10 +701,13 @@ router.post('/services', authenticate, requireRole(['admin']), async (req, res) 
   }
 });
 
-router.put('/services/:id', authenticate, requireRole(['admin']), async (req, res) => {
+router.put('/services/:id', authenticate, requireHospital, requireRole(['admin']), async (req, res) => {
   const { nom } = req.body;
   try {
-    const result = await pool.query('UPDATE "public"."services" SET nom = $1 WHERE id = $2', [nom, req.params.id]);
+    const result = await pool.query(
+      'UPDATE "public"."services" SET nom = $1 WHERE id = $2 AND hospital_id = $3',
+      [nom, req.params.id, req.hospitalId]
+    );
     if (result.rowCount === 0) return res.status(404).json({ error: 'Service non trouvé' });
     res.sendStatus(200);
   } catch (err) {
@@ -633,12 +716,21 @@ router.put('/services/:id', authenticate, requireRole(['admin']), async (req, re
   }
 });
 
-router.delete('/services/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/services/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
-    const lits = await pool.query('SELECT id FROM "public"."lits" WHERE service_id = $1', [req.params.id]);
+    const svc = await pool.query(
+      'SELECT id FROM "public"."services" WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
+    if (svc.rowCount === 0) return res.status(404).json({ error: 'Service non trouvé' });
+
+    const lits = await pool.query(
+      'SELECT id FROM "public"."lits" WHERE service_id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
     if (lits.rowCount > 0) return res.status(400).json({ error: 'Ce service est utilisé par des lits' });
-    const result = await pool.query('DELETE FROM "public"."services" WHERE id = $1', [req.params.id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Service non trouvé' });
+
+    await pool.query('DELETE FROM "public"."services" WHERE id = $1 AND hospital_id = $2', [req.params.id, req.hospitalId]);
     res.sendStatus(204);
   } catch (err) {
     console.error('❌ DELETE /services/:id :', err);
@@ -647,9 +739,12 @@ router.delete('/services/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ---------- CRUD MÉDECINS ----------
-router.get('/medecins/all', authenticate, async (req, res) => {
+router.get('/medecins/all', authenticate, requireHospital, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT id, nom, prenom, specialite, email FROM "public"."medecins" ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT id, nom, prenom, specialite, email FROM "public"."medecins" WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /medecins/all :', err);
@@ -657,11 +752,11 @@ router.get('/medecins/all', authenticate, async (req, res) => {
   }
 });
 
-router.get('/medecins/by-user/:userId', authenticate, async (req, res) => {
+router.get('/medecins/by-user/:userId', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, nom, prenom, specialite, email FROM medecins WHERE user_id = $1',
-      [req.params.userId]
+      'SELECT id, nom, prenom, specialite, email FROM medecins WHERE user_id = $1 AND hospital_id = $2',
+      [req.params.userId, req.hospitalId]
     );
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Médecin non trouvé' });
@@ -673,7 +768,7 @@ router.get('/medecins/by-user/:userId', authenticate, async (req, res) => {
   }
 });
 
-router.post('/medecins', authenticate, requireRole(['admin']), async (req, res) => {
+router.post('/medecins', authenticate, requireHospital, requireRole(['admin']), async (req, res) => {
   const { nom, prenom, specialite, email } = req.body;
   if (!nom || !prenom) return res.status(400).json({ error: 'Nom et prénom requis' });
   try {
@@ -688,12 +783,12 @@ router.post('/medecins', authenticate, requireRole(['admin']), async (req, res) 
   }
 });
 
-router.put('/medecins/:id', authenticate, requireRole(['admin']), async (req, res) => {
+router.put('/medecins/:id', authenticate, requireHospital, requireRole(['admin']), async (req, res) => {
   const { nom, prenom, specialite, email } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE "public"."medecins" SET nom=$1, prenom=$2, specialite=$3, email=$4 WHERE id=$5',
-      [nom, prenom, specialite, email, req.params.id]
+      'UPDATE "public"."medecins" SET nom=$1, prenom=$2, specialite=$3, email=$4 WHERE id=$5 AND hospital_id=$6',
+      [nom, prenom, specialite, email, req.params.id, req.hospitalId]
     );
     if (result.rowCount === 0) return res.status(404).json({ error: 'Médecin non trouvé' });
     res.sendStatus(200);
@@ -703,12 +798,21 @@ router.put('/medecins/:id', authenticate, requireRole(['admin']), async (req, re
   }
 });
 
-router.delete('/medecins/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/medecins/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
-    const adm = await pool.query('SELECT id FROM "public"."admissions" WHERE medecin_referent_id = $1', [req.params.id]);
+    const med = await pool.query(
+      'SELECT id FROM "public"."medecins" WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
+    if (med.rowCount === 0) return res.status(404).json({ error: 'Médecin non trouvé' });
+
+    const adm = await pool.query(
+      'SELECT id FROM "public"."admissions" WHERE medecin_referent_id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
     if (adm.rowCount > 0) return res.status(400).json({ error: 'Ce médecin est référent dans des admissions' });
-    const result = await pool.query('DELETE FROM "public"."medecins" WHERE id = $1', [req.params.id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Médecin non trouvé' });
+
+    await pool.query('DELETE FROM "public"."medecins" WHERE id = $1 AND hospital_id = $2', [req.params.id, req.hospitalId]);
     res.sendStatus(204);
   } catch (err) {
     console.error('❌ DELETE /medecins/:id :', err);
@@ -717,9 +821,12 @@ router.delete('/medecins/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ---------- CRUD BÂTIMENTS ----------
-router.get('/batiments', authenticate, async (req, res) => {
+router.get('/batiments', authenticate, requireHospital, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM "public"."batiments" ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT * FROM "public"."batiments" WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /batiments :', err);
@@ -727,7 +834,7 @@ router.get('/batiments', authenticate, async (req, res) => {
   }
 });
 
-router.post('/batiments', authenticate, requireRole(['admin']), async (req, res) => {
+router.post('/batiments', authenticate, requireHospital, requireRole(['admin']), async (req, res) => {
   const { nom } = req.body;
   try {
     const { rows } = await pool.query(
@@ -741,9 +848,13 @@ router.post('/batiments', authenticate, requireRole(['admin']), async (req, res)
   }
 });
 
-router.delete('/batiments/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/batiments/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
-    await pool.query('DELETE FROM "public"."batiments" WHERE id = $1', [req.params.id]);
+    const result = await pool.query(
+      'DELETE FROM "public"."batiments" WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Bâtiment non trouvé' });
     res.sendStatus(204);
   } catch (err) {
     console.error('❌ DELETE /batiments/:id :', err);
@@ -752,14 +863,15 @@ router.delete('/batiments/:id', authenticate, requireAdmin, async (req, res) => 
 });
 
 // ---------- CRUD ÉTAGES ----------
-router.get('/etages', authenticate, async (req, res) => {
+router.get('/etages', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT e.*, b.nom AS batiment_nom 
       FROM "public"."etages" e 
       LEFT JOIN "public"."batiments" b ON e.batiment_id = b.id 
+      WHERE e.hospital_id = $1
       ORDER BY b.nom, e.numero
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /etages :', err);
@@ -767,7 +879,7 @@ router.get('/etages', authenticate, async (req, res) => {
   }
 });
 
-router.post('/etages', authenticate, requireRole(['admin']), async (req, res) => {
+router.post('/etages', authenticate, requireHospital, requireRole(['admin']), async (req, res) => {
   const { batiment_id, numero } = req.body;
   try {
     const { rows } = await pool.query(
@@ -781,9 +893,13 @@ router.post('/etages', authenticate, requireRole(['admin']), async (req, res) =>
   }
 });
 
-router.delete('/etages/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/etages/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
-    await pool.query('DELETE FROM "public"."etages" WHERE id = $1', [req.params.id]);
+    const result = await pool.query(
+      'DELETE FROM "public"."etages" WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Étage non trouvé' });
     res.sendStatus(204);
   } catch (err) {
     console.error('❌ DELETE /etages/:id :', err);
@@ -792,15 +908,16 @@ router.delete('/etages/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ---------- CRUD CHAMBRES ----------
-router.get('/chambres/list', authenticate, async (req, res) => {
+router.get('/chambres/list', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT c.*, b.nom AS batiment_nom, e.numero AS etage_numero
       FROM "public"."chambres" c
       LEFT JOIN "public"."batiments" b ON c.batiment_id = b.id
       LEFT JOIN "public"."etages" e ON c.etage_id = e.id
+      WHERE c.hospital_id = $1
       ORDER BY b.nom, e.numero, c.nom
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /chambres/list :', err);
@@ -808,7 +925,7 @@ router.get('/chambres/list', authenticate, async (req, res) => {
   }
 });
 
-router.post('/chambres', authenticate, requireRole(['admin']), async (req, res) => {
+router.post('/chambres', authenticate, requireHospital, requireRole(['admin']), async (req, res) => {
   const { nom, batiment_id, etage_id, type, capacite } = req.body;
   try {
     const { rows } = await pool.query(`
@@ -822,13 +939,22 @@ router.post('/chambres', authenticate, requireRole(['admin']), async (req, res) 
   }
 });
 
-router.delete('/chambres/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/chambres/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
-    const lits = await pool.query('SELECT id FROM "public"."lits" WHERE chambre_id = $1', [req.params.id]);
+    const ch = await pool.query(
+      'SELECT id FROM "public"."chambres" WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
+    if (ch.rowCount === 0) return res.status(404).json({ error: 'Chambre non trouvée' });
+
+    const lits = await pool.query(
+      'SELECT id FROM "public"."lits" WHERE chambre_id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
     if (lits.rowCount > 0) {
       return res.status(400).json({ error: 'Cette chambre contient des lits. Supprimez d’abord les lits.' });
     }
-    await pool.query('DELETE FROM "public"."chambres" WHERE id = $1', [req.params.id]);
+    await pool.query('DELETE FROM "public"."chambres" WHERE id = $1 AND hospital_id = $2', [req.params.id, req.hospitalId]);
     res.sendStatus(204);
   } catch (err) {
     console.error('❌ DELETE /chambres/:id :', err);
@@ -837,14 +963,15 @@ router.delete('/chambres/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ---------- CRUD LITS ----------
-router.get('/lits/all', authenticate, async (req, res) => {
+router.get('/lits/all', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT l.*, c.nom AS chambre_nom 
       FROM "public"."lits" l 
       LEFT JOIN "public"."chambres" c ON l.chambre_id = c.id 
+      WHERE l.hospital_id = $1
       ORDER BY c.nom, l.numero
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /lits/all :', err);
@@ -852,7 +979,7 @@ router.get('/lits/all', authenticate, async (req, res) => {
   }
 });
 
-router.post('/lits', authenticate, requireRole(['admin']), async (req, res) => {
+router.post('/lits', authenticate, requireHospital, requireRole(['admin']), async (req, res) => {
   const { chambre_id, numero, statut } = req.body;
   if (!chambre_id || !numero) {
     return res.status(400).json({ error: 'chambre_id et numero sont requis' });
@@ -870,13 +997,22 @@ router.post('/lits', authenticate, requireRole(['admin']), async (req, res) => {
   }
 });
 
-router.delete('/lits/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/lits/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
-    const patient = await pool.query('SELECT id FROM "public"."patients" WHERE lit_id = $1', [req.params.id]);
+    const lit = await pool.query(
+      'SELECT id FROM "public"."lits" WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
+    if (lit.rowCount === 0) return res.status(404).json({ error: 'Lit non trouvé' });
+
+    const patient = await pool.query(
+      'SELECT id FROM "public"."patients" WHERE lit_id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
     if (patient.rowCount > 0) {
       return res.status(400).json({ error: 'Ce lit est actuellement occupé par un patient.' });
     }
-    await pool.query('DELETE FROM "public"."lits" WHERE id = $1', [req.params.id]);
+    await pool.query('DELETE FROM "public"."lits" WHERE id = $1 AND hospital_id = $2', [req.params.id, req.hospitalId]);
     res.sendStatus(204);
   } catch (err) {
     console.error('❌ DELETE /lits/:id :', err);
@@ -884,10 +1020,14 @@ router.delete('/lits/:id', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
-router.put('/lits/:id', authenticate, requireRole(['admin']), async (req, res) => {
+router.put('/lits/:id', authenticate, requireHospital, requireRole(['admin']), async (req, res) => {
   const { statut } = req.body;
   try {
-    await pool.query('UPDATE "public"."lits" SET statut=$1 WHERE id=$2', [statut, req.params.id]);
+    const result = await pool.query(
+      'UPDATE "public"."lits" SET statut=$1 WHERE id=$2 AND hospital_id=$3',
+      [statut, req.params.id, req.hospitalId]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Lit non trouvé' });
     res.sendStatus(200);
   } catch (err) {
     console.error('❌ PUT /lits/:id :', err);
@@ -896,7 +1036,7 @@ router.put('/lits/:id', authenticate, requireRole(['admin']), async (req, res) =
 });
 
 // ---------- INTERVENTIONS ----------
-router.get('/interventions', authenticate, async (req, res) => {
+router.get('/interventions', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT i.*, p.nom AS patient_nom, p.prenom AS patient_prenom,
@@ -904,8 +1044,9 @@ router.get('/interventions', authenticate, async (req, res) => {
       FROM "public"."interventions" i
       LEFT JOIN "public"."patients" p ON i.patient_id = p.id
       LEFT JOIN "public"."medecins" m ON i.medecin_id = m.id
+      WHERE i.hospital_id = $1
       ORDER BY i.date_prevue DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.warn('⚠️ Table interventions absente ou requête erronée:', err.message);
@@ -914,23 +1055,19 @@ router.get('/interventions', authenticate, async (req, res) => {
 });
 
 // ---------- ORDONNANCES (POST) ----------
-// ✅ FIX : Utilise le medecin_id envoyé par le formulaire, tout en gardant la restriction de rôle
-router.post('/ordonnances', authenticate, requireRole(['medecin', 'admin']), async (req, res) => {
+router.post('/ordonnances', authenticate, requireHospital, requireRole(['medecin', 'admin']), async (req, res) => {
   const { patient_id, medecin_id, lignes, observations } = req.body;
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
 
-    // ✅ 1. On prend le médecin sélectionné dans le formulaire
     let finalMedecinId = medecin_id;
-
-    // ✅ 2. Si aucun n'est sélectionné, on cherche le profil du user connecté
     if (!finalMedecinId) {
       const medecinRes = await client.query(
-        'SELECT id FROM medecins WHERE user_id = $1',
-        [req.user.id]
+        'SELECT id FROM medecins WHERE user_id = $1 AND hospital_id = $2',
+        [req.user.id, req.hospitalId]
       );
       if (medecinRes.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -946,16 +1083,16 @@ router.post('/ordonnances', authenticate, requireRole(['medecin', 'admin']), asy
       INSERT INTO "public"."ordonnances" (hospital_id, patient_id, medecin_id, numero_ordonnance, observations, created_by)
       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
     `, [req.hospitalId, patient_id, finalMedecinId, numero, observations, req.user.id]);
-    
+
     const ordonnanceId = ordonnance.rows[0].id;
-    
+
     for (const ligne of lignes) {
       await client.query(`
         INSERT INTO "public"."ligne_ordonnances" (hospital_id, ordonnance_id, medicament_id, quantite_prescrit, posologie)
         VALUES ($1, $2, $3, $4, $5)
       `, [req.hospitalId, ordonnanceId, ligne.medicament_id, ligne.quantite_prescrit, ligne.posologie]);
     }
-    
+
     await client.query('COMMIT');
     res.status(201).json(ordonnance.rows[0]);
   } catch (err) {
@@ -968,7 +1105,7 @@ router.post('/ordonnances', authenticate, requireRole(['medecin', 'admin']), asy
 });
 
 // ---------- ADMISSIONS : GET/PUT/DELETE par ID ----------
-router.get('/admissions/:id', authenticate, async (req, res) => {
+router.get('/admissions/:id', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT a.*, 
@@ -981,8 +1118,8 @@ router.get('/admissions/:id', authenticate, async (req, res) => {
       LEFT JOIN "public"."services" s ON a.service_id = s.id
       LEFT JOIN "public"."medecins" m ON a.medecin_referent_id = m.id
       LEFT JOIN "public"."lits" l ON a.lit_id = l.id
-      WHERE a.id = $1
-    `, [req.params.id]);
+      WHERE a.id = $1 AND a.hospital_id = $2
+    `, [req.params.id, req.hospitalId]);
     if (rows.length === 0) return res.status(404).json({ error: 'Admission non trouvée' });
     res.json(rows[0]);
   } catch (err) {
@@ -991,7 +1128,7 @@ router.get('/admissions/:id', authenticate, async (req, res) => {
   }
 });
 
-router.put('/admissions/:id', authenticate, async (req, res) => {
+router.put('/admissions/:id', authenticate, requireHospital, async (req, res) => {
   const { service_id, medecin_referent_id, lit_id, motif, date_admission } = req.body;
   try {
     const result = await pool.query(`
@@ -1001,8 +1138,8 @@ router.put('/admissions/:id', authenticate, async (req, res) => {
         lit_id = COALESCE($3, lit_id),
         motif = COALESCE($4, motif),
         date_admission = COALESCE($5, date_admission)
-      WHERE id = $6
-    `, [service_id, medecin_referent_id, lit_id, motif, date_admission, req.params.id]);
+      WHERE id = $6 AND hospital_id = $7
+    `, [service_id, medecin_referent_id, lit_id, motif, date_admission, req.params.id, req.hospitalId]);
     if (result.rowCount === 0) return res.status(404).json({ error: 'Admission non trouvée' });
     res.sendStatus(200);
   } catch (err) {
@@ -1011,14 +1148,22 @@ router.put('/admissions/:id', authenticate, async (req, res) => {
   }
 });
 
-router.delete('/admissions/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/admissions/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
-    const sejour = await pool.query('SELECT id FROM "public"."sejours" WHERE admission_id = $1 AND statut = $2', [req.params.id, 'en_cours']);
+    const adm = await pool.query(
+      'SELECT id FROM "public"."admissions" WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
+    if (adm.rowCount === 0) return res.status(404).json({ error: 'Admission non trouvée' });
+
+    const sejour = await pool.query(
+      'SELECT id FROM "public"."sejours" WHERE admission_id = $1 AND hospital_id = $2 AND statut = $3',
+      [req.params.id, req.hospitalId, 'en_cours']
+    );
     if (sejour.rowCount > 0) {
       return res.status(400).json({ error: 'Cette admission est associée à un séjour en cours. Impossible de la supprimer.' });
     }
-    const result = await pool.query('DELETE FROM "public"."admissions" WHERE id = $1', [req.params.id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Admission non trouvée' });
+    await pool.query('DELETE FROM "public"."admissions" WHERE id = $1 AND hospital_id = $2', [req.params.id, req.hospitalId]);
     res.sendStatus(204);
   } catch (err) {
     console.error('❌ DELETE /admissions/:id :', err);
@@ -1027,7 +1172,7 @@ router.delete('/admissions/:id', authenticate, requireAdmin, async (req, res) =>
 });
 
 // ---------- HISTORIQUE DES TRANSFERTS ----------
-router.get('/transferts', authenticate, async (req, res) => {
+router.get('/transferts', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT
@@ -1037,7 +1182,7 @@ router.get('/transferts', authenticate, async (req, res) => {
         a.service_id AS nouveau_service_id,
         a.source_service_id AS ancien_service_id,
         a.lit_id AS nouveau_lit_id,
-        (SELECT lit_id FROM admissions WHERE patient_id = a.patient_id AND date_admission < a.date_admission ORDER BY date_admission DESC LIMIT 1) AS ancien_lit_id,
+        (SELECT lit_id FROM admissions WHERE patient_id = a.patient_id AND hospital_id = $1 AND date_admission < a.date_admission ORDER BY date_admission DESC LIMIT 1) AS ancien_lit_id,
         p.id AS patient_id,
         p.nom || ' ' || p.prenom AS patient_nom,
         s1.nom AS ancien_service_nom,
@@ -1048,11 +1193,11 @@ router.get('/transferts', authenticate, async (req, res) => {
       JOIN patients p ON a.patient_id = p.id
       LEFT JOIN services s1 ON a.source_service_id = s1.id
       LEFT JOIN services s2 ON a.service_id = s2.id
-      LEFT JOIN lits l1 ON (SELECT lit_id FROM admissions WHERE patient_id = a.patient_id AND date_admission < a.date_admission ORDER BY date_admission DESC LIMIT 1) = l1.id
+      LEFT JOIN lits l1 ON (SELECT lit_id FROM admissions WHERE patient_id = a.patient_id AND hospital_id = $1 AND date_admission < a.date_admission ORDER BY date_admission DESC LIMIT 1) = l1.id
       LEFT JOIN lits l2 ON a.lit_id = l2.id
-      WHERE a.type = 'transfert'
+      WHERE a.hospital_id = $1 AND a.type = 'transfert'
       ORDER BY a.date_admission DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /transferts :', err);
@@ -1062,15 +1207,15 @@ router.get('/transferts', authenticate, async (req, res) => {
 
 // ---------- ROUTE DE DÉBOGAGE ----------
 router.get('/test', authenticate, (req, res) => {
-  res.json({ message: 'Route consultations/test fonctionne !', user: req.user });
+  res.json({ message: 'Route consultations/test fonctionne !', user: req.user, hospitalId: req.hospitalId });
 });
 
 // ---------- COMPTER LES CONSULTATIONS D'UN PATIENT ----------
-router.get('/count/:patientId', authenticate, async (req, res) => {
+router.get('/count/:patientId', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT COUNT(*) AS total FROM consultations WHERE patient_id = $1',
-      [req.params.patientId]
+      'SELECT COUNT(*) AS total FROM consultations WHERE patient_id = $1 AND hospital_id = $2',
+      [req.params.patientId, req.hospitalId]
     );
     res.json(parseInt(rows[0]?.total || 0));
   } catch (err) {
@@ -1080,20 +1225,10 @@ router.get('/count/:patientId', authenticate, async (req, res) => {
 });
 
 // ---------- CONSULTATIONS (POST - Créer ou mettre à jour) ----------
-router.post('/', authenticate, requireRole(['medecin', 'admin']), async (req, res) => {
+router.post('/', authenticate, requireHospital, requireRole(['medecin', 'admin']), async (req, res) => {
   const {
-    patient_id,
-    medecin_id,
-    numero_dossier,
-    plainte_principale,
-    historique,
-    antecedents,
-    complement_anamnese,
-    examen_physique,
-    ccl,
-    bilan,
-    cat,
-    medecin_consultant
+    patient_id, medecin_id, numero_dossier, plainte_principale, historique,
+    antecedents, complement_anamnese, examen_physique, ccl, bilan, cat, medecin_consultant
   } = req.body;
 
   if (!patient_id) {
@@ -1102,8 +1237,8 @@ router.post('/', authenticate, requireRole(['medecin', 'admin']), async (req, re
 
   try {
     const existing = await pool.query(
-      'SELECT id FROM consultations WHERE patient_id = $1 ORDER BY date DESC LIMIT 1',
-      [patient_id]
+      'SELECT id FROM consultations WHERE patient_id = $1 AND hospital_id = $2 ORDER BY date DESC LIMIT 1',
+      [patient_id, req.hospitalId]
     );
 
     let result;
@@ -1122,55 +1257,28 @@ router.post('/', authenticate, requireRole(['medecin', 'admin']), async (req, re
           cat = COALESCE($10, cat),
           medecin_consultant = COALESCE($11, medecin_consultant),
           updated_at = NOW()
-        WHERE id = $12
+        WHERE id = $12 AND hospital_id = $13
         RETURNING *
       `, [
-        medecin_id || null,
-        numero_dossier || null,
-        plainte_principale || null,
-        historique || null,
-        antecedents || null,
-        complement_anamnese || null,
-        examen_physique || null,
-        ccl || null,
-        bilan || null,
-        cat || null,
-        medecin_consultant || null,
-        existing.rows[0].id
+        medecin_id || null, numero_dossier || null, plainte_principale || null,
+        historique || null, antecedents || null, complement_anamnese || null,
+        examen_physique || null, ccl || null, bilan || null, cat || null,
+        medecin_consultant || null, existing.rows[0].id, req.hospitalId
       ]);
       result = rows[0];
     } else {
       const { rows } = await pool.query(`
         INSERT INTO consultations (
-          hospital_id,
-          patient_id,
-          medecin_id,
-          numero_dossier,
-          plainte_principale,
-          historique,
-          antecedents,
-          complement_anamnese,
-          examen_physique,
-          ccl,
-          bilan,
-          cat,
-          medecin_consultant
+          hospital_id, patient_id, medecin_id, numero_dossier,
+          plainte_principale, historique, antecedents, complement_anamnese,
+          examen_physique, ccl, bilan, cat, medecin_consultant
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
       `, [
-        req.hospitalId,
-        patient_id,
-        medecin_id || null,
-        numero_dossier || null,
-        plainte_principale || null,
-        historique || null,
-        antecedents || null,
-        complement_anamnese || null,
-        examen_physique || null,
-        ccl || null,
-        bilan || null,
-        cat || null,
-        medecin_consultant || null
+        req.hospitalId, patient_id, medecin_id || null, numero_dossier || null,
+        plainte_principale || null, historique || null, antecedents || null,
+        complement_anamnese || null, examen_physique || null, ccl || null,
+        bilan || null, cat || null, medecin_consultant || null
       ]);
       result = rows[0];
     }

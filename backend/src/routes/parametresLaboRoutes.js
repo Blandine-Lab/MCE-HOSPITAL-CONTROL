@@ -1,16 +1,27 @@
 // backend/src/routes/parametresLaboRoutes.js
+// ============================================================
+// 🔬 LABORATOIRE – Paramètres de référence
+// ------------------------------------------------------------
+// ⚠️ FIX :
+//   1. requireHospital sur TOUTES les routes (req.hospitalId fiable)
+//   2. WHERE hospital_id = $1 sur GET /, GET /:id, PUT /:id, DELETE /:id
+//   3. Unicité du "nom" scopée au tenant (MCE et cmock peuvent avoir "Hémoglobine")
+// ============================================================
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');                       // ✅ pool patché
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireHospital, requireAdmin } = require('../middleware/auth');
 
 // ============================================================
-// GET /api/parametres-references - Liste tous les paramètres
+// GET /api/parametres-references - Liste (scopé au tenant)
 // ============================================================
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM parametres_reference ORDER BY nom ASC`
+      `SELECT * FROM parametres_reference
+       WHERE hospital_id = $1
+       ORDER BY nom ASC`,
+      [req.hospitalId]
     );
     res.json(rows);
   } catch (err) {
@@ -20,14 +31,14 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// GET /api/parametres-references/:id - Détail d'un paramètre
+// GET /api/parametres-references/:id - Détail (scopé au tenant)
 // ============================================================
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, requireHospital, async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query(
-      'SELECT * FROM parametres_reference WHERE id = $1',
-      [id]
+      'SELECT * FROM parametres_reference WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
     );
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Paramètre non trouvé' });
@@ -42,7 +53,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // ============================================================
 // POST /api/parametres-references - Créer un nouveau paramètre
 // ============================================================
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+router.post('/', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
     const {
       nom,
@@ -57,13 +68,19 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       commentaire
     } = req.body;
 
-    // Vérifier si le nom existe déjà
-    const check = await pool.query('SELECT id FROM parametres_reference WHERE nom = $1', [nom]);
-    if (check.rows.length > 0) {
-      return res.status(400).json({ error: 'Un paramètre avec ce nom existe déjà' });
+    if (!nom) {
+      return res.status(400).json({ error: 'Le nom est requis' });
     }
 
-    // ✅ FIX : hospital_id explicite
+    // ✅ FIX : unicité du nom SCOPÉE AU TENANT
+    const check = await pool.query(
+      'SELECT id FROM parametres_reference WHERE nom = $1 AND hospital_id = $2',
+      [nom, req.hospitalId]
+    );
+    if (check.rows.length > 0) {
+      return res.status(400).json({ error: 'Un paramètre avec ce nom existe déjà dans votre hôpital' });
+    }
+
     const { rows } = await pool.query(
       `INSERT INTO parametres_reference 
        (hospital_id, nom, unite, ref_min, ref_max, valeurs_possibles, seuil_critique_min, seuil_critique_max,
@@ -94,7 +111,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 // ============================================================
 // PUT /api/parametres-references/:id - Modifier un paramètre
 // ============================================================
-router.put('/:id', authenticate, requireAdmin, async (req, res) => {
+router.put('/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -110,27 +127,34 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
       commentaire
     } = req.body;
 
-    // Vérifier si le paramètre existe
-    const existing = await pool.query('SELECT * FROM parametres_reference WHERE id = $1', [id]);
+    // ✅ FIX : paramètre du tenant uniquement
+    const existing = await pool.query(
+      'SELECT * FROM parametres_reference WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Paramètre non trouvé' });
     }
 
-    // Vérifier si le nouveau nom n'est pas déjà utilisé par un autre
+    // ✅ FIX : unicité du nom SCOPÉE AU TENANT (exclut l'id courant)
     if (nom && nom !== existing.rows[0].nom) {
-      const check = await pool.query('SELECT id FROM parametres_reference WHERE nom = $1 AND id != $2', [nom, id]);
+      const check = await pool.query(
+        'SELECT id FROM parametres_reference WHERE nom = $1 AND hospital_id = $2 AND id != $3',
+        [nom, req.hospitalId, id]
+      );
       if (check.rows.length > 0) {
-        return res.status(400).json({ error: 'Un paramètre avec ce nom existe déjà' });
+        return res.status(400).json({ error: 'Un paramètre avec ce nom existe déjà dans votre hôpital' });
       }
     }
 
+    // ✅ FIX : UPDATE scopé tenant
     const { rows } = await pool.query(
       `UPDATE parametres_reference 
        SET nom = $1, unite = $2, ref_min = $3, ref_max = $4,
            valeurs_possibles = $5, seuil_critique_min = $6, seuil_critique_max = $7,
            type_parametre = $8, categorie = $9, commentaire = $10,
            updated_at = NOW()
-       WHERE id = $11
+       WHERE id = $11 AND hospital_id = $12
        RETURNING *`,
       [
         nom,
@@ -143,9 +167,13 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
         type_parametre || 'quantitatif',
         categorie || null,
         commentaire || null,
-        id
+        id,
+        req.hospitalId
       ]
     );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Paramètre non trouvé' });
+    }
     res.json(rows[0]);
   } catch (err) {
     console.error('PUT /parametres-references/:id :', err);
@@ -154,14 +182,14 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
-// DELETE /api/parametres-references/:id - Supprimer un paramètre
+// DELETE /api/parametres-references/:id - Supprimer un paramètre (scopé tenant)
 // ============================================================
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { rowCount } = await pool.query(
-      'DELETE FROM parametres_reference WHERE id = $1',
-      [id]
+      'DELETE FROM parametres_reference WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
     );
     if (rowCount === 0) {
       return res.status(404).json({ error: 'Paramètre non trouvé' });

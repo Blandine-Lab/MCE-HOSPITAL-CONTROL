@@ -2,13 +2,10 @@
 // ============================================================
 // 📝 PRESCRIPTIONS / ORDONNANCES
 // ------------------------------------------------------------
-// ⚠️ Refonte professionnelle :
-//   - Lit `ordonnances` (et non `prescriptions` vide)
-//   - Compatible avec les noms de champs de l'ancien frontend
-//   - Historique global (GET /historique) + par ordonnance (GET /:id/historique)
-//   - Multi-tenant via setTenant + WHERE hospital_id = $1
-//   - Transactions, RBAC, audit log
-//   - FIX : /:id/historique ne référence plus `o.created_by` (colonne absente)
+// ⚠️ Le pool patché pose `app.hospital_id` via ALS, MAIS le RLS
+//    a été mis en NO FORCE + policy tenant_isolation supprimée.
+//    On filtre donc explicitement TOUTES les routes sur
+//    `req.hospitalId` (JWT) pour garantir l'isolation tenant.
 // ============================================================
 const express = require('express');
 const router = express.Router();
@@ -29,6 +26,16 @@ async function setTenant(client, hospitalId) {
   );
 }
 
+function requireHospital(req, res, next) {
+  if (!req.hospitalId) {
+    return res.status(403).json({
+      error: 'Contexte hôpital manquant',
+      code: 'TENANT_MISSING',
+    });
+  }
+  next();
+}
+
 async function audit(req, action, table, recordId, details = {}) {
   try {
     await logAudit({
@@ -45,7 +52,6 @@ async function audit(req, action, table, recordId, details = {}) {
   }
 }
 
-// Reconstruit un événement d'historique à partir des colonnes disponibles
 function buildHistorique(o, dateDelivrance = null) {
   const events = [];
 
@@ -76,10 +82,9 @@ function buildHistorique(o, dateDelivrance = null) {
 }
 
 // ============================================================
-// GET /historique — Historique global des ordonnances délivrées
-// ⚠️ DOIT être déclaré AVANT /:id (wildcard)
+// GET /historique — DOIT être avant /:id
 // ============================================================
-router.get('/historique', async (req, res) => {
+router.get('/historique', requireHospital, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -88,14 +93,8 @@ router.get('/historique', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
     const { rows } = await client.query(`
       SELECT
-        o.id,
-        o.numero_ordonnance,
-        o.date_creation,
-        o.statut,
-        o.observations,
-        o.medecin_id,
-        o.patient_id,
-        o.retrieved_by,
+        o.id, o.numero_ordonnance, o.date_creation, o.statut,
+        o.observations, o.medecin_id, o.patient_id, o.retrieved_by,
         p.nom    AS patient_nom,
         p.prenom AS patient_prenom,
         p.ipp,
@@ -103,11 +102,12 @@ router.get('/historique', async (req, res) => {
         m.prenom AS medecin_prenom,
         u.nom    AS retrieved_nom,
         u.prenom AS retrieved_prenom,
-        (SELECT COUNT(*) FROM ligne_ordonnances lo WHERE lo.ordonnance_id = o.id) AS nb_medicaments
+        (SELECT COUNT(*) FROM ligne_ordonnances lo
+          WHERE lo.ordonnance_id = o.id AND lo.hospital_id = $1) AS nb_medicaments
       FROM ordonnances o
-      JOIN patients p ON p.id = o.patient_id
-      LEFT JOIN medecins m ON m.id = o.medecin_id
-      LEFT JOIN utilisateurs u ON u.id = o.retrieved_by
+      JOIN patients p ON p.id = o.patient_id AND p.hospital_id = $1
+      LEFT JOIN medecins m ON m.id = o.medecin_id AND m.hospital_id = $1
+      LEFT JOIN utilisateurs u ON u.id = o.retrieved_by AND u.hospital_id = $1
       WHERE o.hospital_id = $1
         AND o.statut IN ('delivree', 'servie', 'partiellement_delivree')
       ORDER BY o.date_creation DESC
@@ -126,19 +126,19 @@ router.get('/historique', async (req, res) => {
 });
 
 // ============================================================
-// GET /stats — Statistiques pour le dashboard
+// GET /stats — Statistiques dashboard
 // ============================================================
-router.get('/stats', async (req, res) => {
+router.get('/stats', requireHospital, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
 
     const [total, attente, delivrees, ceMois] = await Promise.all([
-      client.query(`SELECT COUNT(*) FROM ordonnances WHERE hospital_id = $1`, [req.hospitalId]),
-      client.query(`SELECT COUNT(*) FROM ordonnances WHERE hospital_id = $1 AND statut = 'en_attente'`, [req.hospitalId]),
-      client.query(`SELECT COUNT(*) FROM ordonnances WHERE hospital_id = $1 AND statut IN ('delivree','servie','partiellement_delivree')`, [req.hospitalId]),
-      client.query(`SELECT COUNT(*) FROM ordonnances WHERE hospital_id = $1 AND date_creation >= date_trunc('month', NOW())`, [req.hospitalId])
+      client.query('SELECT COUNT(*) FROM ordonnances WHERE hospital_id = $1', [req.hospitalId]),
+      client.query("SELECT COUNT(*) FROM ordonnances WHERE hospital_id = $1 AND statut = 'en_attente'", [req.hospitalId]),
+      client.query("SELECT COUNT(*) FROM ordonnances WHERE hospital_id = $1 AND statut IN ('delivree','servie','partiellement_delivree')", [req.hospitalId]),
+      client.query("SELECT COUNT(*) FROM ordonnances WHERE hospital_id = $1 AND date_creation >= date_trunc('month', NOW())", [req.hospitalId])
     ]);
 
     await client.query('COMMIT');
@@ -158,26 +158,18 @@ router.get('/stats', async (req, res) => {
 });
 
 // ============================================================
-// GET /:id/historique — Chronologie d'une ordonnance
-// ⚠️ AVANT /:id
-// 🔧 FIX : ne référence plus o.created_by (colonne absente)
-// 🔧 FIX : sous-requête mouvements_stock dans un try/catch (non bloquant)
+// GET /:id/historique — AVANT /:id
 // ============================================================
-router.get('/:id/historique', async (req, res) => {
+router.get('/:id/historique', requireHospital, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
 
-    // 1. Récupérer l'ordonnance — uniquement les colonnes garanties
     const { rows } = await client.query(`
       SELECT
-        o.id,
-        o.numero_ordonnance,
-        o.date_creation,
-        o.statut,
-        o.medecin_id,
-        o.retrieved_by,
+        o.id, o.numero_ordonnance, o.date_creation, o.statut,
+        o.medecin_id, o.retrieved_by,
         p.nom    AS patient_nom,
         p.prenom AS patient_prenom,
         m.nom    AS medecin_nom,
@@ -185,9 +177,9 @@ router.get('/:id/historique', async (req, res) => {
         u.nom    AS retrieved_nom,
         u.prenom AS retrieved_prenom
       FROM ordonnances o
-      JOIN patients p ON p.id = o.patient_id
-      LEFT JOIN medecins m ON m.id = o.medecin_id
-      LEFT JOIN utilisateurs u ON u.id = o.retrieved_by
+      JOIN patients p ON p.id = o.patient_id AND p.hospital_id = $2
+      LEFT JOIN medecins m ON m.id = o.medecin_id AND m.hospital_id = $2
+      LEFT JOIN utilisateurs u ON u.id = o.retrieved_by AND u.hospital_id = $2
       WHERE o.id = $1 AND o.hospital_id = $2
     `, [req.params.id, req.hospitalId]);
 
@@ -198,18 +190,19 @@ router.get('/:id/historique', async (req, res) => {
 
     const ord = rows[0];
 
-    // 2. Date de délivrance — non bloquant
-    //    (si mouvements_stock.created_at n'existe pas, on ignore)
+    // Date de délivrance — sous-requête scopée au tenant
     let dateDelivrance = null;
     try {
       const ms = await client.query(`
         SELECT MIN(created_at) AS date_delivrance
         FROM mouvements_stock
         WHERE type = 'sortie'
+          AND hospital_id = $2
           AND ligne_ordonnance_id IN (
-            SELECT id FROM ligne_ordonnances WHERE ordonnance_id = $1
+            SELECT id FROM ligne_ordonnances
+            WHERE ordonnance_id = $1 AND hospital_id = $2
           )
-      `, [req.params.id]);
+      `, [req.params.id, req.hospitalId]);
       dateDelivrance = ms.rows[0]?.date_delivrance || null;
     } catch (e) {
       console.warn('⚠️ Date de délivrance indisponible :', e.message);
@@ -217,7 +210,6 @@ router.get('/:id/historique', async (req, res) => {
 
     await client.query('COMMIT');
 
-    // 3. Construire la chronologie côté serveur
     res.json({
       id: ord.id,
       numero_ordonnance: ord.numero_ordonnance,
@@ -231,21 +223,16 @@ router.get('/:id/historique', async (req, res) => {
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ GET /prescriptions/:id/historique :', err);
-    res.status(500).json({
-      error: err.message,
-      code: err.code,
-      detail: err.detail
-    });
+    res.status(500).json({ error: err.message, code: err.code, detail: err.detail });
   } finally {
     client.release();
   }
 });
 
 // ============================================================
-// GET /:id/lignes — Lignes d'une ordonnance
-// ⚠️ AVANT /:id
+// GET /:id/lignes — AVANT /:id
 // ============================================================
-router.get('/:id/lignes', async (req, res) => {
+router.get('/:id/lignes', requireHospital, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -253,20 +240,14 @@ router.get('/:id/lignes', async (req, res) => {
 
     const { rows } = await client.query(`
       SELECT
-        lo.id,
-        lo.medicament_id,
-        lo.quantite_prescrit,
-        lo.quantite_delivree,
-        lo.posologie,
+        lo.id, lo.medicament_id, lo.quantite_prescrit, lo.quantite_delivree, lo.posologie,
         med.nom     AS medicament,
         med.code    AS medicament_code,
-        med.forme,
-        med.dosage,
-        med.unite
+        med.forme, med.dosage, med.unite
       FROM ligne_ordonnances lo
-      JOIN medicaments med ON med.id = lo.medicament_id
-      JOIN ordonnances o ON o.id = lo.ordonnance_id
-      WHERE lo.ordonnance_id = $1 AND o.hospital_id = $2
+      JOIN medicaments med ON med.id = lo.medicament_id AND med.hospital_id = $2
+      JOIN ordonnances o ON o.id = lo.ordonnance_id AND o.hospital_id = $2
+      WHERE lo.ordonnance_id = $1 AND lo.hospital_id = $2
       ORDER BY lo.id
     `, [req.params.id, req.hospitalId]);
 
@@ -282,23 +263,19 @@ router.get('/:id/lignes', async (req, res) => {
 });
 
 // ============================================================
-// GET / — Liste des prescriptions (page "Mes prescriptions")
-//   - medecin         → ses propres ordonnances
-//   - admin/pharma/…  → toutes
-//   Filtres : ?status=… ?patient_id=… ?medecin_id=… ?date_debut=… ?date_fin=…
+// GET / — Liste des prescriptions
 // ============================================================
-router.get('/', async (req, res) => {
+router.get('/', requireHospital, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
 
     const { status, patient_id, medecin_id, date_debut, date_fin } = req.query;
-    const conditions = [`o.hospital_id = $1`];
+    const conditions = ['o.hospital_id = $1'];
     const params = [req.hospitalId];
     let idx = 2;
 
-    // Filtre automatique pour les médecins
     if (req.user.role === 'medecin') {
       const m = await client.query(
         'SELECT id FROM medecins WHERE user_id = $1 AND hospital_id = $2',
@@ -308,45 +285,26 @@ router.get('/', async (req, res) => {
         conditions.push(`o.medecin_id = $${idx++}`);
         params.push(m.rows[0].id);
       } else {
-        conditions.push(`1 = 0`);
+        conditions.push('1 = 0');
       }
     } else if (medecin_id) {
       conditions.push(`o.medecin_id = $${idx++}`);
       params.push(parseInt(medecin_id, 10));
     }
 
-    if (patient_id) {
-      conditions.push(`o.patient_id = $${idx++}`);
-      params.push(parseInt(patient_id, 10));
-    }
-    if (status) {
-      conditions.push(`o.statut = $${idx++}`);
-      params.push(status);
-    }
-    if (date_debut) {
-      conditions.push(`o.date_creation >= $${idx++}`);
-      params.push(date_debut);
-    }
-    if (date_fin) {
-      conditions.push(`o.date_creation <= $${idx++}`);
-      params.push(date_fin);
-    }
+    if (patient_id) { conditions.push(`o.patient_id = $${idx++}`); params.push(parseInt(patient_id, 10)); }
+    if (status) { conditions.push(`o.statut = $${idx++}`); params.push(status); }
+    if (date_debut) { conditions.push(`o.date_creation >= $${idx++}`); params.push(date_debut); }
+    if (date_fin) { conditions.push(`o.date_creation <= $${idx++}`); params.push(date_fin); }
 
     const { rows } = await client.query(`
       SELECT
-        o.id,
-        o.numero_ordonnance,
-        o.date_creation,
-        -- alias compat ancien frontend
-        o.date_creation    AS created_at,
-        o.statut,
-        o.statut           AS status,
-        o.observations,
-        o.observations     AS notes,
-        o.medecin_id,
-        o.medecin_id       AS doctor_id,
-        o.patient_id,
-        o.retrieved_by,
+        o.id, o.numero_ordonnance, o.date_creation,
+        o.date_creation AS created_at,
+        o.statut, o.statut AS status,
+        o.observations, o.observations AS notes,
+        o.medecin_id, o.medecin_id AS doctor_id,
+        o.patient_id, o.retrieved_by,
         p.nom    AS patient_nom,
         p.prenom AS patient_prenom,
         m.nom    AS medecin_nom,
@@ -355,7 +313,8 @@ router.get('/', async (req, res) => {
         m.prenom AS doctor_prenom,
         u.nom    AS retrieved_nom,
         u.prenom AS retrieved_prenom,
-        (SELECT COUNT(*) FROM ligne_ordonnances lo WHERE lo.ordonnance_id = o.id) AS nb_medicaments,
+        (SELECT COUNT(*) FROM ligne_ordonnances lo
+          WHERE lo.ordonnance_id = o.id AND lo.hospital_id = $1) AS nb_medicaments,
         COALESCE(
           (SELECT json_agg(row_to_json(t))
              FROM (
@@ -366,15 +325,15 @@ router.get('/', async (req, res) => {
                       lo.quantite_delivree AS served_quantite,
                       lo.medicament_id
                FROM ligne_ordonnances lo
-               JOIN medicaments med ON med.id = lo.medicament_id
-               WHERE lo.ordonnance_id = o.id
+               JOIN medicaments med ON med.id = lo.medicament_id AND med.hospital_id = $1
+               WHERE lo.ordonnance_id = o.id AND lo.hospital_id = $1
              ) t),
           '[]'::json
         ) AS items
       FROM ordonnances o
-      JOIN patients p ON p.id = o.patient_id
-      LEFT JOIN medecins m ON m.id = o.medecin_id
-      LEFT JOIN utilisateurs u ON u.id = o.retrieved_by
+      JOIN patients p ON p.id = o.patient_id AND p.hospital_id = $1
+      LEFT JOIN medecins m ON m.id = o.medecin_id AND m.hospital_id = $1
+      LEFT JOIN utilisateurs u ON u.id = o.retrieved_by AND u.hospital_id = $1
       WHERE ${conditions.join(' AND ')}
       ORDER BY o.date_creation DESC
       LIMIT 200
@@ -392,9 +351,9 @@ router.get('/', async (req, res) => {
 });
 
 // ============================================================
-// GET /:id — Détail complet d'une ordonnance
+// GET /:id — Détail complet
 // ============================================================
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireHospital, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -402,18 +361,12 @@ router.get('/:id', async (req, res) => {
 
     const { rows } = await client.query(`
       SELECT
-        o.id,
-        o.numero_ordonnance,
-        o.date_creation,
+        o.id, o.numero_ordonnance, o.date_creation,
         o.date_creation AS created_at,
-        o.statut,
-        o.statut       AS status,
-        o.observations,
-        o.observations AS notes,
-        o.medecin_id,
-        o.medecin_id   AS doctor_id,
-        o.patient_id,
-        o.retrieved_by,
+        o.statut, o.statut AS status,
+        o.observations, o.observations AS notes,
+        o.medecin_id, o.medecin_id AS doctor_id,
+        o.patient_id, o.retrieved_by,
         p.nom    AS patient_nom,
         p.prenom AS patient_prenom,
         p.ipp,
@@ -424,9 +377,9 @@ router.get('/:id', async (req, res) => {
         u.nom    AS retrieved_nom,
         u.prenom AS retrieved_prenom
       FROM ordonnances o
-      JOIN patients p ON p.id = o.patient_id
-      LEFT JOIN medecins m ON m.id = o.medecin_id
-      LEFT JOIN utilisateurs u ON u.id = o.retrieved_by
+      JOIN patients p ON p.id = o.patient_id AND p.hospital_id = $2
+      LEFT JOIN medecins m ON m.id = o.medecin_id AND m.hospital_id = $2
+      LEFT JOIN utilisateurs u ON u.id = o.retrieved_by AND u.hospital_id = $2
       WHERE o.id = $1 AND o.hospital_id = $2
     `, [req.params.id, req.hospitalId]);
 
@@ -439,21 +392,15 @@ router.get('/:id', async (req, res) => {
 
     const lignesRes = await client.query(`
       SELECT
-        lo.id,
-        lo.medicament_id,
-        lo.quantite_prescrit,
-        lo.quantite_delivree,
-        lo.posologie,
+        lo.id, lo.medicament_id, lo.quantite_prescrit, lo.quantite_delivree, lo.posologie,
         med.nom AS medicament,
         med.code AS medicament_code,
-        med.forme,
-        med.dosage,
-        med.unite
+        med.forme, med.dosage, med.unite
       FROM ligne_ordonnances lo
-      JOIN medicaments med ON med.id = lo.medicament_id
-      WHERE lo.ordonnance_id = $1
+      JOIN medicaments med ON med.id = lo.medicament_id AND med.hospital_id = $2
+      WHERE lo.ordonnance_id = $1 AND lo.hospital_id = $2
       ORDER BY lo.id
-    `, [req.params.id]);
+    `, [req.params.id, req.hospitalId]);
 
     await client.query('COMMIT');
     res.json({ ...ord, items: lignesRes.rows, lignes: lignesRes.rows });
@@ -467,9 +414,10 @@ router.get('/:id', async (req, res) => {
 });
 
 // ============================================================
-// POST / — Création d'une ordonnance
+// POST / — Création ordonnance
+// ⚠️ Vérifications d'appartenance patient + médicaments + médecin
 // ============================================================
-router.post('/', requireRole(['medecin', 'admin']), async (req, res) => {
+router.post('/', requireHospital, requireRole(['medecin', 'admin']), async (req, res) => {
   const { patient_id, medecin_id, items, lignes, notes, observations, password } = req.body;
   const finalItems = items || lignes || [];
 
@@ -487,8 +435,8 @@ router.post('/', requireRole(['medecin', 'admin']), async (req, res) => {
 
     // Vérification mot de passe
     const userRes = await client.query(
-      'SELECT password_hash FROM utilisateurs WHERE id = $1',
-      [req.user.id]
+      'SELECT password_hash FROM utilisateurs WHERE id = $1 AND hospital_id = $2',
+      [req.user.id, req.hospitalId]
     );
     if (userRes.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -500,7 +448,17 @@ router.post('/', requireRole(['medecin', 'admin']), async (req, res) => {
       return res.status(403).json({ error: 'Mot de passe incorrect' });
     }
 
-    // Déterminer le médecin
+    // Vérifier patient du tenant
+    const patCheck = await client.query(
+      'SELECT id FROM patients WHERE id = $1 AND hospital_id = $2',
+      [patient_id, req.hospitalId]
+    );
+    if (patCheck.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Patient non trouvé dans cet établissement' });
+    }
+
+    // Déterminer le médecin (et vérifier son appartenance)
     let finalMedecinId = medecin_id;
     if (!finalMedecinId) {
       const m = await client.query(
@@ -512,6 +470,28 @@ router.post('/', requireRole(['medecin', 'admin']), async (req, res) => {
         return res.status(400).json({ error: 'Profil médecin introuvable pour cet utilisateur.' });
       }
       finalMedecinId = m.rows[0].id;
+    } else {
+      const medCheck = await client.query(
+        'SELECT id FROM medecins WHERE id = $1 AND hospital_id = $2',
+        [finalMedecinId, req.hospitalId]
+      );
+      if (medCheck.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Médecin non trouvé dans cet établissement' });
+      }
+    }
+
+    // Vérifier tous les médicaments appartiennent au tenant
+    const medIds = finalItems.map(i => i.medicament_id).filter(Boolean);
+    if (medIds.length > 0) {
+      const medsCheck = await client.query(
+        'SELECT id FROM medicaments WHERE id = ANY($1::int[]) AND hospital_id = $2',
+        [medIds, req.hospitalId]
+      );
+      if (medsCheck.rowCount !== new Set(medIds).size) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Un ou plusieurs médicaments n\'appartiennent pas à cet établissement' });
+      }
     }
 
     const numero = `ORD-${Date.now()}`;
@@ -548,9 +528,9 @@ router.post('/', requireRole(['medecin', 'admin']), async (req, res) => {
 });
 
 // ============================================================
-// PUT /:id/serve — Marquer comme servie (délivrance)
+// PUT /:id/serve — Marquer comme servie
 // ============================================================
-router.put('/:id/serve', requireRole(['pharmacien', 'admin']), async (req, res) => {
+router.put('/:id/serve', requireHospital, requireRole(['pharmacien', 'admin']), async (req, res) => {
   const { password, retrieved_by } = req.body;
   if (!password) {
     return res.status(400).json({ error: 'Mot de passe requis pour valider la délivrance' });
@@ -562,8 +542,8 @@ router.put('/:id/serve', requireRole(['pharmacien', 'admin']), async (req, res) 
     await setTenant(client, req.hospitalId);
 
     const userRes = await client.query(
-      'SELECT password_hash FROM utilisateurs WHERE id = $1',
-      [req.user.id]
+      'SELECT password_hash FROM utilisateurs WHERE id = $1 AND hospital_id = $2',
+      [req.user.id, req.hospitalId]
     );
     if (userRes.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -573,6 +553,18 @@ router.put('/:id/serve', requireRole(['pharmacien', 'admin']), async (req, res) 
     if (!valid) {
       await client.query('ROLLBACK');
       return res.status(403).json({ error: 'Mot de passe incorrect' });
+    }
+
+    // Vérifier retrieved_by appartient au tenant si fourni
+    if (retrieved_by) {
+      const rCheck = await client.query(
+        'SELECT id FROM utilisateurs WHERE id = $1 AND hospital_id = $2',
+        [retrieved_by, req.hospitalId]
+      );
+      if (rCheck.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Utilisateur récupérateur non trouvé' });
+      }
     }
 
     const result = await client.query(`
@@ -600,9 +592,9 @@ router.put('/:id/serve', requireRole(['pharmacien', 'admin']), async (req, res) 
 });
 
 // ============================================================
-// PUT /:id/statut — Changer le statut (admin)
+// PUT /:id/statut — Changer statut (admin)
 // ============================================================
-router.put('/:id/statut', requireRole(['admin']), async (req, res) => {
+router.put('/:id/statut', requireHospital, requireRole(['admin']), async (req, res) => {
   const { statut } = req.body;
   const statutsValides = ['en_attente', 'delivree', 'servie', 'partiellement_delivree', 'annulee'];
   if (!statutsValides.includes(statut)) {
@@ -636,9 +628,9 @@ router.put('/:id/statut', requireRole(['admin']), async (req, res) => {
 });
 
 // ============================================================
-// DELETE /:id — Supprimer une ordonnance (admin, uniquement si en attente)
+// DELETE /:id — Supprimer (admin, si en_attente)
 // ============================================================
-router.delete('/:id', requireRole(['admin']), async (req, res) => {
+router.delete('/:id', requireHospital, requireRole(['admin']), async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -657,7 +649,7 @@ router.delete('/:id', requireRole(['admin']), async (req, res) => {
       return res.status(400).json({ error: 'Impossible de supprimer une ordonnance déjà délivrée' });
     }
 
-    await client.query('DELETE FROM ligne_ordonnances WHERE ordonnance_id = $1', [req.params.id]);
+    await client.query('DELETE FROM ligne_ordonnances WHERE ordonnance_id = $1 AND hospital_id = $2', [req.params.id, req.hospitalId]);
     await client.query('DELETE FROM ordonnances WHERE id = $1 AND hospital_id = $2', [req.params.id, req.hospitalId]);
 
     await client.query('COMMIT');

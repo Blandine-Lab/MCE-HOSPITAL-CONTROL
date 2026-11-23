@@ -72,10 +72,7 @@ module.exports.pool = pool;
 // ============================================================
 // 5. IMPORTS DES ROUTEURS
 // ============================================================
-// 🔥 CHAT LIVE — chemin CORRIGÉ : ./src/routes/chat (comme les autres)
 const chatRoutes = require('./src/routes/chat');
-
-// 🔥 AJOUT FORMATION — chat de formation DPI (fichier isolé)
 const chatFormationRoutes = require('./src/routes/chatFormation');
 
 const express = require('express');
@@ -143,7 +140,6 @@ const publicRoutes = require('./src/routes/publicRoutes');
 const hospitalRegisterRoute = require('./src/routes/hospitalRegister');
 const superAdminRoutes = require('./src/routes/superAdminRoutes');
 
-// 🔥 BIBLIOTHÈQUE (Supabase) — chemin CORRIGÉ : ./src/routes/library
 const libraryRoutes = require('./src/routes/library');
 
 const { authenticate, requireRole } = require('./src/middleware/auth');
@@ -154,10 +150,8 @@ const { authenticate, requireRole } = require('./src/middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ⚠️ ICI on ne monte QUE les fichiers statiques (pas de body à parser)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Middlewares globaux (body parsing AVANT les routes)
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(compression());
 app.use(express.json());
@@ -211,18 +205,13 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============================================================
-// 7. ROUTES PUBLIQUES (après body parsing + CORS)
+// 7. ROUTES PUBLIQUES
 // ============================================================
 app.use('/api/auth', authRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/hospitals', hospitalRegisterRoute);
 
-// 💬 CHAT LIVE — PUBLIC (visiteur anonyme autorisé) — APRÈS express.json()
 app.use('/api/chat', chatRoutes);
-
-// 🔥 AJOUT FORMATION — chat de formation DPI (whitelist interne au fichier)
-//    Protégé par vérification JWT manuelle dans chatFormation.js
-//    Ne touche PAS au chat existant ci-dessus.
 app.use('/api/chat-formation', chatFormationRoutes);
 
 // ============================================================
@@ -282,19 +271,25 @@ app.use('/api/parametres-references', parametresLaboRoutes);
 
 app.use('/api/platform', superAdminRoutes);
 
-// 🔥 BIBLIOTHÈQUE — placé APRÈS express.json(), cors, et avec les autres routes protégées
 app.use('/api/library', libraryRoutes);
 
 // ============================================================
 // 9. ROUTES LEGACY
 // ============================================================
+
+// ✅ CORRIGÉ : filtre par hospital_id (isolation multi-tenant)
 app.get('/api/admin/patients', authenticate, requireRole(['admin', 'pharmacien']), async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT id, prenom AS first_name, nom AS last_name, email
-      FROM patients
-      ORDER BY nom, prenom
-    `);
+    if (!req.hospitalId) {
+      return res.status(403).json({ error: 'Contexte hôpital manquant', code: 'TENANT_MISSING' });
+    }
+    const { rows } = await pool.query(
+      `SELECT id, prenom AS first_name, nom AS last_name, email
+       FROM patients
+       WHERE hospital_id = $1
+       ORDER BY nom, prenom`,
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur /admin/patients :', err);

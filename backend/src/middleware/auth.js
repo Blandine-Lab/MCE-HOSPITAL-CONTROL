@@ -1,16 +1,22 @@
 const jwt = require('jsonwebtoken');
 const { runWithTenant } = require('../config/db');
 
-// 🔑 Doit rester identique à la clé utilisée pour signer le token au login.
-const JWT_SECRET = process.env.JWT_SECRET || 'une_cle_par_defaut_mais_changez_la';
+// ============================================================
+// 🔑 FIX P1 : aligné avec auth.js (pas de fallback prod silencieux)
+// ============================================================
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: JWT_SECRET manquant en production — arrêt du serveur');
+    }
+    console.warn('⚠️ JWT_SECRET absent — fallback DEV uniquement');
+}
+const EFFECTIVE_SECRET = JWT_SECRET || 'dev-only-do-not-use-in-prod';
 
-// Log de debug local uniquement — jamais en production.
 const DEBUG_AUTH = process.env.DEBUG_AUTH === 'true';
 
 // ============================================================
-// Middleware d'authentification : vérifie l'access token
-// + extrait les informations de tenant (hôpital) du JWT
-// + ouvre le contexte AsyncLocalStorage pour scoper les requêtes.
+// Middleware d'authentification
 // ============================================================
 function authenticate(req, res, next) {
     const authHeader = req.headers.authorization;
@@ -24,11 +30,11 @@ function authenticate(req, res, next) {
     }
 
     if (DEBUG_AUTH) {
-        console.log('🔑 JWT_SECRET utilisé :', JWT_SECRET);
-        console.log('📩 Token reçu :', token);
+        // ⚠️ Ne jamais logguer le token entier en prod
+        console.log('📩 Token reçu (préfixe) :', token.slice(0, 20) + '...');
     }
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, EFFECTIVE_SECRET, (err, decoded) => {
         if (err) {
             console.error('❌ Erreur JWT :', err.message);
             if (err.name === 'TokenExpiredError') {
@@ -38,44 +44,26 @@ function authenticate(req, res, next) {
         }
 
         if (DEBUG_AUTH) {
-            console.log('✅ Token valide, utilisateur :', decoded);
+            console.log('✅ Token valide, utilisateur :', {
+                id: decoded.id, role: decoded.role,
+                hospital_id: decoded.hospital_id,
+            });
         }
 
-        // ----- Identité -----
         req.user = decoded;
-
-        // ----- Contexte tenant -----
         req.hospitalId   = decoded.hospital_id   || null;
         req.hospitalSlug = decoded.hospital_slug || null;
 
-        // ============================================================
-        // 🏥 Multi-tenant : ouvre le contexte AsyncLocalStorage
-        // ------------------------------------------------------------
-        // Sans cette enveloppe, tous les `pool.query()` exécutés
-        // dans les handlers suivants tourneraient SANS `app.hospital_id`
-        // → RLS bloquerait tout (ou pire, laisserait passer).
-        //
-        // Avec l'enveloppe, tout ce qui est exécuté après `next()`
-        // (même asynchrone, même dans un `.then()`) hérite du contexte
-        // → le wrapper `pool.query` de config/db.js applique le
-        //   `set_config('app.hospital_id', …)` automatiquement.
-        // ============================================================
         if (req.hospitalId) {
             return runWithTenant(req.hospitalId, () => next());
         }
 
-        // Pas de contexte tenant (route legacy, super-admin…)
-        // → on laisse passer, comportement normal.
         next();
     });
 }
 
 // ============================================================
-// Garde-fou multi-tenant (inchangé)
-// ------------------------------------------------------------
-// Utilisable maintenant que la Phase F (backfill) est faite.
-// À monter sur les routes critiques (patients, billing, etc.)
-// pour renvoyer 403 au lieu de fuiter en cas de JWT sans tenant.
+// 🔴 FIX P0 : requireHospital exporté (alias de requireTenant)
 // ============================================================
 function requireTenant(req, res, next) {
     if (!req.hospitalId) {
@@ -87,8 +75,11 @@ function requireTenant(req, res, next) {
     next();
 }
 
+// Alias pour compatibilité avec les imports existants
+const requireHospital = requireTenant;
+
 // ============================================================
-// Restriction par rôle (inchangé)
+// Restriction par rôle
 // ============================================================
 function requireRole(roles) {
     return (req, res, next) => {
@@ -103,14 +94,15 @@ function requireRole(roles) {
 }
 
 // ============================================================
-// Restriction par permission (inchangé)
+// Restriction par permission
 // ============================================================
 function requirePermission(permission) {
     return (req, res, next) => {
         if (!req.user) {
             return res.status(401).json({ error: 'Non authentifié' });
         }
-        if (req.user.role === 'admin') {
+        // admin et super_admin passent (ALL_PERMISSIONS déjà accordées au login)
+        if (req.user.role === 'admin' || req.user.role === 'super_admin') {
             return next();
         }
         if (!req.user.permissions || !req.user.permissions.includes(permission)) {
@@ -121,7 +113,7 @@ function requirePermission(permission) {
 }
 
 // ============================================================
-// Réservé aux administrateurs (inchangé)
+// Réservé aux administrateurs d'hôpital
 // ============================================================
 function requireAdmin(req, res, next) {
     if (!req.user) {
@@ -136,6 +128,7 @@ function requireAdmin(req, res, next) {
 module.exports = {
     authenticate,
     requireTenant,
+    requireHospital,        // ✅ FIX P0
     requireRole,
     requirePermission,
     requireAdmin,

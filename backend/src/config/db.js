@@ -3,7 +3,7 @@ const { AsyncLocalStorage } = require('async_hooks');
 require('dotenv').config();
 
 // 🔥 MARQUEUR DE VÉRIFICATION — doit apparaître au démarrage du backend
-console.log('🔥 db.js chargé — version RETRY v5 (timeout 8s + idle 10s + trim tenant)');
+console.log('🔥 db.js chargé — version RETRY v6 (max=10 + blocker OWNER prod)');
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -17,10 +17,12 @@ console.log('🔗 Connexion à PostgreSQL avec DATABASE_URL');
 // Options communes aux deux pools
 // - idleTimeoutMillis: 10000 → recycle AVANT que Neon ne coupe
 // - connectionTimeoutMillis: 15000 → marge sous coupure
+// - max: 10 → augmenté pour absorber la charge (was 5)
+//   (chaque pool.query ouvre BEGIN+set_config+query+COMMIT)
 // ============================================================
 const poolOptions = {
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 5,
+  max: 10,
   idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 15000,
   keepAlives: 1,
@@ -163,10 +165,20 @@ async function tenantQuery(hospitalId, sql, params = []) {
 const authConnectionString =
   process.env.DATABASE_URL_OWNER || process.env.DATABASE_URL;
 
+// ✅ FIX : refus de démarrer en production si DATABASE_URL_OWNER absent
+//    (sinon le login échouera sous RLS → lock-out total)
 if (!process.env.DATABASE_URL_OWNER) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      '❌ FATAL : DATABASE_URL_OWNER non définie en production.\n' +
+      '   → authPool utilisera DATABASE_URL sans BYPASSRLS\n' +
+      '   → le login échouera une fois le RLS activé\n' +
+      '   → définir DATABASE_URL_OWNER (rôle DB propriétaire) avant redémarrage.'
+    );
+    process.exit(1);
+  }
   console.warn(
-    '⚠️ DATABASE_URL_OWNER non définie — authPool utilisera DATABASE_URL ' +
-    '(le login risque d’échouer sous RLS).'
+    '⚠️ DATABASE_URL_OWNER non définie — authPool utilisera DATABASE_URL (dev uniquement).'
   );
 }
 

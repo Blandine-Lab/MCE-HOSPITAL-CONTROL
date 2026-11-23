@@ -105,13 +105,13 @@ function normalizeLogin(rawLogin, hospitalSlug) {
 // ============================================================
 router.get('/utilisateurs', async (req, res) => {
   try {
-    console.log('🔍 GET /admin/utilisateurs — req.user :', {
-      id: req.user?.id,
-      role: req.user?.role,
-      hospital_id: req.user?.hospital_id,
-      hospital_slug: req.user?.hospital_slug,
-      is_super_admin: isSuperAdmin(req),
-    });
+    // ✅ FIX : garde-fou tenant — un admin sans hospital_id est invalide
+    if (!isSuperAdmin(req) && !req.user?.hospital_id) {
+      return res.status(403).json({
+        error: 'TENANT_MISSING',
+        message: 'Aucun hôpital associé à votre compte',
+      });
+    }
 
     let query, params;
 
@@ -126,25 +126,23 @@ router.get('/utilisateurs', async (req, res) => {
       params = [];
       console.log('🔍 GET /admin/utilisateurs — mode SUPER_ADMIN (pas de filtre)');
     } else {
+      // ✅ FIX : on n'expose NI les super_admin NI les orphelins hospital_id IS NULL
       query = `
         SELECT u.id, u.login, u.nom, u.prenom, u.role, u.actif, u.created_at,
                u.hospital_id, h.slug AS hospital_slug, h.nom AS hospital_nom
         FROM utilisateurs u
         LEFT JOIN hospitals h ON h.id = u.hospital_id
-        WHERE u.hospital_id = $1 OR u.hospital_id IS NULL
+        WHERE u.hospital_id = $1
+          AND u.role <> 'super_admin'
         ORDER BY u.id
       `;
       params = [req.user.hospital_id];
       console.log('🔍 GET /admin/utilisateurs — filtre hospital_id =', req.user.hospital_id);
     }
 
-    // ✅ FIX : avec le pool patché, pool.query hérite du tenant via ALS
-    //          (plus besoin de withHospitalContext ici)
     const result = await pool.query(query, params);
-    const rows = result.rows;
-
-    console.log(`🔍 GET /admin/utilisateurs — ${rows.length} ligne(s) retournée(s)`);
-    res.json(rows);
+    console.log(`🔍 GET /admin/utilisateurs — ${result.rows.length} ligne(s) retournée(s)`);
+    res.json(result.rows);
   } catch (err) {
     console.error('❌ GET /admin/utilisateurs :', err);
     res.status(500).json({ error: err.message });

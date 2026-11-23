@@ -1,8 +1,8 @@
 // backend/src/routes/examensRoutes.js
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');                       // ✅ pool patché
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const pool = require('../config/db');
+const { authenticate, requireHospital, requireAdmin } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 const { generateExamPDF } = require('../services/pdfService');
 
@@ -17,6 +17,49 @@ async function setTenant(client, hospitalId) {
 }
 
 // ============================================================
+// Helpers – vérification d'appartenance au tenant
+// ============================================================
+async function patientInTenant(patientId, hospitalId) {
+  const { rowCount } = await pool.query(
+    'SELECT 1 FROM patients WHERE id = $1 AND hospital_id = $2',
+    [patientId, hospitalId]
+  );
+  return rowCount > 0;
+}
+
+async function typeExamenInTenant(typeId, hospitalId) {
+  const { rowCount } = await pool.query(
+    'SELECT 1 FROM types_examens WHERE id = $1 AND hospital_id = $2',
+    [typeId, hospitalId]
+  );
+  return rowCount > 0;
+}
+
+async function serviceInTenant(serviceId, hospitalId) {
+  const { rowCount } = await pool.query(
+    'SELECT 1 FROM services WHERE id = $1 AND hospital_id = $2',
+    [serviceId, hospitalId]
+  );
+  return rowCount > 0;
+}
+
+async function utilisateurInTenant(userId, hospitalId) {
+  const { rowCount } = await pool.query(
+    'SELECT 1 FROM utilisateurs WHERE id = $1 AND hospital_id = $2',
+    [userId, hospitalId]
+  );
+  return rowCount > 0;
+}
+
+async function examenInTenant(examenId, hospitalId) {
+  const { rowCount } = await pool.query(
+    'SELECT 1 FROM examens WHERE id = $1 AND hospital_id = $2',
+    [examenId, hospitalId]
+  );
+  return rowCount > 0;
+}
+
+// ============================================================
 //  VÉRIFICATION / AJOUT DES COLONNES MANQUANTES
 // ============================================================
 const ensureGroupesExamensTable = async () => {
@@ -28,9 +71,11 @@ const ensureGroupesExamensTable = async () => {
   }
 
   try {
+    // ✅ FIX : hospital_id ajouté au CREATE
     await pool.query(`
       CREATE TABLE IF NOT EXISTS groupes_examens (
         id SERIAL PRIMARY KEY,
+        hospital_id UUID,
         patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
         medecin_prescripteur VARCHAR(255),
         date_creation TIMESTAMP DEFAULT NOW()
@@ -38,13 +83,13 @@ const ensureGroupesExamensTable = async () => {
     `);
     console.log('✅ Table groupes_examens vérifiée/créée');
 
-    const checkCol = await pool.query(`
+    const checkPatient = await pool.query(`
       SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_name = 'groupes_examens' AND column_name = 'patient_id'
       )
     `);
-    if (!checkCol.rows[0].exists) {
+    if (!checkPatient.rows[0].exists) {
       await pool.query(`
         ALTER TABLE groupes_examens ADD COLUMN patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE
       `);
@@ -62,6 +107,18 @@ const ensureGroupesExamensTable = async () => {
         ALTER TABLE groupes_examens ADD COLUMN medecin_prescripteur VARCHAR(255)
       `);
       console.log('✅ Colonne medecin_prescripteur ajoutée');
+    }
+
+    // ✅ FIX : ajout hospital_id si la table existait déjà sans cette colonne
+    const checkHospital = await pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'groupes_examens' AND column_name = 'hospital_id'
+      )
+    `);
+    if (!checkHospital.rows[0].exists) {
+      await pool.query(`ALTER TABLE groupes_examens ADD COLUMN hospital_id UUID`);
+      console.log('✅ Colonne hospital_id ajoutée à groupes_examens (à backfiller via patient_id)');
     }
   } catch (err) {
     console.error('❌ Erreur lors de la vérification de groupes_examens :', err);
@@ -96,9 +153,7 @@ const ensureExamensParametres = async () => {
       )
     `);
     if (!checkParam.rows[0].exists) {
-      await pool.query(`
-        ALTER TABLE examens ADD COLUMN parametres JSONB
-      `);
+      await pool.query(`ALTER TABLE examens ADD COLUMN parametres JSONB`);
       console.log('✅ Colonne parametres ajoutée à examens');
     }
   } catch (err) {
@@ -166,7 +221,7 @@ const normalizeStatut = (statut) => {
 // ============================================================
 // COUNTS
 // ============================================================
-router.get('/counts', authenticate, async (req, res) => {
+router.get('/counts', authenticate, requireHospital, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -175,7 +230,8 @@ router.get('/counts', authenticate, async (req, res) => {
         COUNT(*) FILTER (WHERE statut = 'en_attente' OR statut = 'en_cours') AS aSaisir,
         COUNT(*) FILTER (WHERE statut = 'realise') AS aValider
       FROM examens
-    `);
+      WHERE hospital_id = $1
+    `, [req.hospitalId]);
     const { total, urgent, asaisir, avalider } = result.rows[0];
     res.json({
       total: parseInt(total),
@@ -192,7 +248,7 @@ router.get('/counts', authenticate, async (req, res) => {
 // ============================================================
 // RECENT
 // ============================================================
-router.get('/recent', authenticate, async (req, res) => {
+router.get('/recent', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT e.id, e.type_examen_id, e.date_demande, COALESCE(e.priorite, 'normal') AS priorite, 
@@ -201,9 +257,10 @@ router.get('/recent', authenticate, async (req, res) => {
       LEFT JOIN patients p ON e.patient_id = p.id
       LEFT JOIN types_examens t ON e.type_examen_id = t.id
       WHERE e.statut IN ('en_attente', 'en_cours')
+        AND e.hospital_id = $1
       ORDER BY e.date_demande DESC
       LIMIT 5
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('GET /examens/recent :', err);
@@ -214,9 +271,15 @@ router.get('/recent', authenticate, async (req, res) => {
 // ============================================================
 // PATIENT LIST
 // ============================================================
-router.get('/patient/:patientId', authenticate, async (req, res) => {
+router.get('/patient/:patientId', authenticate, requireHospital, async (req, res) => {
   try {
     const { patientId } = req.params;
+
+    // ✅ FIX : vérifier que le patient appartient au tenant AVANT de lire
+    if (!(await patientInTenant(patientId, req.hospitalId))) {
+      return res.status(404).json({ error: 'Patient non trouvé' });
+    }
+
     const { rows } = await pool.query(`
       SELECT e.id, e.type_examen_id, e.categorie, e.date_demande, e.statut,
              COALESCE(e.prix, 50) AS prix,
@@ -225,9 +288,10 @@ router.get('/patient/:patientId', authenticate, async (req, res) => {
       FROM examens e
       LEFT JOIN types_examens t ON e.type_examen_id = t.id
       WHERE e.patient_id = $1
+        AND e.hospital_id = $2
         AND e.statut NOT IN ('annule')
       ORDER BY e.date_demande DESC
-    `, [patientId]);
+    `, [patientId, req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('GET /examens/patient/:patientId :', err);
@@ -238,7 +302,7 @@ router.get('/patient/:patientId', authenticate, async (req, res) => {
 // ============================================================
 // GROUPE
 // ============================================================
-router.post('/groupe', authenticate, async (req, res) => {
+router.post('/groupe', authenticate, requireHospital, async (req, res) => {
   const { patient_id, medecin_prescripteur, examens, service_id } = req.body;
   if (!patient_id || !examens || examens.length === 0) {
     return res.status(400).json({ error: 'Patient et au moins un examen sont requis' });
@@ -253,12 +317,24 @@ router.post('/groupe', authenticate, async (req, res) => {
     return res.status(400).json({ error: 'Le service_id doit être un nombre valide.' });
   }
 
+  try {
+    // ✅ FIX : vérifications d'appartenance avant transaction
+    if (!(await patientInTenant(parsedPatientId, req.hospitalId))) {
+      return res.status(404).json({ error: 'Patient non trouvé' });
+    }
+    if (parsedServiceId !== null && !(await serviceInTenant(parsedServiceId, req.hospitalId))) {
+      return res.status(404).json({ error: 'Service non trouvé' });
+    }
+  } catch (err) {
+    console.error('POST /examens/groupe pré-check :', err);
+    return res.status(500).json({ error: err.message });
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await setTenant(client, req.hospitalId);   // ✅ FIX tenant
+    await setTenant(client, req.hospitalId);
 
-    // ✅ FIX hospital_id
     const groupeResult = await client.query(
       `INSERT INTO groupes_examens (hospital_id, patient_id, medecin_prescripteur)
        VALUES ($1, $2, $3) RETURNING id`,
@@ -273,35 +349,37 @@ router.post('/groupe', authenticate, async (req, res) => {
         throw new Error(`Le type_examen_id "${ex.type_examen_id}" n'est pas un nombre valide.`);
       }
 
+      // ✅ FIX : préleveur filtré par tenant
       let preleveurId = null;
       if (ex.preleveur_id && ex.preleveur_id !== '0' && ex.preleveur_id !== 0) {
         const parsed = parseInt(ex.preleveur_id);
-        if (!isNaN(parsed) && parsed > 0) {
+        if (!isNaN(parsed) && parsed > 0 && (await utilisateurInTenant(parsed, req.hospitalId))) {
           preleveurId = parsed;
+        } else {
+          console.log(`⚠️ Préleveur ID ${ex.preleveur_id} inexistant ou hors tenant, mis à NULL.`);
         }
       }
-
-      if (preleveurId !== null) {
-        const userCheck = await client.query('SELECT id FROM utilisateurs WHERE id = $1', [preleveurId]);
-        if (userCheck.rows.length === 0) {
-          preleveurId = null;
-          console.log(`⚠️ Préleveur ID ${ex.preleveur_id} inexistant, mis à NULL.`);
-        }
-      }
-
-      const serviceIdForExam = parsedServiceId;
 
       let typeNom = ex.type_examen || 'Examen non spécifié';
       if (typeExamenId) {
-        const typeRes = await client.query('SELECT nom FROM types_examens WHERE id = $1', [typeExamenId]);
+        // ✅ FIX : type filtré par tenant
+        const typeRes = await client.query(
+          'SELECT nom FROM types_examens WHERE id = $1 AND hospital_id = $2',
+          [typeExamenId, req.hospitalId]
+        );
         if (typeRes.rows.length > 0) {
           typeNom = typeRes.rows[0].nom;
+        } else {
+          throw new Error(`Type d'examen ${typeExamenId} introuvable dans cet hôpital.`);
         }
       }
 
       let categorie = ex.categorie;
       if (!categorie && typeExamenId) {
-        const catRes = await client.query('SELECT categorie FROM types_examens WHERE id = $1', [typeExamenId]);
+        const catRes = await client.query(
+          'SELECT categorie FROM types_examens WHERE id = $1 AND hospital_id = $2',
+          [typeExamenId, req.hospitalId]
+        );
         if (catRes.rows.length > 0) categorie = catRes.rows[0].categorie;
       }
 
@@ -309,7 +387,6 @@ router.post('/groupe', authenticate, async (req, res) => {
       const date_prelevement = ex.date_prelevement || null;
       const date_demande = new Date().toISOString().split('T')[0];
 
-      // ✅ FIX hospital_id
       const result = await client.query(
         `INSERT INTO examens 
          (hospital_id, patient_id, type_examen_id, type_examen, categorie, description, date_demande, date_prevue,
@@ -336,7 +413,7 @@ router.post('/groupe', authenticate, async (req, res) => {
           type_prelevement,
           date_prelevement,
           preleveurId,
-          serviceIdForExam
+          parsedServiceId
         ]
       );
       insertedIds.push(result.rows[0].id);
@@ -360,7 +437,7 @@ router.post('/groupe', authenticate, async (req, res) => {
 // ============================================================
 // LISTE AVEC PAGINATION
 // ============================================================
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, requireHospital, async (req, res) => {
   try {
     const {
       page = 1,
@@ -381,14 +458,17 @@ router.get('/', authenticate, async (req, res) => {
     let idx = 1;
     const whereClauses = [];
 
+    // ✅ FIX : filtre tenant toujours en premier
+    whereClauses.push(`e.hospital_id = $${idx++}`);
+    params.push(req.hospitalId);
+
     if (patient_id) {
       whereClauses.push(`e.patient_id = $${idx++}`);
       params.push(patient_id);
     }
     if (statut) {
-      const statutNorm = normalizeStatut(statut);
       whereClauses.push(`e.statut = $${idx++}`);
-      params.push(statutNorm);
+      params.push(normalizeStatut(statut));
     }
     if (categorie) {
       whereClauses.push(`e.categorie = $${idx++}`);
@@ -460,7 +540,7 @@ router.get('/', authenticate, async (req, res) => {
 // ============================================================
 // DÉTAIL
 // ============================================================
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, requireHospital, async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query(
@@ -476,8 +556,8 @@ router.get('/:id', authenticate, async (req, res) => {
        LEFT JOIN utilisateurs u ON e.technicien_id = u.id
        LEFT JOIN utilisateurs b ON e.biologiste_id = b.id
        LEFT JOIN services s ON e.service_id = s.id
-       WHERE e.id = $1`,
-      [id]
+       WHERE e.id = $1 AND e.hospital_id = $2`,
+      [id, req.hospitalId]
     );
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Examen non trouvé' });
@@ -485,8 +565,8 @@ router.get('/:id', authenticate, async (req, res) => {
     const examen = rows[0];
 
     const resultats = await pool.query(
-      `SELECT * FROM resultats_examens WHERE examen_id = $1 ORDER BY id`,
-      [id]
+      `SELECT * FROM resultats_examens WHERE examen_id = $1 AND hospital_id = $2 ORDER BY id`,
+      [id, req.hospitalId]
     );
 
     if (resultats.rows.length > 0) {
@@ -494,11 +574,7 @@ router.get('/:id', authenticate, async (req, res) => {
     } else {
       let params = examen.parametres;
       if (typeof params === 'string') {
-        try {
-          params = JSON.parse(params);
-        } catch {
-          params = [];
-        }
+        try { params = JSON.parse(params); } catch { params = []; }
       }
       examen.parametres = params || [];
     }
@@ -513,12 +589,17 @@ router.get('/:id', authenticate, async (req, res) => {
 // ============================================================
 // HISTORIQUE
 // ============================================================
-router.get('/:id/historique', authenticate, async (req, res) => {
+router.get('/:id/historique', authenticate, requireHospital, async (req, res) => {
   try {
     const { id } = req.params;
+    if (!(await examenInTenant(id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Examen non trouvé' });
+    }
     const { rows } = await pool.query(
-      `SELECT * FROM historique_examens WHERE examen_id = $1 ORDER BY date_modification DESC`,
-      [id]
+      `SELECT * FROM historique_examens
+       WHERE examen_id = $1 AND hospital_id = $2
+       ORDER BY date_modification DESC`,
+      [id, req.hospitalId]
     );
     res.json(rows);
   } catch (err) {
@@ -538,6 +619,11 @@ router.get('/:id/pdf', async (req, res) => {
     const JWT_SECRET = process.env.JWT_SECRET || 'une_cle_secrete_tres_longue_et_difficile_a_deviner';
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
+    // ✅ FIX : récupérer le tenant depuis le token
+    req.hospitalId = decoded.hospital_id || decoded.hospitalId;
+    if (!req.hospitalId) {
+      return res.status(403).json({ error: 'TENANT_MISSING', message: 'Token sans hospital_id' });
+    }
 
     const { id } = req.params;
     const { rows } = await pool.query(
@@ -553,8 +639,8 @@ router.get('/:id/pdf', async (req, res) => {
        LEFT JOIN utilisateurs u ON e.technicien_id = u.id
        LEFT JOIN utilisateurs b ON e.biologiste_id = b.id
        LEFT JOIN services s ON e.service_id = s.id
-       WHERE e.id = $1`,
-      [id]
+       WHERE e.id = $1 AND e.hospital_id = $2`,
+      [id, req.hospitalId]
     );
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Examen non trouvé' });
@@ -562,8 +648,8 @@ router.get('/:id/pdf', async (req, res) => {
     const examen = rows[0];
 
     const resultats = await pool.query(
-      `SELECT * FROM resultats_examens WHERE examen_id = $1 ORDER BY id`,
-      [id]
+      `SELECT * FROM resultats_examens WHERE examen_id = $1 AND hospital_id = $2 ORDER BY id`,
+      [id, req.hospitalId]
     );
     examen.parametres = resultats.rows;
 
@@ -593,7 +679,7 @@ router.get('/:id/pdf', async (req, res) => {
 // ============================================================
 // POST /examens (individuel)
 // ============================================================
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, requireHospital, async (req, res) => {
   try {
     const {
       patient_id,
@@ -614,25 +700,37 @@ router.post('/', authenticate, async (req, res) => {
       service_id
     } = req.body;
 
+    // ✅ FIX : patient obligatoire et vérifié dans le tenant
+    if (!patient_id) {
+      return res.status(400).json({ error: 'Le patient est requis' });
+    }
+    if (!(await patientInTenant(patient_id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Patient non trouvé' });
+    }
+
+    if (type_examen_id && !(await typeExamenInTenant(type_examen_id, req.hospitalId))) {
+      return res.status(404).json({ error: "Type d'examen non trouvé" });
+    }
+    if (service_id && !(await serviceInTenant(service_id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Service non trouvé' });
+    }
+
     let parsedPreleveurId = null;
     if (preleveur_id && preleveur_id !== '0' && preleveur_id !== 0) {
       const parsed = parseInt(preleveur_id);
-      if (!isNaN(parsed) && parsed > 0) {
+      if (!isNaN(parsed) && parsed > 0 && (await utilisateurInTenant(parsed, req.hospitalId))) {
         parsedPreleveurId = parsed;
-      }
-    }
-
-    if (parsedPreleveurId !== null) {
-      const userCheck = await pool.query('SELECT id FROM utilisateurs WHERE id = $1', [parsedPreleveurId]);
-      if (userCheck.rows.length === 0) {
-        parsedPreleveurId = null;
-        console.log(`⚠️ Préleveur ID ${preleveur_id} inexistant, mis à NULL.`);
+      } else {
+        console.log(`⚠️ Préleveur ID ${preleveur_id} inexistant ou hors tenant, mis à NULL.`);
       }
     }
 
     let typeNom = 'Examen non spécifié';
     if (type_examen_id) {
-      const typeRes = await pool.query('SELECT nom FROM types_examens WHERE id = $1', [type_examen_id]);
+      const typeRes = await pool.query(
+        'SELECT nom FROM types_examens WHERE id = $1 AND hospital_id = $2',
+        [type_examen_id, req.hospitalId]
+      );
       if (typeRes.rows.length > 0) typeNom = typeRes.rows[0].nom;
     } else if (req.body.type_examen) {
       typeNom = req.body.type_examen;
@@ -640,7 +738,6 @@ router.post('/', authenticate, async (req, res) => {
 
     const statutNormalized = normalizeStatut(statut || 'demandé');
 
-    // ✅ FIX hospital_id
     const { rows } = await pool.query(
       `INSERT INTO examens 
        (hospital_id, patient_id, type_examen_id, type_examen, categorie, description, date_demande, date_prevue,
@@ -671,7 +768,6 @@ router.post('/', authenticate, async (req, res) => {
       ]
     );
 
-    // ✅ FIX hospital_id
     await pool.query(
       `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
        VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -689,7 +785,7 @@ router.post('/', authenticate, async (req, res) => {
 // ============================================================
 // PUT /examens/:id
 // ============================================================
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, requireHospital, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -711,12 +807,31 @@ router.put('/:id', authenticate, async (req, res) => {
       service_id
     } = req.body;
 
-    const old = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
+    // ✅ FIX : old scopé tenant
+    const old = await pool.query(
+      'SELECT * FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     if (old.rows.length === 0) return res.status(404).json({ error: 'Examen non trouvé' });
     const oldData = old.rows[0];
 
+    // ✅ FIX : vérifier patient / type / service / préleveur dans le tenant
+    if (patient_id && !(await patientInTenant(patient_id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Patient non trouvé' });
+    }
+    if (type_examen_id && !(await typeExamenInTenant(type_examen_id, req.hospitalId))) {
+      return res.status(404).json({ error: "Type d'examen non trouvé" });
+    }
+    if (service_id && !(await serviceInTenant(service_id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Service non trouvé' });
+    }
+    if (preleveur_id && !(await utilisateurInTenant(preleveur_id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Préleveur non trouvé' });
+    }
+
     const statutNormalized = statut ? normalizeStatut(statut) : oldData.statut;
 
+    // ✅ FIX : UPDATE scopé tenant
     const { rows } = await pool.query(
       `UPDATE examens 
        SET patient_id = $1, type_examen_id = $2, categorie = $3,
@@ -726,7 +841,7 @@ router.put('/:id', authenticate, async (req, res) => {
            type_prelevement = $12, date_prelevement = $13, preleveur_id = $14,
            parametres = $15, service_id = $16,
            updated_at = NOW()
-       WHERE id = $17
+       WHERE id = $17 AND hospital_id = $18
        RETURNING *`,
       [
         patient_id,
@@ -745,7 +860,8 @@ router.put('/:id', authenticate, async (req, res) => {
         preleveur_id,
         JSON.stringify(parametres || []),
         service_id,
-        id
+        id,
+        req.hospitalId
       ]
     );
 
@@ -759,7 +875,6 @@ router.put('/:id', authenticate, async (req, res) => {
         const oldStr = JSON.stringify(oldVal || []);
         const newStr = JSON.stringify(newVal || []);
         if (oldStr !== newStr) {
-          // ✅ FIX hospital_id
           await pool.query(
             `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
              VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -767,7 +882,6 @@ router.put('/:id', authenticate, async (req, res) => {
           );
         }
       } else if (oldVal !== newVal) {
-        // ✅ FIX hospital_id
         await pool.query(
           `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
            VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -786,12 +900,15 @@ router.put('/:id', authenticate, async (req, res) => {
 // ============================================================
 // PUT /examens/:id/resultats
 // ============================================================
-router.put('/:id/resultats', authenticate, async (req, res) => {
+router.put('/:id/resultats', authenticate, requireHospital, async (req, res) => {
   try {
     const { id } = req.params;
     const { parametres, statut, commentaire_global } = req.body;
 
-    const examenCheck = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
+    const examenCheck = await pool.query(
+      'SELECT * FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     if (examenCheck.rows.length === 0) return res.status(404).json({ error: 'Examen non trouvé' });
 
     const statutNormalized = normalizeStatut(statut || examenCheck.rows[0].statut);
@@ -804,14 +921,17 @@ router.put('/:id/resultats', authenticate, async (req, res) => {
            technicien_id = $3,
            date_saisie = NOW(),
            updated_at = NOW()
-       WHERE id = $4`,
-      [statutNormalized, commentaire_global || null, req.user.id, id]
+       WHERE id = $4 AND hospital_id = $5`,
+      [statutNormalized, commentaire_global || null, req.user.id, id, req.hospitalId]
     );
 
     if (parametres && parametres.length > 0) {
-      await pool.query('DELETE FROM resultats_examens WHERE examen_id = $1', [id]);
+      // ✅ FIX : DELETE scopé tenant
+      await pool.query(
+        'DELETE FROM resultats_examens WHERE examen_id = $1 AND hospital_id = $2',
+        [id, req.hospitalId]
+      );
       for (const p of parametres) {
-        // ✅ FIX hospital_id
         await pool.query(
           `INSERT INTO resultats_examens 
            (hospital_id, examen_id, parametre_nom, valeur, unite, ref_min, ref_max, interpretation, commentaire)
@@ -821,14 +941,16 @@ router.put('/:id/resultats', authenticate, async (req, res) => {
       }
     }
 
-    // ✅ FIX hospital_id
     await pool.query(
       `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [req.hospitalId, id, req.user.id, 'resultats', '', 'Saisie des résultats']
     );
 
-    const { rows } = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
+    const { rows } = await pool.query(
+      'SELECT * FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     res.json(rows[0]);
   } catch (err) {
     console.error('PUT /examens/:id/resultats :', err);
@@ -839,12 +961,15 @@ router.put('/:id/resultats', authenticate, async (req, res) => {
 // ============================================================
 // PUT /examens/:id/validation
 // ============================================================
-router.put('/:id/validation', authenticate, async (req, res) => {
+router.put('/:id/validation', authenticate, requireHospital, async (req, res) => {
   try {
     const { id } = req.params;
     const { commentaire_validation } = req.body;
 
-    const examenCheck = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
+    const examenCheck = await pool.query(
+      'SELECT * FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     if (examenCheck.rows.length === 0) return res.status(404).json({ error: 'Examen non trouvé' });
 
     await pool.query(
@@ -854,18 +979,20 @@ router.put('/:id/validation', authenticate, async (req, res) => {
            date_validation = NOW(),
            biologiste_id = $2,
            updated_at = NOW()
-       WHERE id = $3`,
-      [commentaire_validation || null, req.user.id, id]
+       WHERE id = $3 AND hospital_id = $4`,
+      [commentaire_validation || null, req.user.id, id, req.hospitalId]
     );
 
-    // ✅ FIX hospital_id
     await pool.query(
       `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [req.hospitalId, id, req.user.id, 'validation', '', 'Validation de l\'examen']
     );
 
-    const { rows } = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
+    const { rows } = await pool.query(
+      'SELECT * FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     res.json(rows[0]);
   } catch (err) {
     console.error('PUT /examens/:id/validation :', err);
@@ -876,10 +1003,13 @@ router.put('/:id/validation', authenticate, async (req, res) => {
 // ============================================================
 // PUT /examens/:id/reopen
 // ============================================================
-router.put('/:id/reopen', authenticate, async (req, res) => {
+router.put('/:id/reopen', authenticate, requireHospital, async (req, res) => {
   try {
     const { id } = req.params;
-    const examenCheck = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
+    const examenCheck = await pool.query(
+      'SELECT * FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     if (examenCheck.rows.length === 0) return res.status(404).json({ error: 'Examen non trouvé' });
     if (examenCheck.rows[0].statut !== 'realise') {
       return res.status(400).json({ error: 'Seul un examen réalisé peut être réouvert' });
@@ -891,18 +1021,20 @@ router.put('/:id/reopen', authenticate, async (req, res) => {
            date_validation = NULL,
            biologiste_id = NULL,
            updated_at = NOW()
-       WHERE id = $1`,
-      [id]
+       WHERE id = $1 AND hospital_id = $2`,
+      [id, req.hospitalId]
     );
 
-    // ✅ FIX hospital_id
     await pool.query(
       `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [req.hospitalId, id, req.user.id, 'reopen', 'realise', 'Réouverture de l\'examen']
     );
 
-    const { rows } = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
+    const { rows } = await pool.query(
+      'SELECT * FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     res.json(rows[0]);
   } catch (err) {
     console.error('PUT /examens/:id/reopen :', err);
@@ -913,12 +1045,15 @@ router.put('/:id/reopen', authenticate, async (req, res) => {
 // ============================================================
 // PUT /examens/:id/annuler
 // ============================================================
-router.put('/:id/annuler', authenticate, async (req, res) => {
+router.put('/:id/annuler', authenticate, requireHospital, async (req, res) => {
   try {
     const { id } = req.params;
     const { motif } = req.body;
 
-    const examenCheck = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
+    const examenCheck = await pool.query(
+      'SELECT * FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     if (examenCheck.rows.length === 0) return res.status(404).json({ error: 'Examen non trouvé' });
 
     await pool.query(
@@ -927,18 +1062,20 @@ router.put('/:id/annuler', authenticate, async (req, res) => {
            motif_annulation = COALESCE($1, motif_annulation),
            date_annulation = NOW(),
            updated_at = NOW()
-       WHERE id = $2`,
-      [motif || null, id]
+       WHERE id = $2 AND hospital_id = $3`,
+      [motif || null, id, req.hospitalId]
     );
 
-    // ✅ FIX hospital_id
     await pool.query(
       `INSERT INTO historique_examens (hospital_id, examen_id, utilisateur_id, champ, ancienne_valeur, nouvelle_valeur)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [req.hospitalId, id, req.user.id, 'annulation', '', `Annulation - motif: ${motif || 'non précisé'}`]
     );
 
-    const { rows } = await pool.query('SELECT * FROM examens WHERE id = $1', [id]);
+    const { rows } = await pool.query(
+      'SELECT * FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     res.json(rows[0]);
   } catch (err) {
     console.error('PUT /examens/:id/annuler :', err);
@@ -949,13 +1086,29 @@ router.put('/:id/annuler', authenticate, async (req, res) => {
 // ============================================================
 // DELETE /examens/:id
 // ============================================================
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('DELETE FROM resultats_examens WHERE examen_id = $1', [id]);
-    await pool.query('DELETE FROM historique_examens WHERE examen_id = $1', [id]);
-    const { rowCount } = await pool.query('DELETE FROM examens WHERE id = $1', [id]);
-    if (rowCount === 0) return res.status(404).json({ error: 'Examen non trouvé' });
+
+    // ✅ FIX : vérifier l'appartenance AVANT suppression en cascade
+    const check = await pool.query(
+      'SELECT id FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
+    if (check.rowCount === 0) return res.status(404).json({ error: 'Examen non trouvé' });
+
+    await pool.query(
+      'DELETE FROM resultats_examens WHERE examen_id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
+    await pool.query(
+      'DELETE FROM historique_examens WHERE examen_id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
+    await pool.query(
+      'DELETE FROM examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     res.status(204).send();
   } catch (err) {
     console.error('DELETE /examens/:id :', err);
@@ -964,10 +1117,10 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
-//  STATISTIQUES - NOUVELLES ROUTES
+//  STATISTIQUES
 // ============================================================
 
-router.get('/stats/mensuelles', authenticate, async (req, res) => {
+router.get('/stats/mensuelles', authenticate, requireHospital, async (req, res) => {
   try {
     const period = parseInt(req.query.period) || 12;
     const query = `
@@ -978,10 +1131,11 @@ router.get('/stats/mensuelles', authenticate, async (req, res) => {
         SUM(CASE WHEN statut = 'realise' THEN 1 ELSE 0 END) AS realizes
       FROM examens
       WHERE date_demande >= CURRENT_DATE - INTERVAL '${period} months'
+        AND hospital_id = $1
       GROUP BY mois
       ORDER BY mois ASC
     `;
-    const { rows } = await pool.query(query);
+    const { rows } = await pool.query(query, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('GET /examens/stats/mensuelles :', err);
@@ -989,21 +1143,22 @@ router.get('/stats/mensuelles', authenticate, async (req, res) => {
   }
 });
 
-router.get('/stats/globales', authenticate, async (req, res) => {
+router.get('/stats/globales', authenticate, requireHospital, async (req, res) => {
   try {
-    const total = await pool.query('SELECT COUNT(*) FROM examens');
-    const en_attente = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['en_attente']);
-    const en_cours = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['en_cours']);
-    const realise = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['realise']);
-    const annule = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1', ['annule']);
-    const valide = await pool.query('SELECT COUNT(*) FROM examens WHERE date_validation IS NOT NULL');
+    const h = req.hospitalId;
+    const total = await pool.query('SELECT COUNT(*) FROM examens WHERE hospital_id = $1', [h]);
+    const en_attente = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1 AND hospital_id = $2', ['en_attente', h]);
+    const en_cours = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1 AND hospital_id = $2', ['en_cours', h]);
+    const realise = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1 AND hospital_id = $2', ['realise', h]);
+    const annule = await pool.query('SELECT COUNT(*) FROM examens WHERE statut = $1 AND hospital_id = $2', ['annule', h]);
+    const valide = await pool.query('SELECT COUNT(*) FROM examens WHERE date_validation IS NOT NULL AND hospital_id = $1', [h]);
 
     const parCategorie = await pool.query(`
       SELECT categorie, COUNT(*) AS total
       FROM examens
-      WHERE categorie IS NOT NULL
+      WHERE categorie IS NOT NULL AND hospital_id = $1
       GROUP BY categorie
-    `);
+    `, [h]);
 
     const result = {
       total: parseInt(total.rows[0].count),
@@ -1025,20 +1180,23 @@ router.get('/stats/globales', authenticate, async (req, res) => {
   }
 });
 
-router.get('/stats/par-service', authenticate, async (req, res) => {
+router.get('/stats/par-service', authenticate, requireHospital, async (req, res) => {
   try {
     const query = `
       SELECT s.nom AS service, COUNT(e.id) AS total
       FROM examens e
       LEFT JOIN services s ON e.service_id = s.id
-      WHERE e.service_id IS NOT NULL
+      WHERE e.service_id IS NOT NULL AND e.hospital_id = $1
       GROUP BY s.nom
       ORDER BY total DESC
       LIMIT 10
     `;
-    const { rows } = await pool.query(query);
+    const { rows } = await pool.query(query, [req.hospitalId]);
 
-    const sansService = await pool.query('SELECT COUNT(*) FROM examens WHERE service_id IS NULL');
+    const sansService = await pool.query(
+      'SELECT COUNT(*) FROM examens WHERE service_id IS NULL AND hospital_id = $1',
+      [req.hospitalId]
+    );
     if (parseInt(sansService.rows[0].count) > 0) {
       rows.push({ service: 'Non spécifié', total: parseInt(sansService.rows[0].count) });
     }
@@ -1050,17 +1208,17 @@ router.get('/stats/par-service', authenticate, async (req, res) => {
   }
 });
 
-router.get('/stats/par-medecin', authenticate, async (req, res) => {
+router.get('/stats/par-medecin', authenticate, requireHospital, async (req, res) => {
   try {
     const query = `
       SELECT medecin_prescripteur AS medecin, COUNT(*) AS total
       FROM examens
-      WHERE medecin_prescripteur IS NOT NULL
+      WHERE medecin_prescripteur IS NOT NULL AND hospital_id = $1
       GROUP BY medecin_prescripteur
       ORDER BY total DESC
       LIMIT 10
     `;
-    const { rows } = await pool.query(query);
+    const { rows } = await pool.query(query, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('GET /examens/stats/par-medecin :', err);

@@ -2,31 +2,27 @@
 // ============================================================
 // 💊 PHARMACIE – Médicaments, lots, délivrance, dispositifs, etc.
 // ------------------------------------------------------------
-// ⚠️ FIX :
-//   1. Pool patché de config/db.js (ALS + set_config auto)
-//   2. set_config dans CHAQUE transaction (~13)
-//   3. hospital_id explicite dans TOUS les INSERT (~15)
-//   4. ROLLBACK robuste partout
-//   5. logAudit : signature objet corrigée
-//   6. FIX GET /medicaments : ajout de setTenant pour le RLS
-//   7. FIX GET /infirmiers : ajout de setTenant et filtre hospital_id
-//   8. AJOUT GET /stats (dashboard)
-//   9. AJOUT GET /ordonnances/historique (AVANT /:id !)
-//  10. FIX /delivrance : sécurisation des strings (varchar overflow)
-//  11. AJOUT GET /medicaments/top (top médicaments délivrés)
+// ⚠️ Le pool patché pose `app.hospital_id` via ALS, MAIS le RLS
+//    a été mis en NO FORCE + policy tenant_isolation supprimée.
+//    On filtre donc explicitement TOUTES les routes sur
+//    `req.hospitalId` (JWT) pour garantir l'isolation tenant.
+// ------------------------------------------------------------
+// 🔧 PATCH P0 : /delivrance utilise getFifoLots (pluriel) avec
+//    req.hospitalId en 2e arg → supporte la délivrance multi-lots
+//    (ex : lot A=5 + lot B=7 pour une ordonnance de 12).
 // ============================================================
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const pool = require('../config/db');
 const { authenticate, requireRole, requirePermission, requireAdmin } = require('../middleware/auth');
-const { getFifoLot } = require('../utils/fifo');
+const { getFifoLots } = require('../utils/fifo');       // ✅ PATCH : pluriel
 const { logAudit } = require('../utils/audit');
 
 router.use(authenticate);
 
 // ============================================================
-// Helper : pose le tenant dans la transaction courante
+// Helpers
 // ============================================================
 async function setTenant(client, hospitalId) {
   await client.query(
@@ -35,9 +31,24 @@ async function setTenant(client, hospitalId) {
   );
 }
 
-// ============================================================
-// Helper : logAudit compatible ancienne/nouvelle signature
-// ============================================================
+function requireHospital(req, res, next) {
+  if (!req.hospitalId) {
+    return res.status(403).json({
+      error: 'Contexte hôpital manquant',
+      code: 'TENANT_MISSING',
+    });
+  }
+  next();
+}
+
+function assertPositiveInt(v, label) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
+    throw new Error(`${label} doit être un entier strictement positif`);
+  }
+  return n;
+}
+
 async function audit(req, action, table, recordId, details = {}) {
   try {
     await logAudit({
@@ -54,19 +65,21 @@ async function audit(req, action, table, recordId, details = {}) {
   }
 }
 
-// ========== MÉDICAMENTS ==========
-router.get('/medicaments', async (req, res) => {
+// ==================================================================
+// ========== MÉDICAMENTS ===========================================
+// ==================================================================
+router.get('/medicaments', requireHospital, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
 
-    console.log('🔍 Récupération des médicaments...');
     const { rows } = await client.query(`
       SELECT m.*,
              (SELECT MIN(l.date_peremption)
               FROM lots l
-              WHERE l.medicament_id = m.id 
+              WHERE l.medicament_id = m.id
+                AND l.hospital_id = $1
                 AND COALESCE(l.stock_actuel, 0) > 0) AS date_peremption_proche
       FROM medicaments m
       WHERE m.hospital_id = $1
@@ -74,7 +87,6 @@ router.get('/medicaments', async (req, res) => {
     `, [req.hospitalId]);
 
     await client.query('COMMIT');
-    console.log(`✅ ${rows.length} médicaments trouvés`);
     res.json(rows);
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch (_) {}
@@ -85,26 +97,18 @@ router.get('/medicaments', async (req, res) => {
   }
 });
 
-// ==================================================================
-// ==================== TOP MÉDICAMENTS DÉLIVRÉS ====================
-// ⚠️ AVANT /medicaments/:id (wildcard) pour ne pas être capturé
-// ==================================================================
-router.get('/medicaments/top', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/medicaments/top', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
     const { rows } = await pool.query(`
       SELECT 
-        m.id,
-        m.nom,
-        m.code,
-        m.forme,
-        m.dosage,
-        m.unite,
+        m.id, m.nom, m.code, m.forme, m.dosage, m.unite,
         COALESCE(SUM(ms.quantite), 0)::int AS total_delivre,
         COUNT(DISTINCT ms.id)::int        AS nb_delivrances
       FROM medicaments m
       INNER JOIN mouvements_stock ms
         ON ms.medicament_id = m.id
+       AND ms.hospital_id = $1
        AND ms.type = 'sortie'
        AND ms.motif LIKE 'Délivrance%'
       WHERE m.hospital_id = $1
@@ -119,7 +123,7 @@ router.get('/medicaments/top', requirePermission('view_pharmacy'), async (req, r
   }
 });
 
-router.post('/medicaments', requirePermission('manage_pharmacy'), async (req, res) => {
+router.post('/medicaments', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { code, nom, description, stock, seuil_alerte, unite, prix_unitaire, principe_actif, forme, dosage, est_stupefiant } = req.body;
   const client = await pool.connect();
   try {
@@ -141,15 +145,16 @@ router.post('/medicaments', requirePermission('manage_pharmacy'), async (req, re
   }
 });
 
-router.put('/medicaments/:id', requirePermission('manage_pharmacy'), async (req, res) => {
+router.put('/medicaments/:id', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { code, nom, description, stock, seuil_alerte, unite, prix_unitaire, principe_actif, forme, dosage, est_stupefiant } = req.body;
   try {
-    await pool.query(`
-      UPDATE medicaments 
+    const result = await pool.query(`
+      UPDATE medicaments
       SET code=$1, nom=$2, description=$3, stock=$4, seuil_alerte=$5,
           unite=$6, prix_unitaire=$7, principe_actif=$8, forme=$9, dosage=$10, est_stupefiant=$11
-      WHERE id=$12
-    `, [code, nom, description, stock, seuil_alerte, unite, prix_unitaire, principe_actif, forme, dosage, est_stupefiant, req.params.id]);
+      WHERE id=$12 AND hospital_id=$13
+    `, [code, nom, description, stock, seuil_alerte, unite, prix_unitaire, principe_actif, forme, dosage, est_stupefiant, req.params.id, req.hospitalId]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Médicament non trouvé' });
     await audit(req, 'UPDATE_MEDICAMENT', 'medicaments', req.params.id, req.body);
     res.sendStatus(200);
   } catch (err) {
@@ -158,14 +163,28 @@ router.put('/medicaments/:id', requirePermission('manage_pharmacy'), async (req,
   }
 });
 
-router.delete('/medicaments/:id', requireAdmin, async (req, res) => {
+router.delete('/medicaments/:id', requireHospital, requireAdmin, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
-    const lots = await client.query('SELECT id FROM lots WHERE medicament_id=$1 LIMIT 1', [req.params.id]);
+
+    const own = await client.query(
+      'SELECT id FROM medicaments WHERE id=$1 AND hospital_id=$2',
+      [req.params.id, req.hospitalId]
+    );
+    if (own.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Médicament non trouvé' });
+    }
+
+    const lots = await client.query(
+      'SELECT id FROM lots WHERE medicament_id=$1 AND hospital_id=$2 LIMIT 1',
+      [req.params.id, req.hospitalId]
+    );
     if (lots.rows.length > 0) throw new Error('Impossible de supprimer : des lots existent');
-    await client.query('DELETE FROM medicaments WHERE id=$1', [req.params.id]);
+
+    await client.query('DELETE FROM medicaments WHERE id=$1 AND hospital_id=$2', [req.params.id, req.hospitalId]);
     await client.query('COMMIT');
     await audit(req, 'DELETE_MEDICAMENT', 'medicaments', req.params.id, {});
     res.sendStatus(204);
@@ -178,14 +197,18 @@ router.delete('/medicaments/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// ========== LOTS ==========
-router.get('/lots/disponibles/:medicamentId', async (req, res) => {
+// ==================================================================
+// ========== LOTS ==================================================
+// ==================================================================
+router.get('/lots/disponibles/:medicamentId', requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT * FROM lots 
-      WHERE medicament_id = $1 AND COALESCE(stock_actuel, 0) > 0
+      SELECT * FROM lots
+      WHERE medicament_id = $1
+        AND hospital_id = $2
+        AND COALESCE(stock_actuel, 0) > 0
       ORDER BY date_peremption ASC
-    `, [req.params.medicamentId]);
+    `, [req.params.medicamentId, req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /lots/disponibles :', err);
@@ -193,24 +216,41 @@ router.get('/lots/disponibles/:medicamentId', async (req, res) => {
   }
 });
 
-router.post('/lots', requirePermission('manage_pharmacy'), async (req, res) => {
+router.post('/lots', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { medicament_id, numero_lot, date_peremption, quantite, prix_achat } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
     if (new Date(date_peremption) < new Date()) throw new Error('Date de péremption dépassée');
+    const qte = assertPositiveInt(quantite, 'quantite');
+
+    const medCheck = await client.query(
+      'SELECT id FROM medicaments WHERE id=$1 AND hospital_id=$2',
+      [medicament_id, req.hospitalId]
+    );
+    if (medCheck.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Médicament non trouvé' });
+    }
+
     const { rows } = await client.query(`
       INSERT INTO lots (hospital_id, medicament_id, numero_lot, date_peremption, quantite, stock_actuel, prix_achat)
       VALUES ($1, $2, $3, $4, $5, $5, $6) RETURNING *
-    `, [req.hospitalId, medicament_id, numero_lot, date_peremption, quantite, prix_achat]);
-    await client.query('UPDATE medicaments SET stock = stock + $1 WHERE id = $2', [quantite, medicament_id]);
+    `, [req.hospitalId, medicament_id, numero_lot, date_peremption, qte, prix_achat]);
+
+    await client.query(
+      'UPDATE medicaments SET stock = stock + $1 WHERE id = $2 AND hospital_id = $3',
+      [qte, medicament_id, req.hospitalId]
+    );
+
     await client.query(`
       INSERT INTO public.mouvements_stock (hospital_id, medicament_id, lot_id, quantite, type, motif, utilisateur_id)
       VALUES ($1, $2, $3, $4, 'entree', 'Ajout lot', $5)
-    `, [req.hospitalId, medicament_id, rows[0].id, quantite, req.user.id]);
+    `, [req.hospitalId, medicament_id, rows[0].id, qte, req.user.id]);
+
     await client.query('COMMIT');
-    await audit(req, 'ADD_LOT', 'lots', rows[0].id, { numero_lot, quantite });
+    await audit(req, 'ADD_LOT', 'lots', rows[0].id, { numero_lot, quantite: qte });
     res.status(201).json(rows[0]);
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch (_) {}
@@ -221,15 +261,18 @@ router.post('/lots', requirePermission('manage_pharmacy'), async (req, res) => {
   }
 });
 
-// ========== COMMANDES ==========
-router.get('/commandes', requirePermission('view_pharmacy'), async (req, res) => {
+// ==================================================================
+// ========== COMMANDES =============================================
+// ==================================================================
+router.get('/commandes', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT c.*, f.nom AS fournisseur_nom 
+      SELECT c.*, f.nom AS fournisseur_nom
       FROM commandes c
-      LEFT JOIN fournisseurs f ON c.fournisseur_id = f.id
+      LEFT JOIN fournisseurs f ON c.fournisseur_id = f.id AND f.hospital_id = $1
+      WHERE c.hospital_id = $1
       ORDER BY c.date_commande DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /commandes :', err);
@@ -237,23 +280,45 @@ router.get('/commandes', requirePermission('view_pharmacy'), async (req, res) =>
   }
 });
 
-router.post('/commandes', requirePermission('manage_pharmacy'), async (req, res) => {
+router.post('/commandes', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { fournisseur_id, lignes } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
+
+    if (fournisseur_id) {
+      const fsCheck = await client.query(
+        'SELECT id FROM fournisseurs WHERE id=$1 AND hospital_id=$2',
+        [fournisseur_id, req.hospitalId]
+      );
+      if (fsCheck.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Fournisseur non trouvé' });
+      }
+    }
+
     const numCommande = `CMD-${Date.now()}`;
     const { rows } = await client.query(`
       INSERT INTO commandes (hospital_id, fournisseur_id, numero_commande, statut, validee_par)
       VALUES ($1, $2, $3, 'en_cours', $4) RETURNING id
     `, [req.hospitalId, fournisseur_id, numCommande, req.user.id]);
+
     const commandeId = rows[0].id;
     for (const ligne of lignes) {
+      const qteCmd = assertPositiveInt(ligne.quantite_commandee, 'quantite_commandee');
+      const medCheck = await client.query(
+        'SELECT id FROM medicaments WHERE id=$1 AND hospital_id=$2',
+        [ligne.medicament_id, req.hospitalId]
+      );
+      if (medCheck.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Médicament ${ligne.medicament_id} non trouvé` });
+      }
       await client.query(`
         INSERT INTO commande_lignes (hospital_id, commande_id, medicament_id, quantite_commandee, prix_unitaire_ht)
         VALUES ($1, $2, $3, $4, $5)
-      `, [req.hospitalId, commandeId, ligne.medicament_id, ligne.quantite_commandee, ligne.prix_unitaire_ht]);
+      `, [req.hospitalId, commandeId, ligne.medicament_id, qteCmd, ligne.prix_unitaire_ht]);
     }
     await client.query('COMMIT');
     await audit(req, 'CREATE_COMMANDE', 'commandes', commandeId, { fournisseur_id });
@@ -267,24 +332,49 @@ router.post('/commandes', requirePermission('manage_pharmacy'), async (req, res)
   }
 });
 
-router.post('/commandes/:id/reception', requirePermission('manage_pharmacy'), async (req, res) => {
+router.post('/commandes/:id/reception', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const commandeId = req.params.id;
   const { lots_recus } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
-    await client.query('UPDATE commandes SET statut = $1 WHERE id = $2', ['recue', commandeId]);
+
+    const cmdCheck = await client.query(
+      'SELECT id FROM commandes WHERE id=$1 AND hospital_id=$2',
+      [commandeId, req.hospitalId]
+    );
+    if (cmdCheck.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Commande non trouvée' });
+    }
+
+    await client.query(
+      'UPDATE commandes SET statut = $1 WHERE id = $2 AND hospital_id = $3',
+      ['recue', commandeId, req.hospitalId]
+    );
+
     for (const lot of lots_recus) {
+      const qte = assertPositiveInt(lot.quantite, 'quantite');
+      const medCheck = await client.query(
+        'SELECT id FROM medicaments WHERE id=$1 AND hospital_id=$2',
+        [lot.medicament_id, req.hospitalId]
+      );
+      if (medCheck.rowCount === 0) throw new Error(`Médicament ${lot.medicament_id} non trouvé`);
+
       const { rows } = await client.query(`
         INSERT INTO lots (hospital_id, medicament_id, numero_lot, date_peremption, quantite, stock_actuel, prix_achat)
         VALUES ($1, $2, $3, $4, $5, $5, $6) RETURNING id
-      `, [req.hospitalId, lot.medicament_id, lot.numero_lot, lot.date_peremption, lot.quantite, lot.prix_achat]);
-      await client.query('UPDATE medicaments SET stock = stock + $1 WHERE id = $2', [lot.quantite, lot.medicament_id]);
+      `, [req.hospitalId, lot.medicament_id, lot.numero_lot, lot.date_peremption, qte, lot.prix_achat]);
+
+      await client.query(
+        'UPDATE medicaments SET stock = stock + $1 WHERE id = $2 AND hospital_id = $3',
+        [qte, lot.medicament_id, req.hospitalId]
+      );
       await client.query(`
         INSERT INTO public.mouvements_stock (hospital_id, medicament_id, lot_id, quantite, type, motif, utilisateur_id)
         VALUES ($1, $2, $3, $4, 'entree', 'Réception commande', $5)
-      `, [req.hospitalId, lot.medicament_id, rows[0].id, lot.quantite, req.user.id]);
+      `, [req.hospitalId, lot.medicament_id, rows[0].id, qte, req.user.id]);
     }
     await client.query('COMMIT');
     await audit(req, 'RECEPTION_COMMANDE', 'commandes', commandeId, { lots_recus });
@@ -298,29 +388,60 @@ router.post('/commandes/:id/reception', requirePermission('manage_pharmacy'), as
   }
 });
 
-// ========== DÉLIVRANCE ==========
-router.post('/delivrance', requirePermission('manage_pharmacy'), async (req, res) => {
+// ==================================================================
+// ========== DÉLIVRANCE (✅ PATCH P0 — multi-lots) =================
+// ==================================================================
+router.post('/delivrance', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { medicament_id, quantite, patient_id, posologie, prescripteur_nom, ligne_ordonnance_id, password } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
+    const qte = assertPositiveInt(quantite, 'quantite');
 
-    const user = await client.query('SELECT password_hash FROM utilisateurs WHERE id = $1', [req.user.id]);
+    const user = await client.query(
+      'SELECT password_hash FROM utilisateurs WHERE id = $1 AND hospital_id = $2',
+      [req.user.id, req.hospitalId]
+    );
     if (user.rows.length === 0) throw new Error('Utilisateur non trouvé');
     const validPassword = await bcrypt.compare(password, user.rows[0].password_hash || '');
     if (!validPassword) throw new Error('Mot de passe incorrect');
 
-    const med = await client.query('SELECT est_stupefiant FROM medicaments WHERE id=$1', [medicament_id]);
-    if (med.rows[0]?.est_stupefiant && req.user.role !== 'pharmacien') {
+    if (patient_id) {
+      const patCheck = await client.query(
+        'SELECT id FROM patients WHERE id=$1 AND hospital_id=$2',
+        [patient_id, req.hospitalId]
+      );
+      if (patCheck.rowCount === 0) throw new Error('Patient non trouvé dans cet établissement');
+    }
+
+    const med = await client.query(
+      'SELECT est_stupefiant FROM medicaments WHERE id=$1 AND hospital_id=$2',
+      [medicament_id, req.hospitalId]
+    );
+    if (med.rows.length === 0) throw new Error('Médicament non trouvé dans cet établissement');
+
+    if (med.rows[0].est_stupefiant && req.user.role !== 'pharmacien') {
       throw new Error('Seul un pharmacien peut délivrer un stupéfiant');
     }
 
-    const lot = await getFifoLot(client, medicament_id, quantite);
-    if (!lot) throw new Error('Stock insuffisant');
+    // ✅ PATCH P0 : getFifoLots (pluriel) avec req.hospitalId en 2e arg
+    const allocations = await getFifoLots(client, req.hospitalId, medicament_id, qte);
+    if (!allocations || allocations.length === 0) throw new Error('Stock insuffisant');
 
-    await client.query('UPDATE lots SET stock_actuel = stock_actuel - $1 WHERE id = $2', [quantite, lot.id]);
-    await client.query('UPDATE medicaments SET stock = stock - $1 WHERE id = $2', [quantite, medicament_id]);
+    // ✅ Décrément lot par lot
+    for (const alloc of allocations) {
+      await client.query(
+        'UPDATE lots SET stock_actuel = stock_actuel - $1 WHERE id = $2 AND hospital_id = $3',
+        [alloc.quantite, alloc.id, req.hospitalId]
+      );
+    }
+
+    // ✅ Une seule décrément du stock global
+    await client.query(
+      'UPDATE medicaments SET stock = stock - $1 WHERE id = $2 AND hospital_id = $3',
+      [qte, medicament_id, req.hospitalId]
+    );
 
     const safeType = 'sortie';
     const safeMotif = 'Délivrance patient';
@@ -328,34 +449,45 @@ router.post('/delivrance', requirePermission('manage_pharmacy'), async (req, res
     const safeStatutPrepa = (req.user.role === 'pharmacien') ? 'validee' : 'en_attente_validation';
     const safePrescripteur = (prescripteur_nom || '').substring(0, 255);
 
-    await client.query(`
-      INSERT INTO public.mouvements_stock (hospital_id, medicament_id, lot_id, quantite, type, motif, utilisateur_id, patient_id, ligne_ordonnance_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    `, [req.hospitalId, medicament_id, lot.id, quantite, safeType, safeMotif, req.user.id, patient_id, ligne_ordonnance_id || null]);
+    // ✅ Un mouvement par lot consommé (traçabilité)
+    for (const alloc of allocations) {
+      await client.query(`
+        INSERT INTO public.mouvements_stock (hospital_id, medicament_id, lot_id, quantite, type, motif, utilisateur_id, patient_id, ligne_ordonnance_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [req.hospitalId, medicament_id, alloc.id, alloc.quantite, safeType, safeMotif, req.user.id, patient_id, ligne_ordonnance_id || null]);
+    }
 
+    // ✅ La préparation est enregistrée sur le 1er lot consommé (traçabilité visuelle)
+    const primaryLotId = allocations[0]?.id || null;
     const validationPar = (req.user.role === 'pharmacien') ? req.user.id : null;
     const { rows: prepRows } = await client.query(`
       INSERT INTO preparations (hospital_id, patient_id, medicament_id, lot_id, quantite, posologie, statut, validee_par, date_validation)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
-    `, [req.hospitalId, patient_id, medicament_id, lot.id, quantite, safePosologie, safeStatutPrepa, validationPar, validationPar ? new Date() : null]);
+    `, [req.hospitalId, patient_id, medicament_id, primaryLotId, qte, safePosologie, safeStatutPrepa, validationPar, validationPar ? new Date() : null]);
 
+    // ✅ Stupéfiants : une ligne par lot consommé (obligation légale)
     if (med.rows[0].est_stupefiant) {
-      await client.query(`
-        INSERT INTO registre_stupefiants (hospital_id, medicament_id, lot_id, patient_id, quantite_delivree, prescripteur_nom, pharmacien_nom)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [req.hospitalId, medicament_id, lot.id, patient_id, quantite, safePrescripteur, (req.user.nom || '').substring(0, 255)]);
+      for (const alloc of allocations) {
+        await client.query(`
+          INSERT INTO registre_stupefiants (hospital_id, medicament_id, lot_id, patient_id, quantite_delivree, prescripteur_nom, pharmacien_nom)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [req.hospitalId, medicament_id, alloc.id, patient_id, alloc.quantite, safePrescripteur, (req.user.nom || '').substring(0, 255)]);
+      }
     }
 
     if (ligne_ordonnance_id) {
       const ligne = await client.query(
-        'SELECT quantite_prescrit, quantite_delivree, medicament_id, ordonnance_id FROM ligne_ordonnances WHERE id = $1',
-        [ligne_ordonnance_id]
+        `SELECT lo.quantite_prescrit, lo.quantite_delivree, lo.medicament_id, lo.ordonnance_id
+         FROM ligne_ordonnances lo
+         JOIN ordonnances o ON lo.ordonnance_id = o.id
+         WHERE lo.id = $1 AND o.hospital_id = $2`,
+        [ligne_ordonnance_id, req.hospitalId]
       );
       if (ligne.rows.length === 0) throw new Error('Ligne d\'ordonnance introuvable');
       if (ligne.rows[0].medicament_id !== medicament_id) {
         throw new Error('Le médicament ne correspond pas à la ligne d\'ordonnance');
       }
-      const nouvelleDelivree = (ligne.rows[0].quantite_delivree || 0) + quantite;
+      const nouvelleDelivree = (ligne.rows[0].quantite_delivree || 0) + qte;
       if (nouvelleDelivree > ligne.rows[0].quantite_prescrit) {
         throw new Error('Quantité délivrée supérieure à la quantité prescrite');
       }
@@ -374,14 +506,24 @@ router.post('/delivrance', requirePermission('manage_pharmacy'), async (req, res
       const nouveauStatut = (resteVal === 0) ? 'delivree' : 'partiellement_delivree';
 
       await client.query(
-        'UPDATE ordonnances SET statut = $1 WHERE id = $2',
-        [nouveauStatut, ligne.rows[0].ordonnance_id]
+        'UPDATE ordonnances SET statut = $1 WHERE id = $2 AND hospital_id = $3',
+        [nouveauStatut, ligne.rows[0].ordonnance_id, req.hospitalId]
       );
     }
 
     await client.query('COMMIT');
-    await audit(req, 'DELIVRANCE', 'preparations', prepRows[0].id, { medicament_id, quantite, patient_id });
-    res.status(201).json({ message: 'Délivrance enregistrée', statut: safeStatutPrepa, preparation_id: prepRows[0].id });
+    await audit(req, 'DELIVRANCE', 'preparations', prepRows[0].id, {
+      medicament_id,
+      quantite: qte,
+      patient_id,
+      lots_consommes: allocations.map(a => ({ lot_id: a.id, quantite: a.quantite })),
+    });
+    res.status(201).json({
+      message: 'Délivrance enregistrée',
+      statut: safeStatutPrepa,
+      preparation_id: prepRows[0].id,
+      lots_consommes: allocations.map(a => ({ lot_id: a.id, numero_lot: a.numero_lot, quantite: a.quantite })),
+    });
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ Erreur délivrance :', err);
@@ -391,18 +533,24 @@ router.post('/delivrance', requirePermission('manage_pharmacy'), async (req, res
   }
 });
 
-router.put('/preparations/:id/valider', requirePermission('manage_pharmacy'), async (req, res) => {
+router.put('/preparations/:id/valider', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { id } = req.params;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
-    const prep = await client.query('SELECT * FROM preparations WHERE id=$1 AND statut=$2', [id, 'en_attente_validation']);
+
+    const prep = await client.query(
+      'SELECT * FROM preparations WHERE id=$1 AND hospital_id=$2 AND statut=$3',
+      [id, req.hospitalId, 'en_attente_validation']
+    );
     if (prep.rows.length === 0) throw new Error('Préparation introuvable ou déjà validée');
+
     await client.query(`
       UPDATE preparations SET statut='validee', validee_par=$1, date_validation=NOW()
-      WHERE id=$2
-    `, [req.user.id, id]);
+      WHERE id=$2 AND hospital_id=$3
+    `, [req.user.id, id, req.hospitalId]);
+
     await client.query('COMMIT');
     await audit(req, 'VALIDATION_PREPARATION', 'preparations', id, {});
     res.sendStatus(200);
@@ -415,33 +563,51 @@ router.put('/preparations/:id/valider', requirePermission('manage_pharmacy'), as
   }
 });
 
-// ========== DESTRUCTION ==========
-router.post('/destruction', requirePermission('manage_pharmacy'), async (req, res) => {
+// ==================================================================
+// ========== DESTRUCTION ===========================================
+// ==================================================================
+router.post('/destruction', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { lot_id, quantite, motif, procede, password } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
+    const qte = assertPositiveInt(quantite, 'quantite');
 
-    const user = await client.query('SELECT password_hash FROM utilisateurs WHERE id = $1', [req.user.id]);
+    const user = await client.query(
+      'SELECT password_hash FROM utilisateurs WHERE id = $1 AND hospital_id = $2',
+      [req.user.id, req.hospitalId]
+    );
     if (user.rows.length === 0) throw new Error('Utilisateur non trouvé');
     const validPassword = await bcrypt.compare(password, user.rows[0].password_hash || '');
     if (!validPassword) throw new Error('Mot de passe incorrect');
 
-    const lot = await client.query('SELECT medicament_id, stock_actuel FROM lots WHERE id=$1', [lot_id]);
-    if (lot.rows[0].stock_actuel < quantite) throw new Error('Quantité à détruire supérieure au stock');
-    await client.query('UPDATE lots SET stock_actuel = stock_actuel - $1 WHERE id=$2', [quantite, lot_id]);
-    await client.query('UPDATE medicaments SET stock = stock - $1 WHERE id=$2', [quantite, lot.rows[0].medicament_id]);
+    const lot = await client.query(
+      'SELECT medicament_id, stock_actuel FROM lots WHERE id=$1 AND hospital_id=$2',
+      [lot_id, req.hospitalId]
+    );
+    if (lot.rows.length === 0) throw new Error('Lot introuvable dans cet établissement');
+    if (lot.rows[0].stock_actuel < qte) throw new Error('Quantité à détruire supérieure au stock');
+
+    await client.query(
+      'UPDATE lots SET stock_actuel = stock_actuel - $1 WHERE id=$2 AND hospital_id=$3',
+      [qte, lot_id, req.hospitalId]
+    );
+    await client.query(
+      'UPDATE medicaments SET stock = stock - $1 WHERE id=$2 AND hospital_id=$3',
+      [qte, lot.rows[0].medicament_id, req.hospitalId]
+    );
     await client.query(`
       INSERT INTO destructions (hospital_id, lot_id, quantite, motif, validee_par, procede)
       VALUES ($1, $2, $3, $4, $5, $6)
-    `, [req.hospitalId, lot_id, quantite, motif, req.user.id, procede]);
+    `, [req.hospitalId, lot_id, qte, motif, req.user.id, procede]);
     await client.query(`
       INSERT INTO public.mouvements_stock (hospital_id, medicament_id, lot_id, quantite, type, motif, utilisateur_id)
       VALUES ($1, $2, $3, $4, 'sortie', 'Destruction', $5)
-    `, [req.hospitalId, lot.rows[0].medicament_id, lot_id, quantite, req.user.id]);
+    `, [req.hospitalId, lot.rows[0].medicament_id, lot_id, qte, req.user.id]);
+
     await client.query('COMMIT');
-    await audit(req, 'DESTRUCTION', 'destructions', null, { lot_id, quantite, motif });
+    await audit(req, 'DESTRUCTION', 'destructions', null, { lot_id, quantite: qte, motif });
     res.sendStatus(201);
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch (_) {}
@@ -452,32 +618,47 @@ router.post('/destruction', requirePermission('manage_pharmacy'), async (req, re
   }
 });
 
-// ========== RETOUR PATIENT ==========
-router.post('/retour-patient', requirePermission('manage_pharmacy'), async (req, res) => {
+// ==================================================================
+// ========== RETOUR PATIENT ========================================
+// ==================================================================
+router.post('/retour-patient', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { medicament_id, lot_id, quantite, motif, patient_id, password } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
+    const qte = assertPositiveInt(quantite, 'quantite');
 
-    const user = await client.query('SELECT password_hash FROM utilisateurs WHERE id = $1', [req.user.id]);
+    const user = await client.query(
+      'SELECT password_hash FROM utilisateurs WHERE id = $1 AND hospital_id = $2',
+      [req.user.id, req.hospitalId]
+    );
     if (user.rows.length === 0) throw new Error('Utilisateur non trouvé');
     const validPassword = await bcrypt.compare(password, user.rows[0].password_hash || '');
     if (!validPassword) throw new Error('Mot de passe incorrect');
 
-    const lotCheck = await client.query('SELECT stock_actuel FROM lots WHERE id=$1', [lot_id]);
-    if (lotCheck.rows.length === 0) throw new Error('Lot introuvable');
+    const lotCheck = await client.query(
+      'SELECT stock_actuel FROM lots WHERE id=$1 AND hospital_id=$2',
+      [lot_id, req.hospitalId]
+    );
+    if (lotCheck.rows.length === 0) throw new Error('Lot introuvable dans cet établissement');
 
-    await client.query('UPDATE lots SET stock_actuel = stock_actuel + $1 WHERE id = $2', [quantite, lot_id]);
-    await client.query('UPDATE medicaments SET stock = stock + $1 WHERE id = $2', [quantite, medicament_id]);
+    await client.query(
+      'UPDATE lots SET stock_actuel = stock_actuel + $1 WHERE id = $2 AND hospital_id = $3',
+      [qte, lot_id, req.hospitalId]
+    );
+    await client.query(
+      'UPDATE medicaments SET stock = stock + $1 WHERE id = $2 AND hospital_id = $3',
+      [qte, medicament_id, req.hospitalId]
+    );
 
     await client.query(`
       INSERT INTO public.mouvements_stock (hospital_id, medicament_id, lot_id, quantite, type, motif, utilisateur_id, patient_id)
       VALUES ($1, $2, $3, $4, 'entree', $5, $6, $7)
-    `, [req.hospitalId, medicament_id, lot_id, quantite, motif || 'Retour patient', req.user.id, patient_id]);
+    `, [req.hospitalId, medicament_id, lot_id, qte, motif || 'Retour patient', req.user.id, patient_id]);
 
     await client.query('COMMIT');
-    await audit(req, 'RETOUR_PATIENT', 'mouvements_stock', null, { medicament_id, lot_id, quantite, patient_id });
+    await audit(req, 'RETOUR_PATIENT', 'mouvements_stock', null, { medicament_id, lot_id, quantite: qte, patient_id });
     res.sendStatus(201);
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch (_) {}
@@ -488,21 +669,35 @@ router.post('/retour-patient', requirePermission('manage_pharmacy'), async (req,
   }
 });
 
-// ========== ALERTES ==========
-router.get('/alertes', async (req, res) => {
+// ==================================================================
+// ========== ALERTES ===============================================
+// ==================================================================
+router.get('/alertes', requireHospital, async (req, res) => {
   try {
-    const stock = await pool.query('SELECT * FROM medicaments WHERE stock <= seuil_alerte');
+    const stock = await pool.query(
+      'SELECT * FROM medicaments WHERE hospital_id = $1 AND stock <= seuil_alerte',
+      [req.hospitalId]
+    );
+
     const threshold = new Date();
     threshold.setDate(threshold.getDate() + 30);
+
     const peremption = await pool.query(`
       SELECT l.*, m.nom AS medicament_nom
       FROM lots l
-      JOIN medicaments m ON l.medicament_id = m.id
-      WHERE l.date_peremption <= $1 AND COALESCE(l.stock_actuel, 0) > 0
-    `, [threshold.toISOString().split('T')[0]]);
+      JOIN medicaments m ON l.medicament_id = m.id AND m.hospital_id = $1
+      WHERE l.hospital_id = $1
+        AND l.date_peremption <= $2
+        AND COALESCE(l.stock_actuel, 0) > 0
+    `, [req.hospitalId, threshold.toISOString().split('T')[0]]);
+
     const commandesRetard = await pool.query(`
-      SELECT * FROM commandes WHERE statut = 'en_cours' AND date_commande < NOW() - INTERVAL '15 days'
-    `);
+      SELECT * FROM commandes
+      WHERE hospital_id = $1
+        AND statut = 'en_cours'
+        AND date_commande < NOW() - INTERVAL '15 days'
+    `, [req.hospitalId]);
+
     res.json({
       stockCritique: stock.rows,
       peremptionProche: peremption.rows,
@@ -514,16 +709,19 @@ router.get('/alertes', async (req, res) => {
   }
 });
 
-// ========== AUDIT ==========
-router.get('/audit', requireRole(['admin']), async (req, res) => {
+// ==================================================================
+// ========== AUDIT =================================================
+// ==================================================================
+router.get('/audit', requireHospital, requireRole(['admin']), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT a.*, u.login AS utilisateur_login
       FROM audit_logs a
-      LEFT JOIN utilisateurs u ON a.utilisateur_id = u.id
+      LEFT JOIN utilisateurs u ON a.utilisateur_id = u.id AND u.hospital_id = $1
+      WHERE a.hospital_id = $1
       ORDER BY a.created_at DESC
       LIMIT 100
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /audit :', err);
@@ -534,10 +732,12 @@ router.get('/audit', requireRole(['admin']), async (req, res) => {
 // ==================================================================
 // ==================== FOURNISSEURS ================================
 // ==================================================================
-router.get('/fournisseurs', async (req, res) => {
-  console.log('📦 GET /fournisseurs - utilisateur:', req.user ? req.user.login : 'non authentifié');
+router.get('/fournisseurs', requireHospital, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM fournisseurs ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT * FROM fournisseurs WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /fournisseurs:', err);
@@ -545,7 +745,7 @@ router.get('/fournisseurs', async (req, res) => {
   }
 });
 
-router.post('/fournisseurs', requireRole(['admin']), async (req, res) => {
+router.post('/fournisseurs', requireHospital, requireRole(['admin']), async (req, res) => {
   const { nom, contact_email, telephone, adresse, actif } = req.body;
   try {
     const { rows } = await pool.query(`
@@ -560,13 +760,14 @@ router.post('/fournisseurs', requireRole(['admin']), async (req, res) => {
   }
 });
 
-router.put('/fournisseurs/:id', requireRole(['admin']), async (req, res) => {
+router.put('/fournisseurs/:id', requireHospital, requireRole(['admin']), async (req, res) => {
   const { nom, contact_email, telephone, adresse, actif } = req.body;
   try {
-    await pool.query(`
+    const result = await pool.query(`
       UPDATE fournisseurs SET nom=$1, contact_email=$2, telephone=$3, adresse=$4, actif=$5
-      WHERE id=$6
-    `, [nom, contact_email, telephone, adresse, actif !== false, req.params.id]);
+      WHERE id=$6 AND hospital_id=$7
+    `, [nom, contact_email, telephone, adresse, actif !== false, req.params.id, req.hospitalId]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Fournisseur non trouvé' });
     await audit(req, 'UPDATE_FOURNISSEUR', 'fournisseurs', req.params.id, req.body);
     res.sendStatus(200);
   } catch (err) {
@@ -575,9 +776,13 @@ router.put('/fournisseurs/:id', requireRole(['admin']), async (req, res) => {
   }
 });
 
-router.delete('/fournisseurs/:id', requireAdmin, async (req, res) => {
+router.delete('/fournisseurs/:id', requireHospital, requireAdmin, async (req, res) => {
   try {
-    await pool.query('DELETE FROM fournisseurs WHERE id=$1', [req.params.id]);
+    const result = await pool.query(
+      'DELETE FROM fournisseurs WHERE id=$1 AND hospital_id=$2',
+      [req.params.id, req.hospitalId]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Fournisseur non trouvé' });
     await audit(req, 'DELETE_FOURNISSEUR', 'fournisseurs', req.params.id, {});
     res.sendStatus(204);
   } catch (err) {
@@ -589,9 +794,12 @@ router.delete('/fournisseurs/:id', requireAdmin, async (req, res) => {
 // ==================================================================
 // ==================== DISPOSITIFS MÉDICAUX ========================
 // ==================================================================
-router.get('/dispositifs', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/dispositifs', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM dispositifs_medicaux ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT * FROM dispositifs_medicaux WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /dispositifs :', err);
@@ -599,7 +807,7 @@ router.get('/dispositifs', requirePermission('view_pharmacy'), async (req, res) 
   }
 });
 
-router.post('/dispositifs', requirePermission('manage_pharmacy'), async (req, res) => {
+router.post('/dispositifs', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { code, nom, description, stock, seuil_alerte, prix_unitaire, categorie } = req.body;
   const client = await pool.connect();
   try {
@@ -621,14 +829,15 @@ router.post('/dispositifs', requirePermission('manage_pharmacy'), async (req, re
   }
 });
 
-router.put('/dispositifs/:id', requirePermission('manage_pharmacy'), async (req, res) => {
+router.put('/dispositifs/:id', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { code, nom, description, stock, seuil_alerte, prix_unitaire, categorie } = req.body;
   try {
-    await pool.query(`
+    const result = await pool.query(`
       UPDATE dispositifs_medicaux
       SET code=$1, nom=$2, description=$3, stock=$4, seuil_alerte=$5, prix_unitaire=$6, categorie=$7
-      WHERE id=$8
-    `, [code, nom, description, stock, seuil_alerte, prix_unitaire, categorie, req.params.id]);
+      WHERE id=$8 AND hospital_id=$9
+    `, [code, nom, description, stock, seuil_alerte, prix_unitaire, categorie, req.params.id, req.hospitalId]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Dispositif non trouvé' });
     await audit(req, 'UPDATE_DISPOSITIF', 'dispositifs_medicaux', req.params.id, req.body);
     res.sendStatus(200);
   } catch (err) {
@@ -637,14 +846,28 @@ router.put('/dispositifs/:id', requirePermission('manage_pharmacy'), async (req,
   }
 });
 
-router.delete('/dispositifs/:id', requireAdmin, async (req, res) => {
+router.delete('/dispositifs/:id', requireHospital, requireAdmin, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
-    const lots = await client.query('SELECT id FROM lots_dispositifs WHERE dispositif_id=$1 LIMIT 1', [req.params.id]);
+
+    const own = await client.query(
+      'SELECT id FROM dispositifs_medicaux WHERE id=$1 AND hospital_id=$2',
+      [req.params.id, req.hospitalId]
+    );
+    if (own.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Dispositif non trouvé' });
+    }
+
+    const lots = await client.query(
+      'SELECT id FROM lots_dispositifs WHERE dispositif_id=$1 AND hospital_id=$2 LIMIT 1',
+      [req.params.id, req.hospitalId]
+    );
     if (lots.rows.length > 0) throw new Error('Impossible de supprimer : des lots existent');
-    await client.query('DELETE FROM dispositifs_medicaux WHERE id=$1', [req.params.id]);
+
+    await client.query('DELETE FROM dispositifs_medicaux WHERE id=$1 AND hospital_id=$2', [req.params.id, req.hospitalId]);
     await client.query('COMMIT');
     await audit(req, 'DELETE_DISPOSITIF', 'dispositifs_medicaux', req.params.id, {});
     res.sendStatus(204);
@@ -657,13 +880,15 @@ router.delete('/dispositifs/:id', requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/dispositifs/:id/lots', async (req, res) => {
+router.get('/dispositifs/:id/lots', requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT * FROM lots_dispositifs
-      WHERE dispositif_id = $1 AND COALESCE(stock_actuel, 0) > 0
+      WHERE dispositif_id = $1
+        AND hospital_id = $2
+        AND COALESCE(stock_actuel, 0) > 0
       ORDER BY date_peremption ASC
-    `, [req.params.id]);
+    `, [req.params.id, req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /dispositifs/:id/lots :', err);
@@ -671,24 +896,40 @@ router.get('/dispositifs/:id/lots', async (req, res) => {
   }
 });
 
-router.post('/dispositifs/lots', requirePermission('manage_pharmacy'), async (req, res) => {
+router.post('/dispositifs/lots', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { dispositif_id, numero_lot, date_peremption, quantite, prix_achat } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
     if (new Date(date_peremption) < new Date()) throw new Error('Date de péremption dépassée');
+    const qte = assertPositiveInt(quantite, 'quantite');
+
+    const dispCheck = await client.query(
+      'SELECT id FROM dispositifs_medicaux WHERE id=$1 AND hospital_id=$2',
+      [dispositif_id, req.hospitalId]
+    );
+    if (dispCheck.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Dispositif non trouvé' });
+    }
+
     const { rows } = await client.query(`
       INSERT INTO lots_dispositifs (hospital_id, dispositif_id, numero_lot, date_peremption, quantite, stock_actuel, prix_achat)
       VALUES ($1, $2, $3, $4, $5, $5, $6) RETURNING *
-    `, [req.hospitalId, dispositif_id, numero_lot, date_peremption, quantite, prix_achat]);
-    await client.query('UPDATE dispositifs_medicaux SET stock = stock + $1 WHERE id = $2', [quantite, dispositif_id]);
+    `, [req.hospitalId, dispositif_id, numero_lot, date_peremption, qte, prix_achat]);
+
+    await client.query(
+      'UPDATE dispositifs_medicaux SET stock = stock + $1 WHERE id = $2 AND hospital_id = $3',
+      [qte, dispositif_id, req.hospitalId]
+    );
     await client.query(`
       INSERT INTO mouvements_stock_dispositifs (hospital_id, dispositif_id, lot_id, quantite, type, motif, utilisateur_id)
       VALUES ($1, $2, $3, $4, 'entree', 'Ajout lot', $5)
-    `, [req.hospitalId, dispositif_id, rows[0].id, quantite, req.user.id]);
+    `, [req.hospitalId, dispositif_id, rows[0].id, qte, req.user.id]);
+
     await client.query('COMMIT');
-    await audit(req, 'ADD_LOT_DISPOSITIF', 'lots_dispositifs', rows[0].id, { numero_lot, quantite });
+    await audit(req, 'ADD_LOT_DISPOSITIF', 'lots_dispositifs', rows[0].id, { numero_lot, quantite: qte });
     res.status(201).json(rows[0]);
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch (_) {}
@@ -702,9 +943,24 @@ router.post('/dispositifs/lots', requirePermission('manage_pharmacy'), async (re
 // ==================================================================
 // ==================== PHARMACOVIGILANCE ===========================
 // ==================================================================
-router.post('/pharmacovigilance/effets-indesirables', requirePermission('manage_pharmacy'), async (req, res) => {
+router.post('/pharmacovigilance/effets-indesirables', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { patient_id, medicament_id, effet, description, severite, date_survenue } = req.body;
   try {
+    if (patient_id) {
+      const patCheck = await pool.query(
+        'SELECT id FROM patients WHERE id=$1 AND hospital_id=$2',
+        [patient_id, req.hospitalId]
+      );
+      if (patCheck.rowCount === 0) return res.status(404).json({ error: 'Patient non trouvé' });
+    }
+    if (medicament_id) {
+      const medCheck = await pool.query(
+        'SELECT id FROM medicaments WHERE id=$1 AND hospital_id=$2',
+        [medicament_id, req.hospitalId]
+      );
+      if (medCheck.rowCount === 0) return res.status(404).json({ error: 'Médicament non trouvé' });
+    }
+
     const { rows } = await pool.query(`
       INSERT INTO pharmacovigilance (hospital_id, patient_id, medicament_id, effet, description, severite, date_survenue, declare_par)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
@@ -717,16 +973,17 @@ router.post('/pharmacovigilance/effets-indesirables', requirePermission('manage_
   }
 });
 
-router.get('/pharmacovigilance/effets-indesirables', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/pharmacovigilance/effets-indesirables', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT pv.*, u.login AS declare_par_login, m.nom AS medicament_nom
       FROM pharmacovigilance pv
-      LEFT JOIN utilisateurs u ON pv.declare_par = u.id
-      LEFT JOIN medicaments m ON pv.medicament_id = m.id
+      LEFT JOIN utilisateurs u ON pv.declare_par = u.id AND u.hospital_id = $1
+      LEFT JOIN medicaments m ON pv.medicament_id = m.id AND m.hospital_id = $1
+      WHERE pv.hospital_id = $1
       ORDER BY pv.date_declaration DESC
       LIMIT 100
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /pharmacovigilance/effets-indesirables :', err);
@@ -737,9 +994,12 @@ router.get('/pharmacovigilance/effets-indesirables', requirePermission('view_pha
 // ==================================================================
 // ==================== PRÉPARATIONS MAGISTRALES ====================
 // ==================================================================
-router.get('/preparations/recettes', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/preparations/recettes', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM recettes_preparations ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT * FROM recettes_preparations WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /preparations/recettes :', err);
@@ -747,7 +1007,7 @@ router.get('/preparations/recettes', requirePermission('view_pharmacy'), async (
   }
 });
 
-router.post('/preparations/recettes', requirePermission('manage_pharmacy'), async (req, res) => {
+router.post('/preparations/recettes', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { nom, description, ingredients, etapes } = req.body;
   try {
     const { rows } = await pool.query(`
@@ -762,13 +1022,14 @@ router.post('/preparations/recettes', requirePermission('manage_pharmacy'), asyn
   }
 });
 
-router.put('/preparations/recettes/:id', requirePermission('manage_pharmacy'), async (req, res) => {
+router.put('/preparations/recettes/:id', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { nom, description, ingredients, etapes } = req.body;
   try {
-    await pool.query(`
+    const result = await pool.query(`
       UPDATE recettes_preparations SET nom=$1, description=$2, ingredients=$3, etapes=$4
-      WHERE id=$5
-    `, [nom, description, ingredients, etapes, req.params.id]);
+      WHERE id=$5 AND hospital_id=$6
+    `, [nom, description, ingredients, etapes, req.params.id, req.hospitalId]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Recette non trouvée' });
     await audit(req, 'UPDATE_RECETTE', 'recettes_preparations', req.params.id, req.body);
     res.sendStatus(200);
   } catch (err) {
@@ -777,9 +1038,13 @@ router.put('/preparations/recettes/:id', requirePermission('manage_pharmacy'), a
   }
 });
 
-router.delete('/preparations/recettes/:id', requireAdmin, async (req, res) => {
+router.delete('/preparations/recettes/:id', requireHospital, requireAdmin, async (req, res) => {
   try {
-    await pool.query('DELETE FROM recettes_preparations WHERE id=$1', [req.params.id]);
+    const result = await pool.query(
+      'DELETE FROM recettes_preparations WHERE id=$1 AND hospital_id=$2',
+      [req.params.id, req.hospitalId]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Recette non trouvée' });
     await audit(req, 'DELETE_RECETTE', 'recettes_preparations', req.params.id, {});
     res.sendStatus(204);
   } catch (err) {
@@ -788,9 +1053,18 @@ router.delete('/preparations/recettes/:id', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/preparations/executer', requirePermission('manage_pharmacy'), async (req, res) => {
+router.post('/preparations/executer', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { recette_id, patient_id, quantite_finale, lot_id_medicament } = req.body;
   try {
+    if (recette_id) {
+      const r = await pool.query('SELECT id FROM recettes_preparations WHERE id=$1 AND hospital_id=$2', [recette_id, req.hospitalId]);
+      if (r.rowCount === 0) return res.status(404).json({ error: 'Recette non trouvée' });
+    }
+    if (patient_id) {
+      const p = await pool.query('SELECT id FROM patients WHERE id=$1 AND hospital_id=$2', [patient_id, req.hospitalId]);
+      if (p.rowCount === 0) return res.status(404).json({ error: 'Patient non trouvé' });
+    }
+
     const { rows } = await pool.query(`
       INSERT INTO preparations_executees (hospital_id, recette_id, patient_id, quantite_finale, realise_par, lot_id_medicament)
       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
@@ -806,14 +1080,14 @@ router.post('/preparations/executer', requirePermission('manage_pharmacy'), asyn
 // ==================================================================
 // ==================== RUPTURES / SUGGESTIONS ======================
 // ==================================================================
-router.get('/ruptures', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/ruptures', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT id, code, nom, stock, seuil_alerte
       FROM medicaments
-      WHERE stock = 0
+      WHERE hospital_id = $1 AND stock = 0
       ORDER BY nom
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /ruptures :', err);
@@ -821,17 +1095,20 @@ router.get('/ruptures', requirePermission('view_pharmacy'), async (req, res) => 
   }
 });
 
-router.get('/suggestions-commandes', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/suggestions-commandes', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT m.id, m.code, m.nom, m.stock, m.seuil_alerte,
              COALESCE(SUM(l.stock_actuel), 0) AS stock_lots
       FROM medicaments m
-      LEFT JOIN lots l ON m.id = l.medicament_id AND l.date_peremption > NOW()
+      LEFT JOIN lots l ON m.id = l.medicament_id
+        AND l.hospital_id = $1
+        AND l.date_peremption > NOW()
+      WHERE m.hospital_id = $1
       GROUP BY m.id
       HAVING COALESCE(SUM(l.stock_actuel), 0) <= m.seuil_alerte
       ORDER BY m.nom
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /suggestions-commandes :', err);
@@ -839,15 +1116,16 @@ router.get('/suggestions-commandes', requirePermission('view_pharmacy'), async (
   }
 });
 
-router.get('/preparations/executions', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/preparations/executions', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT pe.*, r.nom AS recette_nom, u.login AS realise_par
       FROM preparations_executees pe
-      LEFT JOIN recettes_preparations r ON pe.recette_id = r.id
-      LEFT JOIN utilisateurs u ON pe.realise_par = u.id
+      LEFT JOIN recettes_preparations r ON pe.recette_id = r.id AND r.hospital_id = $1
+      LEFT JOIN utilisateurs u ON pe.realise_par = u.id AND u.hospital_id = $1
+      WHERE pe.hospital_id = $1
       ORDER BY pe.date_execution DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /preparations/executions :', err);
@@ -855,8 +1133,10 @@ router.get('/preparations/executions', requirePermission('view_pharmacy'), async
   }
 });
 
-// ========== INFIRMIERS ==========
-router.get('/infirmiers', requirePermission('view_pharmacy'), async (req, res) => {
+// ==================================================================
+// ========== INFIRMIERS ============================================
+// ==================================================================
+router.get('/infirmiers', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -884,11 +1164,7 @@ router.get('/infirmiers', requirePermission('view_pharmacy'), async (req, res) =
 // ==================================================================
 // ==================== ORDONNANCES =================================
 // ==================================================================
-// ⚠️ ORDRE CRITIQUE : les routes SPÉCIFIQUES doivent être déclarées
-//    AVANT les routes avec /:id, sinon Express les capture et plante.
-
-// 1. Historique (AVANT /:id)
-router.get('/ordonnances/historique', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/ordonnances/historique', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT o.id, o.numero_ordonnance, o.date_creation, o.statut,
@@ -897,13 +1173,14 @@ router.get('/ordonnances/historique', requirePermission('view_pharmacy'), async 
              u.nom AS retrieved_nom, u.prenom AS retrieved_prenom,
              (SELECT COUNT(*) FROM ligne_ordonnances lo WHERE lo.ordonnance_id = o.id) AS nb_medicaments
       FROM ordonnances o
-      JOIN patients pat ON o.patient_id = pat.id
-      LEFT JOIN medecins m ON o.medecin_id = m.id
-      LEFT JOIN utilisateurs u ON o.retrieved_by = u.id
-      WHERE o.statut IN ('delivree', 'servie', 'partiellement_delivree')
+      JOIN patients pat ON o.patient_id = pat.id AND pat.hospital_id = $1
+      LEFT JOIN medecins m ON o.medecin_id = m.id AND m.hospital_id = $1
+      LEFT JOIN utilisateurs u ON o.retrieved_by = u.id AND u.hospital_id = $1
+      WHERE o.hospital_id = $1
+        AND o.statut IN ('delivree', 'servie', 'partiellement_delivree')
       ORDER BY o.date_creation DESC
       LIMIT 50
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /pharmacy/ordonnances/historique :', err);
@@ -911,19 +1188,19 @@ router.get('/ordonnances/historique', requirePermission('view_pharmacy'), async 
   }
 });
 
-// 2. Ordonnances en attente (AVANT /:id)
-router.get('/ordonnances/en-attente', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/ordonnances/en-attente', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT o.id, o.patient_id, o.date_creation, o.statut, o.observations, o.numero_ordonnance,
              pat.nom AS patient_nom, pat.prenom AS patient_prenom,
              m.nom AS medecin_nom, m.prenom AS medecin_prenom
       FROM ordonnances o
-      JOIN patients pat ON o.patient_id = pat.id
-      LEFT JOIN medecins m ON o.medecin_id = m.id
-      WHERE o.statut = 'en_attente'
+      JOIN patients pat ON o.patient_id = pat.id AND pat.hospital_id = $1
+      LEFT JOIN medecins m ON o.medecin_id = m.id AND m.hospital_id = $1
+      WHERE o.hospital_id = $1
+        AND o.statut = 'en_attente'
       ORDER BY o.date_creation DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /ordonnances/en-attente :', err);
@@ -931,20 +1208,19 @@ router.get('/ordonnances/en-attente', requirePermission('view_pharmacy'), async 
   }
 });
 
-// 3. Liste des ordonnances
-router.get('/ordonnances', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/ordonnances', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const { statut, patient_id, date_debut, date_fin } = req.query;
-    let conditions = [];
-    let params = [];
-    let paramIndex = 1;
+    const conditions = ['o.hospital_id = $1'];
+    const params = [req.hospitalId];
+    let paramIndex = 2;
 
     if (statut) { conditions.push(`o.statut = $${paramIndex++}`); params.push(statut); }
     if (patient_id) { conditions.push(`o.patient_id = $${paramIndex++}`); params.push(patient_id); }
     if (date_debut) { conditions.push(`o.date_creation >= $${paramIndex++}`); params.push(date_debut); }
     if (date_fin) { conditions.push(`o.date_creation <= $${paramIndex++}`); params.push(date_fin); }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const query = `
       SELECT o.id, o.patient_id, o.date_creation, o.statut, o.observations, o.numero_ordonnance, o.retrieved_by,
@@ -952,9 +1228,9 @@ router.get('/ordonnances', requirePermission('view_pharmacy'), async (req, res) 
              m.nom AS medecin_nom, m.prenom AS medecin_prenom,
              u.nom AS retrieved_nom, u.prenom AS retrieved_prenom
       FROM ordonnances o
-      JOIN patients pat ON o.patient_id = pat.id
-      LEFT JOIN medecins m ON o.medecin_id = m.id
-      LEFT JOIN utilisateurs u ON o.retrieved_by = u.id
+      JOIN patients pat ON o.patient_id = pat.id AND pat.hospital_id = $1
+      LEFT JOIN medecins m ON o.medecin_id = m.id AND m.hospital_id = $1
+      LEFT JOIN utilisateurs u ON o.retrieved_by = u.id AND u.hospital_id = $1
       ${whereClause}
       ORDER BY o.date_creation DESC
     `;
@@ -967,16 +1243,21 @@ router.get('/ordonnances', requirePermission('view_pharmacy'), async (req, res) 
   }
 });
 
-// 4. Lignes d'une ordonnance (2 segments après /ordonnances)
-router.get('/ordonnances/:id/lignes', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/ordonnances/:id/lignes', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
+    const ordCheck = await pool.query(
+      'SELECT id FROM ordonnances WHERE id=$1 AND hospital_id=$2',
+      [req.params.id, req.hospitalId]
+    );
+    if (ordCheck.rowCount === 0) return res.status(404).json({ error: 'Ordonnance non trouvée' });
+
     const { rows } = await pool.query(`
       SELECT lo.*, m.nom AS medicament_nom, m.code, m.stock, m.est_stupefiant
       FROM ligne_ordonnances lo
-      JOIN medicaments m ON lo.medicament_id = m.id
+      JOIN medicaments m ON lo.medicament_id = m.id AND m.hospital_id = $2
       WHERE lo.ordonnance_id = $1
       ORDER BY lo.id
-    `, [req.params.id]);
+    `, [req.params.id, req.hospitalId]);
     res.json(rows);
   } catch (err) {
     console.error('❌ Erreur GET /ordonnances/:id/lignes :', err);
@@ -984,8 +1265,7 @@ router.get('/ordonnances/:id/lignes', requirePermission('view_pharmacy'), async 
   }
 });
 
-// 5. Détail d'une ordonnance (EN DERNIER — wildcard /:id)
-router.get('/ordonnances/:id', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/ordonnances/:id', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT o.id, o.patient_id, o.date_creation, o.statut, o.observations, o.numero_ordonnance, o.retrieved_by,
@@ -993,11 +1273,11 @@ router.get('/ordonnances/:id', requirePermission('view_pharmacy'), async (req, r
              m.nom AS medecin_nom, m.prenom AS medecin_prenom,
              u.nom AS retrieved_nom, u.prenom AS retrieved_prenom
       FROM ordonnances o
-      JOIN patients pat ON o.patient_id = pat.id
-      LEFT JOIN medecins m ON o.medecin_id = m.id
-      LEFT JOIN utilisateurs u ON o.retrieved_by = u.id
-      WHERE o.id = $1
-    `, [req.params.id]);
+      JOIN patients pat ON o.patient_id = pat.id AND pat.hospital_id = $2
+      LEFT JOIN medecins m ON o.medecin_id = m.id AND m.hospital_id = $2
+      LEFT JOIN utilisateurs u ON o.retrieved_by = u.id AND u.hospital_id = $2
+      WHERE o.id = $1 AND o.hospital_id = $2
+    `, [req.params.id, req.hospitalId]);
     if (rows.length === 0) return res.status(404).json({ error: 'Ordonnance non trouvée' });
     res.json(rows[0]);
   } catch (err) {
@@ -1006,10 +1286,14 @@ router.get('/ordonnances/:id', requirePermission('view_pharmacy'), async (req, r
   }
 });
 
-router.put('/ordonnances/:id/statut', requirePermission('manage_pharmacy'), async (req, res) => {
+router.put('/ordonnances/:id/statut', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { statut } = req.body;
   try {
-    await pool.query('UPDATE ordonnances SET statut = $1 WHERE id = $2', [statut, req.params.id]);
+    const result = await pool.query(
+      'UPDATE ordonnances SET statut = $1 WHERE id = $2 AND hospital_id = $3',
+      [statut, req.params.id, req.hospitalId]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Ordonnance non trouvée' });
     await audit(req, 'UPDATE_ORDONNANCE_STATUT', 'ordonnances', req.params.id, { statut });
     res.sendStatus(200);
   } catch (err) {
@@ -1018,7 +1302,7 @@ router.put('/ordonnances/:id/statut', requirePermission('manage_pharmacy'), asyn
   }
 });
 
-router.put('/ordonnances/:id/serve', requirePermission('manage_pharmacy'), async (req, res) => {
+router.put('/ordonnances/:id/serve', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { password, retrieved_by } = req.body;
   const client = await pool.connect();
   try {
@@ -1026,16 +1310,23 @@ router.put('/ordonnances/:id/serve', requirePermission('manage_pharmacy'), async
     await setTenant(client, req.hospitalId);
 
     if (req.user.role !== 'admin' && req.user.role !== 'pharmacien') {
-      const user = await client.query('SELECT password_hash FROM utilisateurs WHERE id = $1', [req.user.id]);
+      const user = await client.query(
+        'SELECT password_hash FROM utilisateurs WHERE id = $1 AND hospital_id = $2',
+        [req.user.id, req.hospitalId]
+      );
       if (user.rows.length === 0) throw new Error('Utilisateur non trouvé');
       const validPassword = await bcrypt.compare(password, user.rows[0].password_hash || '');
       if (!validPassword) throw new Error('Mot de passe incorrect');
     }
 
-    await client.query(
-      'UPDATE ordonnances SET statut = $1, retrieved_by = $2 WHERE id = $3',
-      ['delivree', retrieved_by, req.params.id]
+    const result = await client.query(
+      'UPDATE ordonnances SET statut = $1, retrieved_by = $2 WHERE id = $3 AND hospital_id = $4',
+      ['delivree', retrieved_by, req.params.id, req.hospitalId]
     );
+    if (result.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Ordonnance non trouvée' });
+    }
 
     await client.query('COMMIT');
     await audit(req, 'SERVE_ORDONNANCE', 'ordonnances', req.params.id, { retrieved_by });
@@ -1052,13 +1343,13 @@ router.put('/ordonnances/:id/serve', requirePermission('manage_pharmacy'), async
 // ==================================================================
 // ==================== STATISTIQUES DASHBOARD ======================
 // ==================================================================
-router.get('/stats', requirePermission('view_pharmacy'), async (req, res) => {
+router.get('/stats', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   try {
     const [attente, alertes, commandes, stock] = await Promise.all([
-      pool.query(`SELECT COUNT(*) FROM ordonnances WHERE statut = 'en_attente'`),
-      pool.query(`SELECT COUNT(*) FROM medicaments WHERE stock <= seuil_alerte`),
-      pool.query(`SELECT COUNT(*) FROM commandes WHERE statut = 'en_cours'`),
-      pool.query(`SELECT COUNT(DISTINCT id) FROM medicaments WHERE stock > 0`)
+      pool.query('SELECT COUNT(*) FROM ordonnances WHERE hospital_id = $1 AND statut = $2', [req.hospitalId, 'en_attente']),
+      pool.query('SELECT COUNT(*) FROM medicaments WHERE hospital_id = $1 AND stock <= seuil_alerte', [req.hospitalId]),
+      pool.query('SELECT COUNT(*) FROM commandes WHERE hospital_id = $1 AND statut = $2', [req.hospitalId, 'en_cours']),
+      pool.query('SELECT COUNT(DISTINCT id) FROM medicaments WHERE hospital_id = $1 AND stock > 0', [req.hospitalId])
     ]);
 
     res.json({

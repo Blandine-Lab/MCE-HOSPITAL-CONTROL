@@ -2,12 +2,10 @@
 // ============================================================
 // 💰 BILLING – Facturation, prestations, paiements
 // ------------------------------------------------------------
-// ⚠️ FIX CRITIQUE :
-//   1. Pool patché de config/db.js (ALS + set_config auto)
-//   2. set_config manuel dans CHAQUE transaction (client.query
-//      ne passe PAS par patchedQuery)
-//   3. hospital_id explicite dans TOUS les INSERT (colonne
-//      NOT NULL sans DEFAULT)
+// ⚠️ Le pool patché pose `app.hospital_id` via ALS, MAIS le RLS
+//    a été mis en NO FORCE + policy tenant_isolation supprimée.
+//    On filtre donc explicitement TOUTES les routes sur
+//    `req.hospitalId` (JWT) pour garantir l'isolation tenant.
 // ============================================================
 const express = require('express');
 const router = express.Router();
@@ -15,7 +13,7 @@ const pool = require('../config/db');                       // ✅ pool patché
 const { authenticate, requirePermission, requireAdmin } = require('../middleware/auth');
 
 // ================================================================
-// Helper : pose le tenant dans la transaction courante
+// Helpers
 // ================================================================
 async function setTenant(client, hospitalId) {
   await client.query(
@@ -24,10 +22,20 @@ async function setTenant(client, hospitalId) {
   );
 }
 
+function requireHospital(req, res, next) {
+  if (!req.hospitalId) {
+    return res.status(403).json({
+      error: 'Contexte hôpital manquant',
+      code: 'TENANT_MISSING',
+    });
+  }
+  next();
+}
+
 // ================================================================
 // ========== RECHERCHE DE PATIENTS ==============================
 // ================================================================
-router.get('/patients/search', authenticate, requirePermission('view_finance'), async (req, res) => {
+router.get('/patients/search', authenticate, requireHospital, requirePermission('view_finance'), async (req, res) => {
   const { q } = req.query;
   if (!q || q.length < 2) {
     return res.json([]);
@@ -36,10 +44,11 @@ router.get('/patients/search', authenticate, requirePermission('view_finance'), 
     const { rows } = await pool.query(`
       SELECT id, nom, prenom, ipp, date_naissance
       FROM patients
-      WHERE nom ILIKE $1 OR prenom ILIKE $1 OR ipp ILIKE $1
+      WHERE hospital_id = $1
+        AND (nom ILIKE $2 OR prenom ILIKE $2 OR ipp ILIKE $2)
       ORDER BY nom, prenom
       LIMIT 20
-    `, [`%${q}%`]);
+    `, [req.hospitalId, `%${q}%`]);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -49,14 +58,15 @@ router.get('/patients/search', authenticate, requirePermission('view_finance'), 
 // ================================================================
 // ========== LISTE DES MÉDICAMENTS FACTURABLES ==================
 // ================================================================
-router.get('/medicaments/patient/:patientId', authenticate, requirePermission('view_finance'), async (req, res) => {
+router.get('/medicaments/patient/:patientId', authenticate, requireHospital, requirePermission('view_finance'), async (req, res) => {
   const { patientId } = req.params;
   try {
-    console.log(`🔍 Récupération des médicaments facturables pour patient ${patientId}`);
-
-    const patientCheck = await pool.query('SELECT id FROM patients WHERE id = $1', [patientId]);
+    // ✅ Vérifier que le patient appartient au tenant
+    const patientCheck = await pool.query(
+      'SELECT id FROM patients WHERE id = $1 AND hospital_id = $2',
+      [patientId, req.hospitalId]
+    );
     if (patientCheck.rows.length === 0) {
-      console.log(`❌ Patient ${patientId} introuvable`);
       return res.status(404).json({ error: 'Patient non trouvé' });
     }
 
@@ -72,6 +82,7 @@ router.get('/medicaments/patient/:patientId', authenticate, requirePermission('v
       JOIN ordonnances o ON lo.ordonnance_id = o.id
       JOIN medicaments m ON lo.medicament_id = m.id
       WHERE o.patient_id = $1
+        AND o.hospital_id = $2
         AND o.statut IN ('delivree', 'partiellement_delivree')
         AND (lo.facture_id IS NULL OR lo.facture_id = 0)
       UNION ALL
@@ -85,12 +96,12 @@ router.get('/medicaments/patient/:patientId', authenticate, requirePermission('v
       FROM mouvements_stock ms
       JOIN medicaments m ON ms.medicament_id = m.id
       WHERE ms.patient_id = $1
+        AND ms.hospital_id = $2
         AND ms.type = 'sortie'
         AND (ms.facture_id IS NULL OR ms.facture_id = 0)
       ORDER BY date_mouvement DESC
-    `, [patientId]);
+    `, [patientId, req.hospitalId]);
 
-    console.log(`✅ ${rows.length} médicaments trouvés :`, rows);
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /medicaments/patient/:patientId :', err);
@@ -101,11 +112,10 @@ router.get('/medicaments/patient/:patientId', authenticate, requirePermission('v
 // ================================================================
 // ========== PRESTATIONS D'UN SÉJOUR ============================
 // ================================================================
-router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('view_finance'), async (req, res) => {
+router.get('/sejour/:sejourId/prestations', authenticate, requireHospital, requirePermission('view_finance'), async (req, res) => {
   const { sejourId } = req.params;
   const client = await pool.connect();
   try {
-    // ✅ FIX : poser le tenant DANS la transaction
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
 
@@ -113,8 +123,8 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       SELECT a.id, a.patient_id, a.date_admission, a.date_sortie_prevue, a.service_id, s.nom AS service_nom
       FROM admissions a
       JOIN services s ON a.service_id = s.id
-      WHERE a.id = $1
-    `, [sejourId]);
+      WHERE a.id = $1 AND a.hospital_id = $2
+    `, [sejourId, req.hospitalId]);
     if (admission.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Séjour non trouvé' });
@@ -148,13 +158,15 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       });
     }
 
+    // ✅ examens filtrés par tenant
     const examens = await client.query(`
       SELECT e.id, e.date_demande, e.type_examen, e.categorie
       FROM examens e
       WHERE e.patient_id = $1
-        AND e.date_demande >= $2::date
-        AND e.date_demande <= $3::date
-    `, [ad.patient_id, dateDebut, dateFin]);
+        AND e.hospital_id = $2
+        AND e.date_demande >= $3::date
+        AND e.date_demande <= $4::date
+    `, [ad.patient_id, req.hospitalId, dateDebut, dateFin]);
     examens.rows.forEach(ex => {
       const prix = (ex.categorie === 'imagerie') ? 80 : 40;
       prestations.push({
@@ -173,9 +185,10 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
         SELECT s.id, s.type_soin, s.date_soin, s.prix, s.quantite
         FROM soins s
         WHERE s.patient_id = $1
-          AND s.date_soin >= $2::date
-          AND s.date_soin <= $3::date
-      `, [ad.patient_id, dateDebut, dateFin]);
+          AND s.hospital_id = $2
+          AND s.date_soin >= $3::date
+          AND s.date_soin <= $4::date
+      `, [ad.patient_id, req.hospitalId, dateDebut, dateFin]);
       soins.rows.forEach(soin => {
         const prix = parseFloat(soin.prix) || 0;
         const qte = parseInt(soin.quantite) || 1;
@@ -198,10 +211,11 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       FROM mouvements_stock ms
       JOIN medicaments m ON ms.medicament_id = m.id
       WHERE ms.patient_id = $1
+        AND ms.hospital_id = $2
         AND ms.type = 'sortie'
-        AND ms.date_mouvement >= $2::date
-        AND ms.date_mouvement <= $3::date
-    `, [ad.patient_id, dateDebut, dateFin]);
+        AND ms.date_mouvement >= $3::date
+        AND ms.date_mouvement <= $4::date
+    `, [ad.patient_id, req.hospitalId, dateDebut, dateFin]);
     meds.rows.forEach(med => {
       const prix = parseFloat(med.prix_unitaire) || 0;
       const qte = parseInt(med.quantite) || 1;
@@ -220,9 +234,10 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       SELECT r.id, r.date_rdv, r.motif
       FROM rendez_vous r
       WHERE r.patient_id = $1
-        AND r.date_rdv >= $2::date
-        AND r.date_rdv <= $3::date
-    `, [ad.patient_id, dateDebut, dateFin]);
+        AND r.hospital_id = $2
+        AND r.date_rdv >= $3::date
+        AND r.date_rdv <= $4::date
+    `, [ad.patient_id, req.hospitalId, dateDebut, dateFin]);
     consultations.rows.forEach(cons => {
       prestations.push({
         reference_id: cons.id,
@@ -239,8 +254,8 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
       const interventions = await client.query(`
         SELECT i.id, i.date_intervention, i.nom, i.prix
         FROM interventions i
-        WHERE i.sejour_id = $1
-      `, [sejourId]);
+        WHERE i.sejour_id = $1 AND i.hospital_id = $2
+      `, [sejourId, req.hospitalId]);
       interventions.rows.forEach(inter => {
         const prix = parseFloat(inter.prix) || 0;
         prestations.push({
@@ -271,19 +286,18 @@ router.get('/sejour/:sejourId/prestations', authenticate, requirePermission('vie
 // ================================================================
 // ========== PRESTATIONS D'UNE CONSULTATION (AMBULATOIRE) =======
 // ================================================================
-router.get('/consultation/:consultationId/prestations', authenticate, requirePermission('view_finance'), async (req, res) => {
+router.get('/consultation/:consultationId/prestations', authenticate, requireHospital, requirePermission('view_finance'), async (req, res) => {
   const { consultationId } = req.params;
   const client = await pool.connect();
   try {
-    // ✅ FIX : poser le tenant DANS la transaction
     await client.query('BEGIN');
     await setTenant(client, req.hospitalId);
 
     const cons = await client.query(`
       SELECT id, patient_id, date_rdv, motif
       FROM rendez_vous
-      WHERE id = $1
-    `, [consultationId]);
+      WHERE id = $1 AND hospital_id = $2
+    `, [consultationId, req.hospitalId]);
     if (cons.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Consultation non trouvée' });
@@ -305,8 +319,9 @@ router.get('/consultation/:consultationId/prestations', authenticate, requirePer
       SELECT e.id, e.date_demande, e.type_examen, e.categorie
       FROM examens e
       WHERE e.patient_id = $1
-        AND e.date_demande = $2::date
-    `, [c.patient_id, c.date_rdv]);
+        AND e.hospital_id = $2
+        AND e.date_demande = $3::date
+    `, [c.patient_id, req.hospitalId, c.date_rdv]);
     examens.rows.forEach(ex => {
       const prix = (ex.categorie === 'imagerie') ? 80 : 40;
       prestations.push({
@@ -324,8 +339,8 @@ router.get('/consultation/:consultationId/prestations', authenticate, requirePer
       const actes = await client.query(`
         SELECT a.id, a.nom, a.date_acte, a.prix
         FROM actes_paramedicaux a
-        WHERE a.consultation_id = $1
-      `, [consultationId]);
+        WHERE a.consultation_id = $1 AND a.hospital_id = $2
+      `, [consultationId, req.hospitalId]);
       actes.rows.forEach(act => {
         const prix = parseFloat(act.prix) || 0;
         prestations.push({
@@ -346,8 +361,8 @@ router.get('/consultation/:consultationId/prestations', authenticate, requirePer
       const prescriptions = await client.query(`
         SELECT p.id, p.date_creation, p.notes
         FROM prescriptions p
-        WHERE p.consultation_id = $1
-      `, [consultationId]);
+        WHERE p.consultation_id = $1 AND p.hospital_id = $2
+      `, [consultationId, req.hospitalId]);
       for (const presc of prescriptions.rows) {
         const items = await client.query(`
           SELECT pi.medicament, pi.quantite, pi.posologie, pi.prix_unitaire
@@ -386,16 +401,19 @@ router.get('/consultation/:consultationId/prestations', authenticate, requirePer
 // ================================================================
 // ========== PRESTATIONS (CRUD) =================================
 // ================================================================
-router.get('/prestations', authenticate, requirePermission('view_finance'), async (req, res) => {
+router.get('/prestations', authenticate, requireHospital, requirePermission('view_finance'), async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM prestations ORDER BY code');
+    const { rows } = await pool.query(
+      'SELECT * FROM prestations WHERE hospital_id = $1 ORDER BY code',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/prestations', authenticate, requirePermission('manage_finance'), async (req, res) => {
+router.post('/prestations', authenticate, requireHospital, requirePermission('manage_finance'), async (req, res) => {
   const { code, libelle, prix_unitaire, categorie } = req.body;
   try {
     const { rows } = await pool.query(
@@ -409,12 +427,12 @@ router.post('/prestations', authenticate, requirePermission('manage_finance'), a
   }
 });
 
-router.put('/prestations/:id', authenticate, requirePermission('manage_finance'), async (req, res) => {
+router.put('/prestations/:id', authenticate, requireHospital, requirePermission('manage_finance'), async (req, res) => {
   const { code, libelle, prix_unitaire, categorie } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE prestations SET code=$1, libelle=$2, prix_unitaire=$3, categorie=$4 WHERE id=$5',
-      [code, libelle, prix_unitaire, categorie, req.params.id]
+      'UPDATE prestations SET code=$1, libelle=$2, prix_unitaire=$3, categorie=$4 WHERE id=$5 AND hospital_id=$6',
+      [code, libelle, prix_unitaire, categorie, req.params.id, req.hospitalId]
     );
     if (result.rowCount === 0) return res.status(404).json({ error: 'Prestation non trouvée' });
     res.sendStatus(200);
@@ -423,15 +441,23 @@ router.put('/prestations/:id', authenticate, requirePermission('manage_finance')
   }
 });
 
-// ✅ DELETE /prestations/:id – Suppression réservée aux administrateurs
-router.delete('/prestations/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/prestations/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
-    const used = await pool.query('SELECT id FROM facture_lignes WHERE prestation_id = $1 LIMIT 1', [req.params.id]);
+    // ✅ Vérifier que la prestation appartient au tenant
+    const own = await pool.query(
+      'SELECT id FROM prestations WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
+    if (own.rowCount === 0) return res.status(404).json({ error: 'Prestation non trouvée' });
+
+    const used = await pool.query(
+      'SELECT id FROM facture_lignes WHERE prestation_id = $1 AND hospital_id = $2 LIMIT 1',
+      [req.params.id, req.hospitalId]
+    );
     if (used.rowCount > 0) {
       return res.status(400).json({ error: 'Cette prestation est déjà utilisée dans des factures, suppression impossible.' });
     }
-    const result = await pool.query('DELETE FROM prestations WHERE id = $1', [req.params.id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Prestation non trouvée' });
+    await pool.query('DELETE FROM prestations WHERE id = $1 AND hospital_id = $2', [req.params.id, req.hospitalId]);
     res.sendStatus(204);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -439,16 +465,19 @@ router.delete('/prestations/:id', authenticate, requireAdmin, async (req, res) =
 });
 
 // ========== ASSURANCES ==========
-router.get('/assurances', authenticate, requirePermission('view_finance'), async (req, res) => {
+router.get('/assurances', authenticate, requireHospital, requirePermission('view_finance'), async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM assurances ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT * FROM assurances WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/assurances', authenticate, requirePermission('manage_finance'), async (req, res) => {
+router.post('/assurances', authenticate, requireHospital, requirePermission('manage_finance'), async (req, res) => {
   const { nom, code, taux_prise_en_charge, adresse, telephone, email } = req.body;
   try {
     const { rows } = await pool.query(
@@ -466,48 +495,45 @@ router.post('/assurances', authenticate, requirePermission('manage_finance'), as
 // ========== FACTURES (CRUD enrichi) ============================
 // ================================================================
 
-// ✅ GET /factures – Liste des factures
-router.get('/factures', authenticate, requirePermission('view_finance'), async (req, res) => {
+router.get('/factures', authenticate, requireHospital, requirePermission('view_finance'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT f.*, p.nom AS patient_nom, p.prenom AS patient_prenom, p.ipp
       FROM factures f
       LEFT JOIN patients p ON f.patient_id = p.id
+      WHERE f.hospital_id = $1
       ORDER BY f.date_facture DESC
-    `);
+    `, [req.hospitalId]);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ GET /factures/:id – Détail d'une facture
-router.get('/factures/:id', authenticate, requirePermission('view_finance'), async (req, res) => {
+router.get('/factures/:id', authenticate, requireHospital, requirePermission('view_finance'), async (req, res) => {
   try {
     const facture = await pool.query(`
       SELECT f.*, p.nom AS patient_nom, p.prenom AS patient_prenom
       FROM factures f
       LEFT JOIN patients p ON f.patient_id = p.id
-      WHERE f.id = $1
-    `, [req.params.id]);
+      WHERE f.id = $1 AND f.hospital_id = $2
+    `, [req.params.id, req.hospitalId]);
     if (facture.rows.length === 0) return res.status(404).json({ error: 'Facture non trouvée' });
+
     const lignes = await pool.query(`
       SELECT fl.*, p.code, p.libelle AS prestation_libelle
       FROM facture_lignes fl
       LEFT JOIN prestations p ON fl.prestation_id = p.id
-      WHERE fl.facture_id = $1
+      WHERE fl.facture_id = $1 AND fl.hospital_id = $2
       ORDER BY fl.id
-    `, [req.params.id]);
+    `, [req.params.id, req.hospitalId]);
     res.json({ ...facture.rows[0], lignes: lignes.rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ================================================================
-// ========== POST /factures =====================================
-// ================================================================
-router.post('/factures', authenticate, requirePermission('manage_finance'), async (req, res) => {
+router.post('/factures', authenticate, requireHospital, requirePermission('manage_finance'), async (req, res) => {
   console.log('📥 Corps reçu :', JSON.stringify(req.body, null, 2));
   const {
     patient_id,
@@ -535,9 +561,19 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
+    await setTenant(client, req.hospitalId);
 
-    // Récupération des examens
+    // ✅ Vérifier que le patient appartient au tenant
+    const patCheck = await client.query(
+      'SELECT id FROM patients WHERE id = $1 AND hospital_id = $2',
+      [patient_id, req.hospitalId]
+    );
+    if (patCheck.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Patient non trouvé dans cet établissement' });
+    }
+
+    // Récupération des examens (filtrés par tenant)
     let examensRows = [];
     if (examens_ids && examens_ids.length > 0) {
       const examensResult = await client.query(`
@@ -550,16 +586,16 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
                  END
                ) AS prix_calcule
         FROM examens
-        WHERE id = ANY($1::int[]) AND patient_id = $2
+        WHERE id = ANY($1::int[]) AND patient_id = $2 AND hospital_id = $3
           AND statut NOT IN ('annulé')
-      `, [examens_ids, patient_id]);
+      `, [examens_ids, patient_id, req.hospitalId]);
       examensRows = examensResult.rows;
       if (examensRows.length !== examens_ids.length) {
         throw new Error('Certains examens n\'existent pas ou n\'appartiennent pas à ce patient');
       }
     }
 
-    // Récupération des consultations
+    // Récupération des consultations (filtrées par tenant)
     let consultationsRows = [];
     if (consultations_ids && consultations_ids.length > 0) {
       const consultationsResult = await client.query(`
@@ -567,16 +603,16 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
                COALESCE(prix, 50.00) AS prix_calcule,
                date_rdv
         FROM rendez_vous
-        WHERE id = ANY($1::int[]) AND patient_id = $2
+        WHERE id = ANY($1::int[]) AND patient_id = $2 AND hospital_id = $3
           AND statut NOT IN ('annulé')
-      `, [consultations_ids, patient_id]);
+      `, [consultations_ids, patient_id, req.hospitalId]);
       consultationsRows = consultationsResult.rows;
       if (consultationsRows.length !== consultations_ids.length) {
         throw new Error('Certaines consultations n\'existent pas ou n\'appartiennent pas à ce patient');
       }
     }
 
-    // Récupération des médicaments
+    // Récupération des médicaments (filtrés par tenant)
     let medicamentsRows = [];
     if (medicament_ids && medicament_ids.length > 0) {
       const medicamentsResult = await client.query(`
@@ -587,7 +623,7 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
           pi.prix_unitaire
         FROM prescription_items pi
         JOIN prescriptions p ON pi.prescription_id = p.id
-        WHERE pi.id = ANY($1::int[]) AND p.patient_id = $2
+        WHERE pi.id = ANY($1::int[]) AND p.patient_id = $2 AND p.hospital_id = $3
           AND p.status = 'served'
           AND (pi.facture_id IS NULL OR pi.facture_id = 0)
         UNION ALL
@@ -598,10 +634,10 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
           m.prix_unitaire
         FROM mouvements_stock ms
         JOIN medicaments m ON ms.medicament_id = m.id
-        WHERE ms.id = ANY($1::int[]) AND ms.patient_id = $2
+        WHERE ms.id = ANY($1::int[]) AND ms.patient_id = $2 AND ms.hospital_id = $3
           AND ms.type = 'sortie'
           AND (ms.facture_id IS NULL OR ms.facture_id = 0)
-      `, [medicament_ids, patient_id]);
+      `, [medicament_ids, patient_id, req.hospitalId]);
       medicamentsRows = medicamentsResult.rows;
       if (medicamentsRows.length !== medicament_ids.length) {
         throw new Error('Certains médicaments n\'existent pas ou sont déjà facturés');
@@ -668,7 +704,6 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
     const timestamp = Date.now();
     const numeroFacture = `F${timestamp}`;
 
-    // ✅ FIX : hospital_id explicite
     const { rows } = await client.query(`
       INSERT INTO factures (
         hospital_id,
@@ -699,7 +734,6 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
 
     const factureId = rows[0].id;
 
-    // ✅ FIX : hospital_id explicite dans facture_lignes
     for (const line of allLines) {
       await client.query(`
         INSERT INTO facture_lignes (hospital_id, facture_id, prestation_id, quantite, prix_unitaire, total_ligne, libelle)
@@ -707,14 +741,15 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
       `, [req.hospitalId, factureId, line.prestation_id, line.quantite, line.prix_unitaire, line.total_ligne, line.libelle]);
     }
 
+    // ✅ UPDATE scopés par tenant pour éviter les fuites
     if (medicament_ids && medicament_ids.length > 0) {
       await client.query(
         `UPDATE prescription_items SET facture_id = $1 WHERE id = ANY($2::int[])`,
         [factureId, medicament_ids]
       );
       await client.query(
-        `UPDATE mouvements_stock SET facture_id = $1 WHERE id = ANY($2::int[])`,
-        [factureId, medicament_ids]
+        `UPDATE mouvements_stock SET facture_id = $1 WHERE id = ANY($2::int[]) AND hospital_id = $3`,
+        [factureId, medicament_ids, req.hospitalId]
       );
     }
 
@@ -732,21 +767,42 @@ router.post('/factures', authenticate, requirePermission('manage_finance'), asyn
 // ================================================================
 // ========== PAIEMENTS ==========================================
 // ================================================================
-router.post('/paiements', authenticate, requirePermission('manage_finance'), async (req, res) => {
+router.post('/paiements', authenticate, requireHospital, requirePermission('manage_finance'), async (req, res) => {
   const { facture_id, montant, mode, reference } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
+    await setTenant(client, req.hospitalId);
+
+    // ✅ Vérifier que la facture appartient au tenant
+    const factureCheck = await client.query(
+      'SELECT id FROM factures WHERE id = $1 AND hospital_id = $2',
+      [facture_id, req.hospitalId]
+    );
+    if (factureCheck.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Facture non trouvée' });
+    }
 
     await client.query(`
       INSERT INTO paiements (hospital_id, facture_id, montant, mode, reference)
       VALUES ($1, $2, $3, $4, $5)
     `, [req.hospitalId, facture_id, montant, mode, reference]);
-    await client.query('UPDATE factures SET montant_paye = montant_paye + $1 WHERE id = $2', [montant, facture_id]);
-    const facture = await client.query('SELECT montant_total, montant_paye FROM factures WHERE id = $1', [facture_id]);
+
+    await client.query(
+      'UPDATE factures SET montant_paye = montant_paye + $1 WHERE id = $2 AND hospital_id = $3',
+      [montant, facture_id, req.hospitalId]
+    );
+
+    const facture = await client.query(
+      'SELECT montant_total, montant_paye FROM factures WHERE id = $1 AND hospital_id = $2',
+      [facture_id, req.hospitalId]
+    );
     if (facture.rows[0].montant_paye >= facture.rows[0].montant_total) {
-      await client.query('UPDATE factures SET statut = $1 WHERE id = $2', ['payee', facture_id]);
+      await client.query(
+        'UPDATE factures SET statut = $1 WHERE id = $2 AND hospital_id = $3',
+        ['payee', facture_id, req.hospitalId]
+      );
     }
     await client.query('COMMIT');
     res.sendStatus(201);
@@ -761,9 +817,16 @@ router.post('/paiements', authenticate, requirePermission('manage_finance'), asy
 // ================================================================
 // ========== RELANCES ===========================================
 // ================================================================
-router.post('/relances', authenticate, requirePermission('manage_finance'), async (req, res) => {
+router.post('/relances', authenticate, requireHospital, requirePermission('manage_finance'), async (req, res) => {
   const { facture_id, mode, commentaire } = req.body;
   try {
+    // ✅ Vérifier que la facture appartient au tenant
+    const factureCheck = await pool.query(
+      'SELECT id FROM factures WHERE id = $1 AND hospital_id = $2',
+      [facture_id, req.hospitalId]
+    );
+    if (factureCheck.rowCount === 0) return res.status(404).json({ error: 'Facture non trouvée' });
+
     await pool.query(`
       INSERT INTO relances (hospital_id, facture_id, mode, commentaire)
       VALUES ($1, $2, $3, $4)
@@ -774,9 +837,19 @@ router.post('/relances', authenticate, requirePermission('manage_finance'), asyn
   }
 });
 
-router.get('/relances/facture/:factureId', authenticate, requirePermission('view_finance'), async (req, res) => {
+router.get('/relances/facture/:factureId', authenticate, requireHospital, requirePermission('view_finance'), async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM relances WHERE facture_id = $1 ORDER BY date_relance DESC', [req.params.factureId]);
+    // ✅ Vérifier que la facture appartient au tenant
+    const factureCheck = await pool.query(
+      'SELECT id FROM factures WHERE id = $1 AND hospital_id = $2',
+      [req.params.factureId, req.hospitalId]
+    );
+    if (factureCheck.rowCount === 0) return res.status(404).json({ error: 'Facture non trouvée' });
+
+    const { rows } = await pool.query(
+      'SELECT * FROM relances WHERE facture_id = $1 AND hospital_id = $2 ORDER BY date_relance DESC',
+      [req.params.factureId, req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -786,14 +859,17 @@ router.get('/relances/facture/:factureId', authenticate, requirePermission('view
 // ================================================================
 // ========== RÉCAPITULATIF DE FACTURES ==========================
 // ================================================================
-router.get('/recap', authenticate, requirePermission('view_finance'), async (req, res) => {
+router.get('/recap', authenticate, requireHospital, requirePermission('view_finance'), async (req, res) => {
   try {
     const { facture_ids, patient_id } = req.query;
     let ids = [];
     if (facture_ids) {
       ids = facture_ids.split(',').map(Number);
     } else if (patient_id) {
-      const result = await pool.query('SELECT id FROM factures WHERE patient_id = $1', [patient_id]);
+      const result = await pool.query(
+        'SELECT id FROM factures WHERE patient_id = $1 AND hospital_id = $2',
+        [patient_id, req.hospitalId]
+      );
       ids = result.rows.map(r => r.id);
     } else {
       return res.status(400).json({ error: 'Fournissez facture_ids ou patient_id' });
@@ -807,9 +883,9 @@ router.get('/recap', authenticate, requirePermission('view_finance'), async (req
       SELECT f.*, p.nom AS patient_nom, p.prenom AS patient_prenom
       FROM factures f
       JOIN patients p ON f.patient_id = p.id
-      WHERE f.id = ANY($1::int[])
+      WHERE f.id = ANY($1::int[]) AND f.hospital_id = $2
       ORDER BY f.date_facture DESC
-    `, [ids]);
+    `, [ids, req.hospitalId]);
 
     if (factures.rows.length === 0) {
       return res.status(404).json({ error: 'Factures non trouvées' });
@@ -819,9 +895,9 @@ router.get('/recap', authenticate, requirePermission('view_finance'), async (req
       SELECT fl.*, f.id AS facture_id, f.type_facture
       FROM facture_lignes fl
       JOIN factures f ON fl.facture_id = f.id
-      WHERE f.id = ANY($1::int[])
+      WHERE f.id = ANY($1::int[]) AND f.hospital_id = $2
       ORDER BY f.date_facture DESC, fl.id
-    `, [ids]);
+    `, [ids, req.hospitalId]);
 
     const grouped = {};
     for (const ligne of lignes.rows) {

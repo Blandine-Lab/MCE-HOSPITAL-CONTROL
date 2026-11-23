@@ -5,18 +5,34 @@
 // ⚠️ FIX :
 //   1. Pool patché de config/db.js (ALS + set_config auto)
 //   2. hospital_id explicite dans le POST (NOT NULL sans DEFAULT)
+//   3. requireHospital + WHERE hospital_id = $1 sur TOUTES les routes
+//   4. Check d'usage scopé tenant (DELETE + GET /:id/check)
 // ============================================================
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');                       // ✅ pool patché
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireHospital, requireAdmin } = require('../middleware/auth');
 
 // ============================================================
-// GET tous les types
+// Helper – vérification d'appartenance au tenant
 // ============================================================
-router.get('/', authenticate, async (req, res) => {
+async function typeExamenInTenant(typeId, hospitalId) {
+  const { rowCount } = await pool.query(
+    'SELECT 1 FROM types_examens WHERE id = $1 AND hospital_id = $2',
+    [typeId, hospitalId]
+  );
+  return rowCount > 0;
+}
+
+// ============================================================
+// GET tous les types (scopé au tenant)
+// ============================================================
+router.get('/', authenticate, requireHospital, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM types_examens ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT * FROM types_examens WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('GET /types-examens :', err);
@@ -25,12 +41,15 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// GET un type par ID
+// GET un type par ID (scopé au tenant)
 // ============================================================
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, requireHospital, async (req, res) => {
   try {
     const { id } = req.params;
-    const { rows } = await pool.query('SELECT * FROM types_examens WHERE id = $1', [id]);
+    const { rows } = await pool.query(
+      'SELECT * FROM types_examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     if (rows.length === 0) return res.status(404).json({ error: 'Type non trouvé' });
     res.json(rows[0]);
   } catch (err) {
@@ -42,7 +61,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // ============================================================
 // POST créer un type
 // ============================================================
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+router.post('/', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
     console.log('🔍 POST /types-examens - Body reçu :', req.body);
     const {
@@ -103,7 +122,6 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       if (isNaN(prestationId)) prestationId = null;
     }
 
-    // ✅ FIX : hospital_id explicite (colonne NOT NULL sans DEFAULT)
     const { rows } = await pool.query(
       `INSERT INTO types_examens 
        (hospital_id, nom, categorie, description, duree_estimee, prix, preparation, prestation_id, 
@@ -120,9 +138,9 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
-// PUT modifier un type
+// PUT modifier un type (scopé au tenant)
 // ============================================================
-router.put('/:id', authenticate, requireAdmin, async (req, res) => {
+router.put('/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔍 PUT /types-examens/${id} - Body reçu :`, req.body);
@@ -180,15 +198,16 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
       if (isNaN(prestationId)) prestationId = null;
     }
 
+    // ✅ FIX : UPDATE scopé tenant (0 ligne → 404, pas de fuite cross-tenant)
     const { rows } = await pool.query(
       `UPDATE types_examens 
        SET nom = $1, categorie = $2, description = $3,
            duree_estimee = $4, prix = $5, preparation = $6,
            prestation_id = $7, parametres_defaut = $8, 
            parametres_ids = $9, updated_at = NOW()
-       WHERE id = $10
+       WHERE id = $10 AND hospital_id = $11
        RETURNING *`,
-      [nom, categorie, description, duree, prixNum, preparation, prestationId, paramsDefautJson, paramsIdsJson, id]
+      [nom, categorie, description, duree, prixNum, preparation, prestationId, paramsDefautJson, paramsIdsJson, id, req.hospitalId]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Type non trouvé' });
     res.json(rows[0]);
@@ -199,12 +218,22 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
-// DELETE supprimer un type (avec vérification d'usage)
+// DELETE supprimer un type (avec vérification d'usage scopée tenant)
 // ============================================================
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const check = await pool.query('SELECT COUNT(*) FROM examens WHERE type_examen_id = $1', [id]);
+
+    // ✅ FIX : le type doit appartenir au tenant
+    if (!(await typeExamenInTenant(id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Type non trouvé' });
+    }
+
+    // ✅ FIX : check d'usage scopé tenant (les examens d'autres hôpitaux ne bloquent pas)
+    const check = await pool.query(
+      'SELECT COUNT(*) FROM examens WHERE type_examen_id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     if (parseInt(check.rows[0].count) > 0) {
       return res.status(400).json({
         error: `Ce type est utilisé par ${check.rows[0].count} examen(s). Impossible de le supprimer.`,
@@ -212,7 +241,11 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
         count: parseInt(check.rows[0].count)
       });
     }
-    const { rowCount } = await pool.query('DELETE FROM types_examens WHERE id = $1', [id]);
+
+    const { rowCount } = await pool.query(
+      'DELETE FROM types_examens WHERE id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     if (rowCount === 0) return res.status(404).json({ error: 'Type non trouvé' });
     res.status(204).send();
   } catch (err) {
@@ -222,12 +255,22 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
-// Vérifier si un type est utilisé (pour le frontend)
+// Vérifier si un type est utilisé (pour le frontend, scopé tenant)
 // ============================================================
-router.get('/:id/check', authenticate, async (req, res) => {
+router.get('/:id/check', authenticate, requireHospital, async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('SELECT COUNT(*) FROM examens WHERE type_examen_id = $1', [id]);
+
+    // ✅ FIX : type du tenant
+    if (!(await typeExamenInTenant(id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Type non trouvé' });
+    }
+
+    // ✅ FIX : check scopé tenant
+    const result = await pool.query(
+      'SELECT COUNT(*) FROM examens WHERE type_examen_id = $1 AND hospital_id = $2',
+      [id, req.hospitalId]
+    );
     const count = parseInt(result.rows[0].count);
     res.json({ used: count > 0, count });
   } catch (err) {

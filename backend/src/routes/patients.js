@@ -1,7 +1,7 @@
 // backend/src/routes/patients.js
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');                       // ✅ pool patché (plus de new Pool)
+const pool = require('../config/db');                       // pool patché
 const { authenticate, requirePermission, requireAdmin } = require('../middleware/auth');
 const { logAudit } = require('../utils/audit');
 
@@ -9,10 +9,26 @@ const toNull = (val) => (val === '' || val === undefined || val === null) ? null
 
 router.use(authenticate);
 
-// ---------- GET / – Liste des patients ----------
-router.get('/', async (req, res) => {
+// ============================================================
+//  Middleware local : vérifier que req.hospitalId existe
+// ============================================================
+function requireHospital(req, res, next) {
+  if (!req.hospitalId) {
+    return res.status(403).json({
+      error: 'Contexte hôpital manquant',
+      code: 'TENANT_MISSING',
+    });
+  }
+  next();
+}
+
+// ============================================================
+// ---------- GET / – Liste des patients du tenant ----------
+// ============================================================
+router.get('/', requireHospital, async (req, res) => {
   try {
     const { actif } = req.query;
+    const params = [req.hospitalId];           // $1 = hospital_id
     let query = `
       SELECT 
         id, ipp, nom, prenom, telephone, email, adresse,
@@ -22,11 +38,11 @@ router.get('/', async (req, res) => {
         antecedents, allergies, traitements, consentements, genre,
         actif
       FROM patients
+      WHERE hospital_id = $1
     `;
-    const params = [];
     if (actif !== undefined) {
-      query += ` WHERE actif = $1`;
-      params.push(actif === 'true');
+      params.push(actif === 'true');           // $2
+      query += ` AND actif = $2`;
     }
     query += ` ORDER BY nom`;
     const { rows } = await pool.query(query, params);
@@ -37,8 +53,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ---------- GET /:id – Détail d'un patient ----------
-router.get('/:id', async (req, res) => {
+// ============================================================
+// ---------- GET /:id – Détail d'un patient du tenant ----------
+// ============================================================
+router.get('/:id', requireHospital, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT 
@@ -49,8 +67,8 @@ router.get('/:id', async (req, res) => {
         antecedents, allergies, traitements, consentements, genre,
         actif
       FROM patients
-      WHERE id = $1
-    `, [req.params.id]);
+      WHERE id = $1 AND hospital_id = $2
+    `, [req.params.id, req.hospitalId]);
     if (rows.length === 0) return res.status(404).json({ error: 'Patient non trouvé' });
     res.json(rows[0]);
   } catch (err) {
@@ -59,8 +77,10 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// ============================================================
 // ---------- POST / – Créer un patient ----------
-router.post('/', requirePermission('manage_patients'), async (req, res) => {
+// ============================================================
+router.post('/', requireHospital, requirePermission('manage_patients'), async (req, res) => {
   const {
     nom, prenom, date_naissance, telephone, email, adresse, ipp,
     personne_a_prevenir_nom1, personne_a_prevenir_tel1, personne_a_prevenir_adresse1,
@@ -72,14 +92,17 @@ router.post('/', requirePermission('manage_patients'), async (req, res) => {
   const admissionDate = date_admission || new Date().toISOString().split('T')[0];
 
   try {
+    // ✅ Vérification email SCOPÉE au tenant (deux hôpitaux peuvent partager un email)
     if (email) {
-      const existing = await pool.query('SELECT id FROM patients WHERE email = $1', [email]);
+      const existing = await pool.query(
+        'SELECT id FROM patients WHERE email = $1 AND hospital_id = $2',
+        [email, req.hospitalId]
+      );
       if (existing.rows.length > 0) {
-        return res.status(409).json({ error: 'Un patient avec cet email existe déjà.' });
+        return res.status(409).json({ error: 'Un patient avec cet email existe déjà dans votre établissement.' });
       }
     }
 
-    // ✅ FIX : hospital_id explicite en 1ᵉʳ param
     const { rows } = await pool.query(`
       INSERT INTO patients (
         hospital_id,
@@ -142,8 +165,10 @@ router.post('/', requirePermission('manage_patients'), async (req, res) => {
   }
 });
 
-// ---------- PUT /:id – Modifier un patient ----------
-router.put('/:id', requirePermission('manage_patients'), async (req, res) => {
+// ============================================================
+// ---------- PUT /:id – Modifier un patient du tenant ----------
+// ============================================================
+router.put('/:id', requireHospital, requirePermission('manage_patients'), async (req, res) => {
   const {
     nom, prenom, date_naissance, telephone, email, adresse, ipp,
     personne_a_prevenir_nom1, personne_a_prevenir_tel1, personne_a_prevenir_adresse1,
@@ -153,8 +178,10 @@ router.put('/:id', requirePermission('manage_patients'), async (req, res) => {
   } = req.body;
 
   try {
+    // ✅ Lecture scopée au tenant
     const { rows: [oldPatient] } = await pool.query(
-      'SELECT * FROM patients WHERE id = $1', [req.params.id]
+      'SELECT * FROM patients WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
     );
     if (!oldPatient) return res.status(404).json({ error: 'Patient non trouvé' });
 
@@ -166,7 +193,7 @@ router.put('/:id', requirePermission('manage_patients'), async (req, res) => {
         personne_a_prevenir_nom2 = $11, personne_a_prevenir_tel2 = $12, personne_a_prevenir_adresse2 = $13,
         antecedents = $14, allergies = $15, traitements = $16,
         consentements = $17, date_admission = $18, genre = $19
-      WHERE id = $20
+      WHERE id = $20 AND hospital_id = $21
     `, [
       nom, prenom, date_naissance, toNull(telephone), toNull(email), toNull(adresse), toNull(ipp),
       toNull(personne_a_prevenir_nom1), toNull(personne_a_prevenir_tel1), toNull(personne_a_prevenir_adresse1),
@@ -174,12 +201,14 @@ router.put('/:id', requirePermission('manage_patients'), async (req, res) => {
       toNull(antecedents), toNull(allergies), toNull(traitements), consentements === true,
       date_admission || null,
       genre || null,
-      req.params.id
+      req.params.id,
+      req.hospitalId,
     ]);
     if (result.rowCount === 0) return res.status(404).json({ error: 'Patient non trouvé' });
 
     const { rows: [newPatient] } = await pool.query(
-      'SELECT * FROM patients WHERE id = $1', [req.params.id]
+      'SELECT * FROM patients WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
     );
     await logAudit({
       userId: req.user.id,
@@ -198,14 +227,18 @@ router.put('/:id', requirePermission('manage_patients'), async (req, res) => {
   }
 });
 
+// ============================================================
 // ---------- PUT /:id/toggle-actif ----------
-router.put('/:id/toggle-actif', requirePermission('manage_patients'), async (req, res) => {
+// ============================================================
+router.put('/:id/toggle-actif', requireHospital, requirePermission('manage_patients'), async (req, res) => {
   const patientId = req.params.id;
   const { actif } = req.body;
   try {
     const result = await pool.query(`
-      UPDATE patients SET actif = $1 WHERE id = $2 RETURNING id, actif
-    `, [actif, patientId]);
+      UPDATE patients SET actif = $1
+      WHERE id = $2 AND hospital_id = $3
+      RETURNING id, actif
+    `, [actif, patientId, req.hospitalId]);
     if (result.rowCount === 0) return res.status(404).json({ error: 'Patient non trouvé' });
 
     await logAudit({
@@ -225,15 +258,28 @@ router.put('/:id/toggle-actif', requirePermission('manage_patients'), async (req
   }
 });
 
+// ============================================================
 // ---------- DELETE /:id ----------
-router.delete('/:id', requireAdmin, async (req, res) => {
+// ⚠️ Vérification d'appartenance AVANT toute suppression cascade
+// ============================================================
+router.delete('/:id', requireHospital, requireAdmin, async (req, res) => {
   const patientId = req.params.id;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    // ✅ FIX : poser le tenant DANS la transaction
     await client.query(`SELECT set_config('app.hospital_id', $1, true)`, [String(req.hospitalId)]);
 
+    // ✅ ÉTAPE CRITIQUE : vérifier que le patient appartient au tenant
+    const patient = await client.query(
+      'SELECT id FROM patients WHERE id = $1 AND hospital_id = $2',
+      [patientId, req.hospitalId]
+    );
+    if (patient.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Patient non trouvé' });
+    }
+
+    // Suppressions en cascade (toutes scopées par patient_id, déjà validé)
     await client.query(`
       DELETE FROM paiements
       WHERE facture_id IN (SELECT id FROM factures WHERE patient_id = $1)
@@ -258,11 +304,12 @@ router.delete('/:id', requireAdmin, async (req, res) => {
       }
     }
 
-    const result = await client.query('DELETE FROM patients WHERE id = $1 RETURNING id', [patientId]);
-    if (result.rowCount === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Patient non trouvé' });
-    }
+    // ✅ Delete scopée au tenant (double sécurité)
+    await client.query(
+      'DELETE FROM patients WHERE id = $1 AND hospital_id = $2',
+      [patientId, req.hospitalId]
+    );
+
     await client.query('COMMIT');
 
     await logAudit({
@@ -285,10 +332,22 @@ router.delete('/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================================
 // ---------- GET /:id/visits ----------
-router.get('/:id/visits', async (req, res) => {
+// ⚠️ Vérification d'appartenance AVANT la lecture des visites
+// ============================================================
+router.get('/:id/visits', requireHospital, async (req, res) => {
   const patientId = req.params.id;
   try {
+    // ✅ Vérifier d'abord que le patient appartient au tenant
+    const patient = await pool.query(
+      'SELECT id FROM patients WHERE id = $1 AND hospital_id = $2',
+      [patientId, req.hospitalId]
+    );
+    if (patient.rowCount === 0) {
+      return res.status(404).json({ error: 'Patient non trouvé' });
+    }
+
     const { rows } = await pool.query(`
       (SELECT a.date_admission AS date, 'Hospitalisation' AS type, a.motif AS motif, NULL AS medecin
        FROM admissions a WHERE a.patient_id = $1)

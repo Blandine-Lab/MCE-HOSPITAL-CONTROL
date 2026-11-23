@@ -2,21 +2,38 @@
 // ============================================================
 // 🏥 RH – Services
 // ------------------------------------------------------------
-// ⚠️ FIX :
-//   1. Pool patché de config/db.js (ALS + set_config auto)
-//   2. hospital_id explicite dans le POST (NOT NULL sans DEFAULT)
+// ⚠️ Le pool patché pose `app.hospital_id` via ALS, MAIS depuis
+//    que le RLS est en NO FORCE + policy supprimée, la DB ne
+//    filtre plus. On filtre donc explicitement côté backend sur
+//    `req.hospitalId` (JWT) pour garantir l'isolation tenant.
 // ============================================================
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');                       // ✅ pool patché
+const pool = require('../config/db');                       // pool patché
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
 // ============================================================
-// GET tous les services
+//  Middleware local : vérifier que req.hospitalId existe
 // ============================================================
-router.get('/', authenticate, async (req, res) => {
+function requireHospital(req, res, next) {
+  if (!req.hospitalId) {
+    return res.status(403).json({
+      error: 'Contexte hôpital manquant',
+      code: 'TENANT_MISSING',
+    });
+  }
+  next();
+}
+
+// ============================================================
+// GET tous les services du tenant
+// ============================================================
+router.get('/', authenticate, requireHospital, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM services ORDER BY nom');
+    const { rows } = await pool.query(
+      'SELECT * FROM services WHERE hospital_id = $1 ORDER BY nom',
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('Erreur GET /services :', err);
@@ -30,11 +47,14 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// GET un service par ID
+// GET un service par ID (uniquement dans le tenant)
 // ============================================================
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, requireHospital, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM services WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query(
+      'SELECT * FROM services WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Service non trouvé' });
     }
@@ -48,7 +68,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // ============================================================
 // POST créer un service
 // ============================================================
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, requireHospital, async (req, res) => {
   try {
     const { nom, responsable, description } = req.body;
 
@@ -56,7 +76,6 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Le nom du service est obligatoire' });
     }
 
-    // ✅ FIX : hospital_id explicite (colonne NOT NULL sans DEFAULT)
     const { rows } = await pool.query(
       `INSERT INTO services (hospital_id, nom, responsable, description)
        VALUES ($1, $2, $3, $4)
@@ -79,9 +98,9 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// PUT modifier un service
+// PUT modifier un service (uniquement dans le tenant)
 // ============================================================
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, requireHospital, async (req, res) => {
   try {
     const { nom, responsable, description } = req.body;
 
@@ -92,9 +111,9 @@ router.put('/:id', authenticate, async (req, res) => {
     const { rows } = await pool.query(
       `UPDATE services
        SET nom = $1, responsable = $2, description = $3, updated_at = NOW()
-       WHERE id = $4
+       WHERE id = $4 AND hospital_id = $5
        RETURNING *`,
-      [nom.trim(), responsable || null, description || null, req.params.id]
+      [nom.trim(), responsable || null, description || null, req.params.id, req.hospitalId]
     );
 
     if (rows.length === 0) {
@@ -111,11 +130,14 @@ router.put('/:id', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// DELETE supprimer un service (admin uniquement)
+// DELETE supprimer un service (admin uniquement, dans le tenant)
 // ============================================================
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
-    const { rowCount } = await pool.query('DELETE FROM services WHERE id = $1', [req.params.id]);
+    const { rowCount } = await pool.query(
+      'DELETE FROM services WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
     if (rowCount === 0) {
       return res.status(404).json({ error: 'Service non trouvé' });
     }

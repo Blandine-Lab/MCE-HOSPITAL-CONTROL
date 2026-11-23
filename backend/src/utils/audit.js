@@ -5,11 +5,27 @@
 // ✅ Schéma réel : table_cible, enregistrement_id, ip_address
 //    (inet), created_at, hospital_id (uuid).
 // ✅ Signature OBJET (auth.js) + positionnelle (legacy).
-// ✅ Logs de diagnostic : payload + code + detail + hint.
+// ✅ Accepte tableCible/recordId ET ressource/ressourceId
 // ✅ Non bloquant (auth.js l'appelle avec .catch(() => {})).
 // ============================================================
 
-const { authPool } = require('../config/db');
+// ✅ Défensif : si authPool est absent de config/db.js, on log une
+//    erreur claire au démarrage, mais on ne fait pas crasher le serveur.
+const dbConfig = require('../config/db');
+const authPool = dbConfig.authPool;
+
+if (!authPool) {
+  console.error(
+    '❌ utils/audit.js : authPool manquant dans config/db.js — ' +
+    'audit_logs ne sera pas écrit (actions non journalisées).'
+  );
+}
+
+// ✅ Logs de diagnostic : dev ou DEBUG_AUDIT=1 uniquement
+const DEBUG =
+  process.env.NODE_ENV !== 'production' || process.env.DEBUG_AUDIT === '1';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function logAudit(...args) {
   // ---------- 1) Normalisation des arguments ----------
@@ -21,38 +37,61 @@ async function logAudit(...args) {
     payload = { userId, action, ressource: resource, ressourceId: resourceId, details };
   }
 
+  // ---------- 2) Déstructuration avec ALIAS ----------
   const {
     userId = null,
     action = 'UNKNOWN',
-    ressource = null,        // → table_cible
-    ressourceId = null,      // → enregistrement_id
+    ressource = null,
+    ressourceId = null,
+    tableCible = null,
+    recordId = null,
     details = {},
-    ip = null,               // → ip_address (inet)
-    hospitalId = null,       // → hospital_id (uuid)
+    ip = null,
+    hospitalId = null,
   } = payload;
 
-  // ---------- 2) Nettoyage des types stricts ----------
+  const finalRessource = ressource ?? tableCible ?? null;
+  const finalRessourceId = ressourceId ?? recordId ?? null;
+
+  // ---------- 3) Nettoyage des types stricts ----------
   const cleanIp =
     typeof ip === 'string' && ip.trim() !== '' && ip !== 'unknown' && ip !== 'n/a'
       ? ip.trim()
       : null;
 
   const cleanHospitalId =
-    typeof hospitalId === 'string' && hospitalId.trim() !== ''
+    typeof hospitalId === 'string' &&
+    hospitalId.trim() !== '' &&
+    UUID_REGEX.test(hospitalId.trim())
       ? hospitalId.trim()
       : null;
 
-  // ---------- 3) Diagnostic AVANT INSERT ----------
-  console.log('📝 logAudit :', {
-    utilisateur_id: userId,
-    action,
-    table_cible: ressource,
-    enregistrement_id: ressourceId,
-    ip_address: cleanIp,
-    hospital_id: cleanHospitalId,
-  });
+  // ---------- 4) Avertissement si tenant sans hospitalId ----------
+  //    Sans hospitalId, la ligne audit_logs sera orpheline (RLS la
+  //    rendra invisible ou l'INSERT échouera si NOT NULL + FORCE).
+  //    On log côté serveur pour ne pas perdre l'info.
+  if (!cleanHospitalId) {
+    console.warn(
+      '⚠️ logAudit sans hospitalId valide — action:', action,
+      '| ressource:', finalRessource,
+      '| userId:', userId
+    );
+  }
 
-  // ---------- 4) INSERT transactionnel + set_config ----------
+  if (DEBUG) {
+    console.log('📝 logAudit :', {
+      utilisateur_id: userId,
+      action,
+      table_cible: finalRessource,
+      enregistrement_id: finalRessourceId,
+      ip_address: cleanIp,
+      hospital_id: cleanHospitalId,
+    });
+  }
+
+  // ---------- 5) INSERT transactionnel + set_config ----------
+  if (!authPool) return; // déjà signalé au démarrage
+
   let client;
   try {
     client = await authPool.connect();
@@ -74,8 +113,8 @@ async function logAudit(...args) {
       [
         userId,
         action,
-        ressource,
-        ressourceId,
+        finalRessource,
+        finalRessourceId,
         JSON.stringify(details || {}),
         cleanIp,
         cleanHospitalId,
@@ -83,7 +122,9 @@ async function logAudit(...args) {
     );
 
     await client.query('COMMIT');
-    console.log(`✅ audit_logs INSERT OK — id=${result.rows[0]?.id}`);
+    if (DEBUG) {
+      console.log(`✅ audit_logs INSERT OK — id=${result.rows[0]?.id}`);
+    }
   } catch (err) {
     try { if (client) await client.query('ROLLBACK'); } catch (_) {}
     console.error(

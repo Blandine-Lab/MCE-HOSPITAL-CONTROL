@@ -2,32 +2,41 @@
 // ============================================================
 // 🏥 RH – Employés
 // ------------------------------------------------------------
-// ⚠️ FIX CRITIQUE : on utilise le pool PATCHÉ de config/db.js
-//    (et non un `new Pool(...)` local) pour que `patchedQuery`
-//    pose `app.hospital_id` via AsyncLocalStorage → RLS OK.
+// Le pool patché pose `app.hospital_id` via ALS, MAIS depuis que
+// le RLS est en NO FORCE + policy supprimée, la DB ne filtre plus.
+// → filtrage explicite côté backend sur `req.hospitalId` (JWT).
+//
+// ✅ requireHospital vient de middleware/auth.js (une seule source).
+// ✅ JOIN services scopé par hospital_id (pas de fuite du nom).
 // ============================================================
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');                       // ✅ pool patché (ALS + set_config)
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const pool = require('../config/db');
+const { authenticate, requireHospital, requireAdmin } = require('../middleware/auth');
 const upload = require('../../config/multer');
 
 // ============================================================
-//  PROTECTION : toutes les routes nécessitent un token
+//  Toutes les routes nécessitent un token + un tenant
 // ============================================================
-router.use(authenticate);
+router.use(authenticate, requireHospital);
 
 // ============================================================
-//  GET / – Liste des employés (avec service_nom)
+//  GET / – Liste des employés du tenant uniquement
 // ============================================================
 router.get('/', async (req, res) => {
   try {
-    const { rows } = await pool.query(`
+    const { rows } = await pool.query(
+      `
       SELECT e.*, s.nom AS service_nom
       FROM employes e
-      LEFT JOIN services s ON e.service_id = s.id
+      LEFT JOIN services s
+        ON e.service_id = s.id
+       AND s.hospital_id = e.hospital_id
+      WHERE e.hospital_id = $1
       ORDER BY e.nom, e.prenom
-    `);
+      `,
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('❌ GET /employes :', err.message);
@@ -36,17 +45,24 @@ router.get('/', async (req, res) => {
 });
 
 // ============================================================
-//  GET /:id – Détail d'un employé (avec service_nom)
+//  GET /:id – Détail d'un employé du tenant
 // ============================================================
 router.get('/:id', async (req, res) => {
   try {
-    const { rows } = await pool.query(`
+    const { rows } = await pool.query(
+      `
       SELECT e.*, s.nom AS service_nom
       FROM employes e
-      LEFT JOIN services s ON e.service_id = s.id
-      WHERE e.id = $1
-    `, [req.params.id]);
-    if (!rows.length) return res.status(404).json({ error: 'Employé non trouvé' });
+      LEFT JOIN services s
+        ON e.service_id = s.id
+       AND s.hospital_id = e.hospital_id
+      WHERE e.id = $1 AND e.hospital_id = $2
+      `,
+      [req.params.id, req.hospitalId]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Employé non trouvé' });
+    }
     res.json(rows[0]);
   } catch (err) {
     console.error('❌ GET /employes/:id :', err.message);
@@ -55,25 +71,36 @@ router.get('/:id', async (req, res) => {
 });
 
 // ============================================================
-//  POST / – Créer un employé (avec photo)
-//  ⚠️ hospital_id est injecté par RLS : on ne le met PAS dans l'INSERT.
-//     Si la colonne est NOT NULL sans DEFAULT, ajoute
-//     `hospital_id = current_setting('app.hospital_id')::uuid` côté DB,
-//     ou passe-le explicitement via req.hospitalId (voir note plus bas).
+//  POST / – Créer un employé rattaché au tenant
 // ============================================================
 router.post('/', upload.single('photo'), async (req, res) => {
   try {
-    const { nom, prenom, email, telephone, poste, service_id, date_embauche, statut } = req.body;
+    const {
+      nom, prenom, email, telephone, poste,
+      service_id, date_embauche, statut,
+    } = req.body;
     const photo = req.file ? `/uploads/${req.file.filename}` : null;
+
+    // Vérification : le service demandé appartient-il au tenant ?
+    if (service_id) {
+      const svc = await pool.query(
+        'SELECT id FROM services WHERE id = $1 AND hospital_id = $2',
+        [service_id, req.hospitalId]
+      );
+      if (!svc.rows.length) {
+        return res.status(400).json({ error: 'Service inconnu pour cet hôpital' });
+      }
+    }
 
     const { rows } = await pool.query(
       `INSERT INTO employes
-         (hospital_id, nom, prenom, email, telephone, poste, service_id, date_embauche, statut, photo)
+         (hospital_id, nom, prenom, email, telephone, poste,
+          service_id, date_embauche, statut, photo)
        VALUES
          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
-        req.hospitalId,                                      // ✅ tenant explicite (NOT NULL)
+        req.hospitalId,
         nom, prenom, email, telephone, poste,
         service_id, date_embauche, statut || 'actif', photo,
       ]
@@ -86,33 +113,54 @@ router.post('/', upload.single('photo'), async (req, res) => {
 });
 
 // ============================================================
-//  PUT /:id – Modifier un employé (avec photo)
+//  PUT /:id – Modifier un employé du tenant uniquement
 // ============================================================
 router.put('/:id', upload.single('photo'), async (req, res) => {
   try {
-    const { nom, prenom, email, telephone, poste, service_id, date_embauche, statut } = req.body;
+    const {
+      nom, prenom, email, telephone, poste,
+      service_id, date_embauche, statut,
+    } = req.body;
 
     let photo = req.body.photo;
     if (req.file) {
       photo = `/uploads/${req.file.filename}`;
     }
 
+    // Vérification : si service_id change, il doit être du tenant
+    if (service_id) {
+      const svc = await pool.query(
+        'SELECT id FROM services WHERE id = $1 AND hospital_id = $2',
+        [service_id, req.hospitalId]
+      );
+      if (!svc.rows.length) {
+        return res.status(400).json({ error: 'Service inconnu pour cet hôpital' });
+      }
+    }
+
     const { rows } = await pool.query(
       `UPDATE employes SET
-        nom = COALESCE($1, nom),
-        prenom = COALESCE($2, prenom),
-        email = COALESCE($3, email),
-        telephone = COALESCE($4, telephone),
-        poste = COALESCE($5, poste),
-        service_id = COALESCE($6, service_id),
-        date_embauche = COALESCE($7, date_embauche),
-        statut = COALESCE($8, statut),
-        photo = COALESCE($9, photo)
-       WHERE id = $10
+         nom = COALESCE($1, nom),
+         prenom = COALESCE($2, prenom),
+         email = COALESCE($3, email),
+         telephone = COALESCE($4, telephone),
+         poste = COALESCE($5, poste),
+         service_id = COALESCE($6, service_id),
+         date_embauche = COALESCE($7, date_embauche),
+         statut = COALESCE($8, statut),
+         photo = COALESCE($9, photo)
+       WHERE id = $10 AND hospital_id = $11
        RETURNING *`,
-      [nom, prenom, email, telephone, poste, service_id, date_embauche, statut, photo, req.params.id]
+      [
+        nom, prenom, email, telephone, poste,
+        service_id, date_embauche, statut, photo,
+        req.params.id,
+        req.hospitalId,
+      ]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Employé non trouvé' });
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Employé non trouvé' });
+    }
     res.json(rows[0]);
   } catch (err) {
     console.error('❌ PUT /employes/:id :', err);
@@ -121,15 +169,17 @@ router.put('/:id', upload.single('photo'), async (req, res) => {
 });
 
 // ============================================================
-//  DELETE /:id – Supprimer un employé (réservé aux administrateurs)
+//  DELETE /:id – Supprimer un employé du tenant (admin)
 // ============================================================
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const { rowCount } = await pool.query(
-      'DELETE FROM employes WHERE id = $1',
-      [req.params.id]
+      'DELETE FROM employes WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
     );
-    if (!rowCount) return res.status(404).json({ error: 'Employé non trouvé' });
+    if (!rowCount) {
+      return res.status(404).json({ error: 'Employé non trouvé' });
+    }
     res.status(204).send();
   } catch (err) {
     console.error('❌ DELETE /employes/:id :', err.message);

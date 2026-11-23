@@ -7,11 +7,13 @@
 //   2. set_config manuel dans CHAQUE transaction
 //   3. hospital_id explicite dans TOUS les INSERT
 //   4. ROLLBACK avant chaque return 404 dans une transaction
+//   5. requireHospital + WHERE hospital_id = $1 sur TOUTES les routes
+//   6. Vérification employe_id / modele_id / contrat appartenant au tenant
 // ============================================================
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');                       // ✅ pool patché
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireHospital, requireAdmin } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
 
 // ============================================================
@@ -25,16 +27,51 @@ async function setTenant(client, hospitalId) {
 }
 
 // ============================================================
-// 1. GET /contrats — Liste des contrats
+// Helpers – vérification d'appartenance au tenant
 // ============================================================
-router.get('/', authenticate, async (req, res) => {
+async function employeInTenant(employeId, hospitalId) {
+  const { rowCount } = await pool.query(
+    'SELECT 1 FROM employes WHERE id = $1 AND hospital_id = $2',
+    [employeId, hospitalId]
+  );
+  return rowCount > 0;
+}
+
+async function contratInTenant(contratId, hospitalId) {
+  const { rowCount } = await pool.query(
+    'SELECT 1 FROM contrats WHERE id = $1 AND hospital_id = $2',
+    [contratId, hospitalId]
+  );
+  return rowCount > 0;
+}
+
+// Vérifie si modeles_contrats porte une colonne hospital_id (templates par hôpital)
+let _modelesHasHospitalCol = null;
+async function modelesHasHospitalCol(client = pool) {
+  if (_modelesHasHospitalCol !== null) return _modelesHasHospitalCol;
+  const { rows } = await client.query(`
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'modeles_contrats' AND column_name = 'hospital_id'
+    ) AS has
+  `);
+  _modelesHasHospitalCol = rows[0].has === true;
+  return _modelesHasHospitalCol;
+}
+
+// ============================================================
+// 1. GET /contrats — Liste des contrats (scopé au tenant)
+// ============================================================
+router.get('/', authenticate, requireHospital, async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT c.*, e.nom AS employe_nom, e.prenom AS employe_prenom
-      FROM contrats c
-      LEFT JOIN employes e ON c.employe_id = e.id
-      ORDER BY c.date_debut DESC
-    `);
+    const { rows } = await pool.query(
+      `SELECT c.*, e.nom AS employe_nom, e.prenom AS employe_prenom
+       FROM contrats c
+       LEFT JOIN employes e ON c.employe_id = e.id
+       WHERE c.hospital_id = $1
+       ORDER BY c.date_debut DESC`,
+      [req.hospitalId]
+    );
     res.json(rows);
   } catch (err) {
     console.error('Erreur GET /contrats :', err);
@@ -45,10 +82,20 @@ router.get('/', authenticate, async (req, res) => {
 // ============================================================
 // 2. GET /contrats/modeles-contrats — Liste des modèles
 // ============================================================
-router.get('/modeles-contrats', authenticate, async (req, res) => {
+router.get('/modeles-contrats', authenticate, requireHospital, async (req, res) => {
   try {
     console.log('🔍 Récupération des modèles...');
-    const { rows } = await pool.query(`SELECT * FROM modeles_contrats ORDER BY nom`);
+    const hasHospitalCol = await modelesHasHospitalCol();
+    let rows;
+    if (hasHospitalCol) {
+      ({ rows } = await pool.query(
+        `SELECT * FROM modeles_contrats WHERE hospital_id = $1 ORDER BY nom`,
+        [req.hospitalId]
+      ));
+    } else {
+      // ⚠️ Table globale (templates partagés) — à confirmer métier
+      ({ rows } = await pool.query(`SELECT * FROM modeles_contrats ORDER BY nom`));
+    }
     console.log(`✅ ${rows.length} modèles trouvés`);
     res.json(rows);
   } catch (err) {
@@ -64,11 +111,17 @@ router.get('/modeles-contrats', authenticate, async (req, res) => {
 // ============================================================
 // 3. GET /contrats/employe/:employeId — Contrats d'un employé
 // ============================================================
-router.get('/employe/:employeId', authenticate, async (req, res) => {
+router.get('/employe/:employeId', authenticate, requireHospital, async (req, res) => {
   try {
+    // ✅ FIX : employé du tenant
+    if (!(await employeInTenant(req.params.employeId, req.hospitalId))) {
+      return res.status(404).json({ error: 'Employé non trouvé' });
+    }
     const { rows } = await pool.query(
-      `SELECT * FROM contrats WHERE employe_id = $1 ORDER BY date_debut DESC`,
-      [req.params.employeId]
+      `SELECT * FROM contrats
+       WHERE employe_id = $1 AND hospital_id = $2
+       ORDER BY date_debut DESC`,
+      [req.params.employeId, req.hospitalId]
     );
     res.json(rows);
   } catch (err) {
@@ -80,15 +133,16 @@ router.get('/employe/:employeId', authenticate, async (req, res) => {
 // ============================================================
 // 4. GET /contrats/generate/:employeId — PDF (simple)
 // ============================================================
-router.get('/generate/:employeId', authenticate, async (req, res) => {
+router.get('/generate/:employeId', authenticate, requireHospital, async (req, res) => {
   try {
     const employeId = req.params.employeId;
+    // ✅ FIX : employé du tenant
     const { rows: employeRows } = await pool.query(`
       SELECT e.*, s.nom AS service_nom 
       FROM employes e
       LEFT JOIN services s ON e.service_id = s.id
-      WHERE e.id = $1
-    `, [employeId]);
+      WHERE e.id = $1 AND e.hospital_id = $2
+    `, [employeId, req.hospitalId]);
 
     if (employeRows.length === 0) return res.status(404).json({ error: 'Employé non trouvé' });
     const employe = employeRows[0];
@@ -147,29 +201,42 @@ router.get('/generate/:employeId', authenticate, async (req, res) => {
 // ============================================================
 // 5. POST /contrats/generer — Génération à partir d'un modèle
 // ============================================================
-router.post('/generer', authenticate, async (req, res) => {
+router.post('/generer', authenticate, requireHospital, async (req, res) => {
   const { employe_id, modele_id, date_debut, date_fin, salaire } = req.body;
   if (!employe_id || !modele_id) {
     return res.status(400).json({ error: 'employe_id et modele_id sont requis' });
   }
 
+  // ✅ FIX : employé du tenant avant transaction
+  if (!(await employeInTenant(employe_id, req.hospitalId))) {
+    return res.status(404).json({ error: 'Employé non trouvé' });
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
+    await setTenant(client, req.hospitalId);
 
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns 
       WHERE table_name = 'modeles_contrats' AND column_name = 'actif'
     `);
     const hasActif = colCheck.rows.length > 0;
+    const hasHosp = await modelesHasHospitalCol(client);
 
     let sqlModele = `SELECT id, nom FROM modeles_contrats WHERE id = $1`;
+    const params = [modele_id];
+    let pIdx = 2;
     if (hasActif) sqlModele += ` AND actif = true`;
+    // ✅ FIX : modèle du tenant si la colonne existe
+    if (hasHosp) {
+      sqlModele += ` AND hospital_id = $${pIdx++}`;
+      params.push(req.hospitalId);
+    }
 
-    const modeleResult = await client.query(sqlModele, [modele_id]);
+    const modeleResult = await client.query(sqlModele, params);
     if (modeleResult.rows.length === 0) {
-      await client.query('ROLLBACK');   // ✅ FIX : ROLLBACK avant return
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Modèle non trouvé ou inactif' });
     }
     const modele = modeleResult.rows[0];
@@ -181,7 +248,6 @@ router.post('/generer', authenticate, async (req, res) => {
 
     const reference = `CONTRAT-${Date.now().toString(36).toUpperCase()}`;
 
-    // ✅ FIX : hospital_id explicite
     const contratResult = await client.query(
       `INSERT INTO contrats
         (hospital_id, employe_id, type, date_debut, date_fin, salaire, statut, reference, modele_id)
@@ -200,7 +266,6 @@ router.post('/generer', authenticate, async (req, res) => {
     );
     const contrat = contratResult.rows[0];
 
-    // ✅ FIX : hospital_id explicite dans articles_contrats
     for (const art of articlesResult.rows) {
       await client.query(
         `INSERT INTO articles_contrats (hospital_id, contrat_id, titre, contenu, ordre)
@@ -210,8 +275,11 @@ router.post('/generer', authenticate, async (req, res) => {
     }
 
     const articlesInserts = await client.query(
-      `SELECT id, titre, contenu, ordre FROM articles_contrats WHERE contrat_id = $1 ORDER BY ordre, id`,
-      [contrat.id]
+      `SELECT id, titre, contenu, ordre
+       FROM articles_contrats
+       WHERE contrat_id = $1 AND hospital_id = $2
+       ORDER BY ordre, id`,
+      [contrat.id, req.hospitalId]
     );
     contrat.articles = articlesInserts.rows;
 
@@ -229,20 +297,23 @@ router.post('/generer', authenticate, async (req, res) => {
 // ============================================================
 // 6. GET /contrats/:id — Détail d'un contrat (avec articles)
 // ============================================================
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, requireHospital, async (req, res) => {
   try {
     const { rows: contratRows } = await pool.query(`
       SELECT c.*, e.nom AS employe_nom, e.prenom AS employe_prenom
       FROM contrats c
       LEFT JOIN employes e ON c.employe_id = e.id
-      WHERE c.id = $1
-    `, [req.params.id]);
+      WHERE c.id = $1 AND c.hospital_id = $2
+    `, [req.params.id, req.hospitalId]);
     if (contratRows.length === 0) return res.status(404).json({ error: 'Contrat non trouvé' });
     const contrat = contratRows[0];
 
     const { rows: articlesRows } = await pool.query(
-      `SELECT id, titre, contenu, ordre FROM articles_contrats WHERE contrat_id = $1 ORDER BY ordre, id`,
-      [req.params.id]
+      `SELECT id, titre, contenu, ordre
+       FROM articles_contrats
+       WHERE contrat_id = $1 AND hospital_id = $2
+       ORDER BY ordre, id`,
+      [req.params.id, req.hospitalId]
     );
     contrat.articles = articlesRows;
     res.json(contrat);
@@ -255,10 +326,16 @@ router.get('/:id', authenticate, async (req, res) => {
 // ============================================================
 // 7. POST /contrats — Créer un contrat
 // ============================================================
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, requireHospital, async (req, res) => {
   const { employe_id, type, date_debut, date_fin, salaire, statut, commentaire } = req.body;
   try {
-    // ✅ FIX : hospital_id explicite
+    if (!employe_id) {
+      return res.status(400).json({ error: 'employe_id est requis' });
+    }
+    // ✅ FIX : employé du tenant
+    if (!(await employeInTenant(employe_id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Employé non trouvé' });
+    }
     const { rows } = await pool.query(`
       INSERT INTO contrats (hospital_id, employe_id, type, date_debut, date_fin, salaire, statut, commentaire)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -274,16 +351,25 @@ router.post('/', authenticate, async (req, res) => {
 // ============================================================
 // 8. PUT /contrats/:id — Modifier un contrat
 // ============================================================
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, requireHospital, async (req, res) => {
   const { employe_id, type, date_debut, date_fin, salaire, statut, commentaire } = req.body;
   try {
+    // ✅ FIX : contrat du tenant
+    if (!(await contratInTenant(req.params.id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Contrat non trouvé' });
+    }
+    // ✅ FIX : employé cible du tenant
+    if (employe_id && !(await employeInTenant(employe_id, req.hospitalId))) {
+      return res.status(404).json({ error: 'Employé non trouvé' });
+    }
+
     const { rows } = await pool.query(`
       UPDATE contrats 
       SET employe_id = $1, type = $2, date_debut = $3, date_fin = $4, 
           salaire = $5, statut = $6, commentaire = $7, updated_at = NOW()
-      WHERE id = $8
+      WHERE id = $8 AND hospital_id = $9
       RETURNING *
-    `, [employe_id, type, date_debut, date_fin, salaire, statut, commentaire, req.params.id]);
+    `, [employe_id, type, date_debut, date_fin, salaire, statut, commentaire, req.params.id, req.hospitalId]);
     if (rows.length === 0) return res.status(404).json({ error: 'Contrat non trouvé' });
     res.json(rows[0]);
   } catch (err) {
@@ -295,10 +381,19 @@ router.put('/:id', authenticate, async (req, res) => {
 // ============================================================
 // 9. DELETE /contrats/:id — Supprimer un contrat (admin)
 // ============================================================
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireHospital, requireAdmin, async (req, res) => {
   try {
-    const { rowCount } = await pool.query('DELETE FROM contrats WHERE id = $1', [req.params.id]);
+    // ✅ FIX : suppression scopée tenant (contrat + articles liés)
+    const { rowCount } = await pool.query(
+      'DELETE FROM contrats WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
     if (rowCount === 0) return res.status(404).json({ error: 'Contrat non trouvé' });
+    // cascade articles (si pas de FK ON DELETE CASCADE)
+    await pool.query(
+      'DELETE FROM articles_contrats WHERE contrat_id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
     res.sendStatus(204);
   } catch (err) {
     console.error('Erreur DELETE /contrats/:id :', err);
@@ -309,7 +404,7 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
 // ============================================================
 // 10. PUT /contrats/:id/articles — Mise à jour des articles
 // ============================================================
-router.put('/:id/articles', authenticate, async (req, res) => {
+router.put('/:id/articles', authenticate, requireHospital, async (req, res) => {
   const { articles } = req.body;
   if (!articles || !Array.isArray(articles)) {
     return res.status(400).json({ error: 'Le tableau "articles" est requis' });
@@ -317,21 +412,26 @@ router.put('/:id/articles', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await setTenant(client, req.hospitalId);   // ✅ FIX : poser le tenant
+    await setTenant(client, req.hospitalId);
 
-    const contratCheck = await client.query('SELECT id FROM contrats WHERE id = $1', [req.params.id]);
+    // ✅ FIX : contrat du tenant
+    const contratCheck = await client.query(
+      'SELECT id FROM contrats WHERE id = $1 AND hospital_id = $2',
+      [req.params.id, req.hospitalId]
+    );
     if (contratCheck.rows.length === 0) {
-      await client.query('ROLLBACK');   // ✅ FIX : ROLLBACK avant return
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Contrat non trouvé' });
     }
     for (const art of articles) {
       if (art.id) {
         await client.query(
-          `UPDATE articles_contrats SET titre = $1, contenu = $2, ordre = $3 WHERE id = $4 AND contrat_id = $5`,
-          [art.titre, art.contenu, art.ordre, art.id, req.params.id]
+          `UPDATE articles_contrats
+           SET titre = $1, contenu = $2, ordre = $3
+           WHERE id = $4 AND contrat_id = $5 AND hospital_id = $6`,
+          [art.titre, art.contenu, art.ordre, art.id, req.params.id, req.hospitalId]
         );
       } else {
-        // ✅ FIX : hospital_id explicite
         await client.query(
           `INSERT INTO articles_contrats (hospital_id, contrat_id, titre, contenu, ordre)
            VALUES ($1, $2, $3, $4, $5)`,
@@ -353,18 +453,19 @@ router.put('/:id/articles', authenticate, async (req, res) => {
 // ============================================================
 // 11. POST /contrats/generate/:employeId — PDF personnalisé
 // ============================================================
-router.post('/generate/:employeId', authenticate, async (req, res) => {
+router.post('/generate/:employeId', authenticate, requireHospital, async (req, res) => {
   try {
     const employeId = req.params.employeId;
     const { articles, salaire, employe: employeData } = req.body;
     let employe = employeData;
     if (!employe) {
+      // ✅ FIX : employé du tenant
       const { rows } = await pool.query(`
         SELECT e.*, s.nom AS service_nom 
         FROM employes e
         LEFT JOIN services s ON e.service_id = s.id
-        WHERE e.id = $1
-      `, [employeId]);
+        WHERE e.id = $1 AND e.hospital_id = $2
+      `, [employeId, req.hospitalId]);
       if (rows.length === 0) return res.status(404).json({ error: 'Employé non trouvé' });
       employe = rows[0];
     }
