@@ -36,33 +36,48 @@ const RendezVousList = () => {
   // ================== CHARGEMENT INITIAL ==================
   useEffect(() => {
     const fetchData = async () => {
-      // allSettled : une erreur sur une route n'annule pas les autres
-      const results = await Promise.allSettled([
-        api.get('/admin/patients'),
-        api.get('/consultations/medecins/all'),
-        api.get('/consultations/services/all'),
+      // Essaie plusieurs routes dans l'ordre et renvoie la 1ère qui donne des données
+      const tryRoutes = async (routes) => {
+        for (const url of routes) {
+          try {
+            const res = await api.get(url);
+            const arr = asArray(res.data);
+            if (arr.length > 0) {
+              console.log(`✅ ${url} → ${arr.length} élément(s)`);
+              return arr;
+            } else {
+              console.warn(`⚠️ ${url} → tableau vide`);
+            }
+          } catch (err) {
+            console.warn(
+              `❌ ${url} → ${err.response?.status || err.message}`
+            );
+          }
+        }
+        return [];
+      };
+
+      const [patientsArr, medecinsArr, servicesArr] = await Promise.all([
+        tryRoutes(['/patients', '/admin/patients']),
+        tryRoutes([
+          '/consultations/medecins/all',
+          '/consultations/medecins',
+          '/admin/medecins',
+        ]),
+        tryRoutes([
+          '/consultations/services/all',
+          '/consultations/services',
+          '/admin/services',
+        ]),
       ]);
 
-      if (results[0].status === 'fulfilled') {
-        setPatients(asArray(results[0].value.data));
-      } else {
-        console.error('❌ /admin/patients :', results[0].reason);
-        showToast('Erreur chargement patients', 'error');
-      }
+      setPatients(patientsArr);
+      setMedecins(medecinsArr);
+      setServices(servicesArr);
 
-      if (results[1].status === 'fulfilled') {
-        setMedecins(asArray(results[1].value.data));
-      } else {
-        console.error('❌ /consultations/medecins/all :', results[1].reason);
-        showToast('Erreur chargement médecins', 'error');
-      }
-
-      if (results[2].status === 'fulfilled') {
-        setServices(asArray(results[2].value.data));
-      } else {
-        console.error('❌ /consultations/services/all :', results[2].reason);
-        showToast('Erreur chargement services', 'error');
-      }
+      console.log('👥 Patients chargés :', patientsArr.length);
+      console.log('🩺 Médecins chargés :', medecinsArr.length);
+      console.log('🏥 Services chargés :', servicesArr.length);
 
       setLoaded(true);
     };
@@ -79,13 +94,13 @@ const RendezVousList = () => {
       setRdvs(asArray(res.data));
     } catch (err) {
       console.error('Erreur fetch rdvs:', err);
-      // Fallback si la route exacte change
       try {
         const res2 = await api.get('/consultations/rendezvous/all');
         setRdvs(asArray(res2.data));
       } catch (err2) {
         console.error('Fallback rdvs échoué:', err2);
-        const msg = err.response?.data?.error || 'Erreur chargement rendez-vous';
+        const msg =
+          err.response?.data?.error || 'Erreur chargement rendez-vous';
         showToast('❌ ' + msg, 'error');
       }
     }
@@ -136,7 +151,8 @@ const RendezVousList = () => {
       showToast(`Rendez-vous ${label}`);
     } catch (err) {
       console.error('Erreur mise à jour statut:', err);
-      const msg = err.response?.data?.error || 'Erreur lors de la mise à jour';
+      const msg =
+        err.response?.data?.error || 'Erreur lors de la mise à jour';
       showToast('❌ ' + msg, 'error');
     }
   };
@@ -342,7 +358,9 @@ const RendezVousList = () => {
           {/* TYPE */}
           <select
             value={form.type_consultation}
-            onChange={(e) => setForm({ ...form, type_consultation: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, type_consultation: e.target.value })
+            }
             style={inputStyle}
           >
             <option value="générale">Générale</option>
@@ -416,15 +434,28 @@ const RendezVousList = () => {
             <tbody>
               {rdvs.length === 0 && (
                 <tr>
-                  <td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: 24, color: '#64748b' }}>
-                    {loaded ? 'Aucun rendez-vous pour le moment.' : 'Chargement…'}
+                  <td
+                    colSpan={10}
+                    style={{
+                      ...tdStyle,
+                      textAlign: 'center',
+                      padding: 24,
+                      color: '#64748b',
+                    }}
+                  >
+                    {loaded
+                      ? 'Aucun rendez-vous pour le moment.'
+                      : 'Chargement…'}
                   </td>
                 </tr>
               )}
               {rdvs.map((r, idx) => (
                 <tr
                   key={r.id}
-                  style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}
+                  style={{
+                    backgroundColor:
+                      idx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                  }}
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.backgroundColor = '#f1f5f9')
                   }
@@ -433,7 +464,9 @@ const RendezVousList = () => {
                       idx % 2 === 0 ? '#ffffff' : '#f8fafc')
                   }
                 >
-                  <td style={tdStyle}>{new Date(r.date_rdv).toLocaleString()}</td>
+                  <td style={tdStyle}>
+                    {new Date(r.date_rdv).toLocaleString()}
+                  </td>
                   <td style={tdStyle}>
                     {r.patient_nom} {r.patient_prenom}
                   </td>
@@ -442,13 +475,19 @@ const RendezVousList = () => {
                   </td>
                   <td style={tdStyle}>{getServiceName(r)}</td>
                   <td style={tdStyle}>{r.motif}</td>
-                  <td style={tdStyle}>{r.type_consultation || 'générale'}</td>
+                  <td style={tdStyle}>
+                    {r.type_consultation || 'générale'}
+                  </td>
                   <td style={tdStyle}>{r.categorie || 'ambulatoire'}</td>
                   <td style={tdStyle}>
-                    {r.prix ? parseFloat(r.prix).toFixed(2) + ' FC' : '50.00 FC'}
+                    {r.prix
+                      ? parseFloat(r.prix).toFixed(2) + ' FC'
+                      : '50.00 FC'}
                   </td>
                   <td style={tdStyle}>
-                    <span style={statusBadge(r.statut)}>{r.statut || 'planifie'}</span>
+                    <span style={statusBadge(r.statut)}>
+                      {r.statut || 'planifie'}
+                    </span>
                   </td>
                   <td style={tdStyle}>
                     {r.statut === 'planifie' && (
@@ -456,23 +495,33 @@ const RendezVousList = () => {
                         <button
                           onClick={() => updateStatut(r.id, 'confirme')}
                           style={actionButtonStyle('#22c55e')}
-                          onMouseEnter={(e) => (e.target.style.opacity = 0.8)}
-                          onMouseLeave={(e) => (e.target.style.opacity = 1)}
+                          onMouseEnter={(e) =>
+                            (e.target.style.opacity = 0.8)
+                          }
+                          onMouseLeave={(e) =>
+                            (e.target.style.opacity = 1)
+                          }
                         >
                           Confirmer
                         </button>
                         <button
                           onClick={() => updateStatut(r.id, 'annule')}
                           style={actionButtonStyle('#ef4444')}
-                          onMouseEnter={(e) => (e.target.style.opacity = 0.8)}
-                          onMouseLeave={(e) => (e.target.style.opacity = 1)}
+                          onMouseEnter={(e) =>
+                            (e.target.style.opacity = 0.8)
+                          }
+                          onMouseLeave={(e) =>
+                            (e.target.style.opacity = 1)
+                          }
                         >
                           Annuler
                         </button>
                       </>
                     )}
                     <button
-                      onClick={() => setSelectedPatientFromList(r.patient_id)}
+                      onClick={() =>
+                        setSelectedPatientFromList(r.patient_id)
+                      }
                       style={{
                         backgroundColor: '#8b5cf6',
                         color: 'white',
