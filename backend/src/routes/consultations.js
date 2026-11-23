@@ -1227,8 +1227,12 @@ router.get('/count/:patientId', authenticate, requireHospital, async (req, res) 
 // ---------- CONSULTATIONS (POST - Créer ou mettre à jour) ----------
 router.post('/', authenticate, requireHospital, requireRole(['medecin', 'admin']), async (req, res) => {
   const {
-    patient_id, medecin_id, numero_dossier, plainte_principale, historique,
-    antecedents, complement_anamnese, examen_physique, ccl, bilan, cat, medecin_consultant
+    patient_id, medecin_id, numero_dossier,
+    motif_consultation, plainte_principale, historique,
+    antecedents, antecedents_medicaux, antecedents_chirurgicaux, antecedents_familiaux,
+    allergies, traitements_en_cours, complement_anamnese,
+    examen_physique, diagnostic_cim10_code, diagnostic_cim10_libelle,
+    ccl, bilan, cat, prochain_rdv, consentement, medecin_consultant
   } = req.body;
 
   if (!patient_id) {
@@ -1247,44 +1251,99 @@ router.post('/', authenticate, requireHospital, requireRole(['medecin', 'admin']
         UPDATE consultations SET
           medecin_id = COALESCE($1, medecin_id),
           numero_dossier = COALESCE($2, numero_dossier),
-          plainte_principale = COALESCE($3, plainte_principale),
-          historique = COALESCE($4, historique),
-          antecedents = COALESCE($5, antecedents),
-          complement_anamnese = COALESCE($6, complement_anamnese),
-          examen_physique = COALESCE($7, examen_physique),
-          ccl = COALESCE($8, ccl),
-          bilan = COALESCE($9, bilan),
-          cat = COALESCE($10, cat),
-          medecin_consultant = COALESCE($11, medecin_consultant),
+          motif_consultation = COALESCE($3, motif_consultation),
+          plainte_principale = COALESCE($4, plainte_principale),
+          historique = COALESCE($5, historique),
+          antecedents = COALESCE($6, antecedents),
+          antecedents_medicaux = COALESCE($7, antecedents_medicaux),
+          antecedents_chirurgicaux = COALESCE($8, antecedents_chirurgicaux),
+          antecedents_familiaux = COALESCE($9, antecedents_familiaux),
+          allergies = COALESCE($10, allergies),
+          traitements_en_cours = COALESCE($11, traitements_en_cours),
+          complement_anamnese = COALESCE($12, complement_anamnese),
+          examen_physique = COALESCE($13, examen_physique),
+          diagnostic_cim10_code = COALESCE($14, diagnostic_cim10_code),
+          diagnostic_cim10_libelle = COALESCE($15, diagnostic_cim10_libelle),
+          ccl = COALESCE($16, ccl),
+          bilan = COALESCE($17, bilan),
+          cat = COALESCE($18, cat),
+          prochain_rdv = COALESCE($19, prochain_rdv),
+          consentement = COALESCE($20, consentement),
+          medecin_consultant = COALESCE($21, medecin_consultant),
           updated_at = NOW()
-        WHERE id = $12 AND hospital_id = $13
+        WHERE id = $22 AND hospital_id = $23
         RETURNING *
       `, [
-        medecin_id || null, numero_dossier || null, plainte_principale || null,
-        historique || null, antecedents || null, complement_anamnese || null,
-        examen_physique || null, ccl || null, bilan || null, cat || null,
-        medecin_consultant || null, existing.rows[0].id, req.hospitalId
+        medecin_id || null, numero_dossier || null,
+        motif_consultation || null, plainte_principale || null, historique || null,
+        antecedents || null, antecedents_medicaux || null, antecedents_chirurgicaux || null,
+        antecedents_familiaux || null, allergies || null, traitements_en_cours || null,
+        complement_anamnese || null, examen_physique || null,
+        diagnostic_cim10_code || null, diagnostic_cim10_libelle || null,
+        ccl || null, bilan || null, cat || null,
+        prochain_rdv || null,
+        consentement !== undefined && consentement !== null ? !!consentement : null,
+        medecin_consultant || null,
+        existing.rows[0].id, req.hospitalId
       ]);
       result = rows[0];
     } else {
       const { rows } = await pool.query(`
         INSERT INTO consultations (
           hospital_id, patient_id, medecin_id, numero_dossier,
-          plainte_principale, historique, antecedents, complement_anamnese,
-          examen_physique, ccl, bilan, cat, medecin_consultant
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING *
+          motif_consultation, plainte_principale, historique,
+          antecedents, antecedents_medicaux, antecedents_chirurgicaux, antecedents_familiaux,
+          allergies, traitements_en_cours, complement_anamnese,
+          examen_physique, diagnostic_cim10_code, diagnostic_cim10_libelle,
+          ccl, bilan, cat, prochain_rdv, consentement, medecin_consultant
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+          $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
+        ) RETURNING *
       `, [
         req.hospitalId, patient_id, medecin_id || null, numero_dossier || null,
-        plainte_principale || null, historique || null, antecedents || null,
-        complement_anamnese || null, examen_physique || null, ccl || null,
-        bilan || null, cat || null, medecin_consultant || null
+        motif_consultation || null, plainte_principale || null, historique || null,
+        antecedents || null, antecedents_medicaux || null, antecedents_chirurgicaux || null,
+        antecedents_familiaux || null, allergies || null, traitements_en_cours || null,
+        complement_anamnese || null, examen_physique || null,
+        diagnostic_cim10_code || null, diagnostic_cim10_libelle || null,
+        ccl || null, bilan || null, cat || null,
+        prochain_rdv || null,
+        consentement !== undefined && consentement !== null ? !!consentement : false,
+        medecin_consultant || null
       ]);
       result = rows[0];
     }
     res.status(201).json(result);
   } catch (err) {
     console.error('❌ POST /consultations :', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------- GET UNE CONSULTATION PAR ID ----------
+// ⚠️ Doit être déclarée APRÈS toutes les routes GET plus spécifiques
+//    (/test, /count/:patientId, /patient/:patientId, /rendezvous, etc.)
+//    pour ne pas les avaler.
+router.get('/:id', authenticate, requireHospital, async (req, res) => {
+  // N'accepte que les id numériques (ceinture de sécurité)
+  if (!/^\d+$/.test(req.params.id)) {
+    return res.status(404).json({ error: 'Consultation non trouvée' });
+  }
+  try {
+    const { rows } = await pool.query(`
+      SELECT c.*,
+             m.nom AS medecin_nom, m.prenom AS medecin_prenom
+      FROM "public"."consultations" c
+      LEFT JOIN "public"."medecins" m ON c.medecin_id = m.id
+      WHERE c.id = $1 AND c.hospital_id = $2
+    `, [req.params.id, req.hospitalId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Consultation non trouvée' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('❌ GET /consultations/:id :', err);
     res.status(500).json({ error: err.message });
   }
 });
