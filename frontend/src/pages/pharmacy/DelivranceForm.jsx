@@ -12,7 +12,7 @@ const DelivranceForm = () => {
   const [patients, setPatients] = useState([]);
   const [medicaments, setMedicaments] = useState([]);
   const [lots, setLots] = useState([]);
-  const [infirmiers, setInfirmiers] = useState([]);
+  const [preleveurs, setPreleveurs] = useState([]);
   const [selectedMedicament, setSelectedMedicament] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,14 +45,14 @@ const DelivranceForm = () => {
       try {
         if (ordonnanceId) {
           // ---- Mode ordonnance : charger l'ordonnance + toutes ses lignes + lots ----
-          const [ordRes, lignesRes, infirmiersRes] = await Promise.all([
+          const [ordRes, lignesRes, preleveursRes] = await Promise.all([
             api.get(`/pharmacy/ordonnances/${ordonnanceId}`),
             api.get(`/pharmacy/ordonnances/${ordonnanceId}/lignes`),
-            api.get('/pharmacy/infirmiers'),
+            api.get('/pharmacy/preleveurs'),
           ]);
 
           setOrdonnance(ordRes.data);
-          setInfirmiers(infirmiersRes.data || []);
+          setPreleveurs(preleveursRes.data || []);
 
           // Pour chaque ligne, charger ses lots disponibles
           const lignesAvecLots = await Promise.all(
@@ -75,15 +75,15 @@ const DelivranceForm = () => {
           );
           setLignes(lignesAvecLots);
         } else {
-          // ---- Mode libre : charger patients, médicaments, infirmiers ----
-          const [patientsRes, medsRes, infirmiersRes] = await Promise.all([
+          // ---- Mode libre : charger patients, médicaments, préleveurs ----
+          const [patientsRes, medsRes, preleveursRes] = await Promise.all([
             api.get('/patients'),
             api.get('/pharmacy/medicaments'),
-            api.get('/pharmacy/infirmiers'),
+            api.get('/pharmacy/preleveurs'),
           ]);
           setPatients(patientsRes.data || []);
           setMedicaments(medsRes.data || []);
-          setInfirmiers(infirmiersRes.data || []);
+          setPreleveurs(preleveursRes.data || []);
         }
       } catch (err) {
         console.error('Erreur chargement :', err);
@@ -158,7 +158,7 @@ const DelivranceForm = () => {
         }
 
         if (!form.retrieved_by) {
-          showToast('Veuillez sélectionner l\'infirmier récupérant', 'error');
+          showToast('Veuillez sélectionner la personne qui récupère les médicaments', 'error');
           setSaving(false);
           return;
         }
@@ -437,10 +437,10 @@ const DelivranceForm = () => {
                 );
               })}
 
-              {/* Infirmier récupérant */}
+              {/* Préleveur (infirmier ou médecin) */}
               <div style={{ marginBottom: '16px', marginTop: '20px' }}>
                 <label style={labelStyle}>
-                  Infirmier récupérant <span style={{ color: 'red' }}>*</span>
+                  Récupéré par <span style={{ color: 'red' }}>*</span>
                 </label>
                 <select
                   value={form.retrieved_by}
@@ -449,12 +449,14 @@ const DelivranceForm = () => {
                   required
                 >
                   <option value="">-- Choisir --</option>
-                  {infirmiers.map(i => (
-                    <option key={i.id} value={i.id}>{i.prenom} {i.nom}</option>
+                  {preleveurs.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.prenom} {p.nom} — {p.role}
+                    </option>
                   ))}
                 </select>
                 <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  <FaUserNurse /> L'infirmier qui retire les médicaments
+                  <FaUserNurse /> Infirmier ou médecin qui retire les médicaments
                 </div>
               </div>
             </>

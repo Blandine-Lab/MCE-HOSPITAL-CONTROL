@@ -10,6 +10,9 @@
 // 🔧 PATCH P0 : /delivrance utilise getFifoLots (pluriel) avec
 //    req.hospitalId en 2e arg → supporte la délivrance multi-lots
 //    (ex : lot A=5 + lot B=7 pour une ordonnance de 12).
+// 🔧 PATCH P1 : /infirmiers rendu case-insensitive + /preleveurs
+//    (infirmiers + médecins) + validation de retrieved_by dans
+//    PUT /ordonnances/:id/serve.
 // ============================================================
 const express = require('express');
 const router = express.Router();
@@ -20,6 +23,10 @@ const { getFifoLots } = require('../utils/fifo');       // ✅ PATCH : pluriel
 const { logAudit } = require('../utils/audit');
 
 router.use(authenticate);
+
+// Rôles autorisés à « récupérer » une délivrance (infirmier ou médecin)
+// LOWER() gère les différences de casse et d’accent (Médecin / Medecin / medecin)
+const ROLES_PRELEVEURS = ['infirmier', 'medecin', 'médecin', 'docteur'];
 
 // ============================================================
 // Helpers
@@ -425,11 +432,9 @@ router.post('/delivrance', requireHospital, requirePermission('manage_pharmacy')
       throw new Error('Seul un pharmacien peut délivrer un stupéfiant');
     }
 
-    // ✅ PATCH P0 : getFifoLots (pluriel) avec req.hospitalId en 2e arg
     const allocations = await getFifoLots(client, req.hospitalId, medicament_id, qte);
     if (!allocations || allocations.length === 0) throw new Error('Stock insuffisant');
 
-    // ✅ Décrément lot par lot
     for (const alloc of allocations) {
       await client.query(
         'UPDATE lots SET stock_actuel = stock_actuel - $1 WHERE id = $2 AND hospital_id = $3',
@@ -437,7 +442,6 @@ router.post('/delivrance', requireHospital, requirePermission('manage_pharmacy')
       );
     }
 
-    // ✅ Une seule décrément du stock global
     await client.query(
       'UPDATE medicaments SET stock = stock - $1 WHERE id = $2 AND hospital_id = $3',
       [qte, medicament_id, req.hospitalId]
@@ -449,7 +453,6 @@ router.post('/delivrance', requireHospital, requirePermission('manage_pharmacy')
     const safeStatutPrepa = (req.user.role === 'pharmacien') ? 'validee' : 'en_attente_validation';
     const safePrescripteur = (prescripteur_nom || '').substring(0, 255);
 
-    // ✅ Un mouvement par lot consommé (traçabilité)
     for (const alloc of allocations) {
       await client.query(`
         INSERT INTO public.mouvements_stock (hospital_id, medicament_id, lot_id, quantite, type, motif, utilisateur_id, patient_id, ligne_ordonnance_id)
@@ -457,7 +460,6 @@ router.post('/delivrance', requireHospital, requirePermission('manage_pharmacy')
       `, [req.hospitalId, medicament_id, alloc.id, alloc.quantite, safeType, safeMotif, req.user.id, patient_id, ligne_ordonnance_id || null]);
     }
 
-    // ✅ La préparation est enregistrée sur le 1er lot consommé (traçabilité visuelle)
     const primaryLotId = allocations[0]?.id || null;
     const validationPar = (req.user.role === 'pharmacien') ? req.user.id : null;
     const { rows: prepRows } = await client.query(`
@@ -465,7 +467,6 @@ router.post('/delivrance', requireHospital, requirePermission('manage_pharmacy')
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
     `, [req.hospitalId, patient_id, medicament_id, primaryLotId, qte, safePosologie, safeStatutPrepa, validationPar, validationPar ? new Date() : null]);
 
-    // ✅ Stupéfiants : une ligne par lot consommé (obligation légale)
     if (med.rows[0].est_stupefiant) {
       for (const alloc of allocations) {
         await client.query(`
@@ -1134,8 +1135,12 @@ router.get('/preparations/executions', requireHospital, requirePermission('view_
 });
 
 // ==================================================================
-// ========== INFIRMIERS ============================================
+// ========== PRÉLÉVEURS (infirmiers + médecins) ====================
 // ==================================================================
+// ✅ PATCH P1 : /infirmiers corrigé (case-insensitive) — la requête
+//    historique utilisait `role = 'infirmier'` en minuscules, alors
+//    que le rôle est stocké 'Infirmier' / 'Médecin' dans certains
+//    environnements, d’où des listes vides.
 router.get('/infirmiers', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
   const client = await pool.connect();
   try {
@@ -1143,10 +1148,11 @@ router.get('/infirmiers', requireHospital, requirePermission('view_pharmacy'), a
     await setTenant(client, req.hospitalId);
 
     const { rows } = await client.query(`
-      SELECT id, nom, prenom, login
+      SELECT id, nom, prenom, login, role
       FROM utilisateurs
-      WHERE role = 'infirmier'
+      WHERE LOWER(role) = 'infirmier'
         AND hospital_id = $1
+        AND actif = true
       ORDER BY nom, prenom
     `, [req.hospitalId]);
 
@@ -1155,6 +1161,35 @@ router.get('/infirmiers', requireHospital, requirePermission('view_pharmacy'), a
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('❌ Erreur GET /infirmiers :', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// ✅ PATCH P1 : nouvel endpoint qui retourne INFIRMIERS + MÉDECINS,
+//    utilisé par le champ « Récupéré par » de DelivranceForm.
+//    LOWER(role) gère les variantes de casse et d’accent.
+router.get('/preleveurs', requireHospital, requirePermission('view_pharmacy'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await setTenant(client, req.hospitalId);
+
+    const { rows } = await client.query(`
+      SELECT id, nom, prenom, login, role
+      FROM utilisateurs
+      WHERE LOWER(role) = ANY($2::text[])
+        AND hospital_id = $1
+        AND actif = true
+      ORDER BY role DESC, nom, prenom
+    `, [req.hospitalId, ROLES_PRELEVEURS]);
+
+    await client.query('COMMIT');
+    res.json(rows);
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error('❌ Erreur GET /preleveurs :', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -1302,6 +1337,9 @@ router.put('/ordonnances/:id/statut', requireHospital, requirePermission('manage
   }
 });
 
+// ✅ PATCH P1 : validation de `retrieved_by` (infirmier ou médecin
+//    actif de l'hôpital). Empêche un admin de renseigner un id
+//    d’utilisateur d’un autre hôpital, ou un rôle non autorisé.
 router.put('/ordonnances/:id/serve', requireHospital, requirePermission('manage_pharmacy'), async (req, res) => {
   const { password, retrieved_by } = req.body;
   const client = await pool.connect();
@@ -1319,9 +1357,28 @@ router.put('/ordonnances/:id/serve', requireHospital, requirePermission('manage_
       if (!validPassword) throw new Error('Mot de passe incorrect');
     }
 
+    // ✅ Validation du préleveur (uniquement si fourni)
+    if (retrieved_by !== null && retrieved_by !== undefined && retrieved_by !== '') {
+      const preleveur = await client.query(
+        `SELECT id FROM utilisateurs
+         WHERE id = $1
+           AND hospital_id = $2
+           AND actif = true
+           AND LOWER(role) = ANY($3::text[])`,
+        [retrieved_by, req.hospitalId, ROLES_PRELEVEURS]
+      );
+      if (preleveur.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          error: 'La personne sélectionnée doit être un infirmier ou un médecin actif de votre établissement.',
+          code: 'INVALID_PRELEVEUR',
+        });
+      }
+    }
+
     const result = await client.query(
       'UPDATE ordonnances SET statut = $1, retrieved_by = $2 WHERE id = $3 AND hospital_id = $4',
-      ['delivree', retrieved_by, req.params.id, req.hospitalId]
+      ['delivree', retrieved_by || null, req.params.id, req.hospitalId]
     );
     if (result.rowCount === 0) {
       await client.query('ROLLBACK');
