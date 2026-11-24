@@ -36,7 +36,7 @@ const FactureForm = () => {
   const [examensDisponibles, setExamensDisponibles] = useState([]);
   const [selectedExamensIds, setSelectedExamensIds] = useState([]);
 
-  // Consultations pour facturation - CORRIGÉ : un seul state, plus de doublon
+  // Consultations pour facturation
   const [consultationsDisponibles, setConsultationsDisponibles] = useState([]);
   const [selectedConsultationsIds, setSelectedConsultationsIds] = useState([]);
 
@@ -50,7 +50,7 @@ const FactureForm = () => {
   const [prestationSearch, setPrestationSearch] = useState('');
 
   // Impression thermique
-  const [formatImpression, setFormatImpression] = useState('80'); // 58 ou 80
+  const [formatImpression, setFormatImpression] = useState('80');
   const [lastFacture, setLastFacture] = useState(null);
   const hasAutoLoaded = useRef(false);
 
@@ -132,7 +132,7 @@ const FactureForm = () => {
     }
   }, [patient, mode]);
 
-  // CORRIGÉ : UN SEUL appel pour les consultations (ambulatoire + facturation)
+  // UN SEUL appel pour les consultations
   useEffect(() => {
     if (patient && patient.id) {
       api.get(`/consultations/rendezvous/patient/${patient.id}`)
@@ -151,10 +151,9 @@ const FactureForm = () => {
     }
   }, [patient, mode]);
 
-  // Charger les prestations automatiquement - CORRIGÉ : n'écrase pas les lignes manuelles
+  // Charger les prestations automatiquement
   useEffect(() => {
     if (!patient) return;
-    // Ne charger auto qu'une fois par patient/mode, sinon on perd les lignes manuelles
     if (hasAutoLoaded.current) return;
 
     const loadAuto = async () => {
@@ -179,7 +178,6 @@ const FactureForm = () => {
             fromTarif: false,
           }));
           setPrestations(prev => {
-            // Ne pas dupliquer si déjà chargé
             if (prev.length > 0) return prev;
             return items;
           });
@@ -245,7 +243,7 @@ const FactureForm = () => {
     setSelectedMedicamentsIds(prev => prev.includes(medicamentId) ? prev.filter(id => id !== medicamentId) : [...prev, medicamentId]);
   };
 
-  // ========== CORRIGÉ : Calcul du total GÉNÉRAL (prestations + examens + consultations + médicaments) ==========
+  // ========== Calcul du total GÉNÉRAL ==========
   const totalPrestations = prestations.reduce((sum, item) => sum + (item.total || 0), 0);
   const totalExamens = examensDisponibles
     .filter(ex => selectedExamensIds.includes(ex.id))
@@ -292,34 +290,61 @@ const FactureForm = () => {
     setPrestations(prev => prev.filter((_, i) => i !== index));
   };
 
-  // ========== IMPRESSION THERMIQUE 58mm / 80mm ==========
+  // ========== IMPRESSION THERMIQUE 58mm / 80mm - CORRIGÉ ANTI-COUPURE ==========
   const buildThermalHTML = (facture) => {
-    const width = formatImpression === '58' ? '58mm' : '80mm';
-    const fontSize = formatImpression === '58' ? '11px' : '12px';
-    const lignesHtml = prestations.filter(p => p.libelle).map(p => `
-      <div style="display:flex;justify-content:space-between;">
-        <span>${p.libelle} x${p.quantite}</span>
-        <span>${p.total.toFixed(2)}</span>
-      </div>
-    `).join('');
-    const examensHtml = examensDisponibles.filter(e => selectedExamensIds.includes(e.id)).map(e => `
-      <div style="display:flex;justify-content:space-between;"><span>${e.type_examen || e.type_nom || 'Examen'}</span><span>${parseFloat(e.prix||0).toFixed(2)}</span></div>
-    `).join('');
-    const consultHtml = consultationsDisponibles.filter(c => selectedConsultationsIds.includes(c.id)).map(c => `
-      <div style="display:flex;justify-content:space-between;"><span>Consultation ${c.motif||''}</span><span>${(parseFloat(c.prix)||50).toFixed(2)}</span></div>
-    `).join('');
-    const medHtml = medicamentsDisponibles.filter(m => selectedMedicamentsIds.includes(m.mouvement_id)).map(m => `
-      <div style="display:flex;justify-content:space-between;"><span>${m.libelle} x${m.quantite}</span><span>${((parseFloat(m.prix_unitaire)||0)*(m.quantite||1)).toFixed(2)}</span></div>
-    `).join('');
+    const is58 = formatImpression === '58';
+    const width = is58 ? '58mm' : '80mm';
+    const fontSize = is58 ? '10px' : '12px';
+    const prixWidth = is58 ? '20mm' : '28mm';
+
+    const fmt = (n) => parseFloat(n || 0).toFixed(2);
+
+    // TABLEAU FIXE : ne dépasse jamais la largeur, le prix ne sera plus coupé
+    const row = (libelle, prix) => `
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+        <tr>
+          <td style="width:auto;word-break:break-word;overflow-wrap:anywhere;padding:1px 0;vertical-align:top;">${libelle}</td>
+          <td style="width:${prixWidth};text-align:right;white-space:nowrap;vertical-align:top;padding:1px 0;">${prix}</td>
+        </tr>
+      </table>
+    `;
+
+    const lignesHtml = prestations.filter(p => p.libelle).map(p =>
+      row(`${p.libelle} x${p.quantite}`, fmt(p.total))
+    ).join('');
+    const examensHtml = examensDisponibles.filter(e => selectedExamensIds.includes(e.id)).map(e =>
+      row(`${e.type_examen || e.type_nom || 'Examen'}`, fmt(e.prix))
+    ).join('');
+    const consultHtml = consultationsDisponibles.filter(c => selectedConsultationsIds.includes(c.id)).map(c =>
+      row(`Consult. ${c.motif || ''}`, fmt(c.prix || 50))
+    ).join('');
+    const medHtml = medicamentsDisponibles.filter(m => selectedMedicamentsIds.includes(m.mouvement_id)).map(m =>
+      row(`${m.libelle} x${m.quantite}`, fmt((parseFloat(m.prix_unitaire) || 0) * (m.quantite || 1)))
+    ).join('');
 
     return `
       <html><head><meta charset="utf-8"><style>
+        * { box-sizing: border-box; max-width: 100%; }
         @page { size: ${width} auto; margin: 0; }
-        body { width: ${width}; margin:0; padding:8px; font-family: monospace, Arial; font-size:${fontSize}; color:#000; }
-        .center { text-align:center; } .line { border-top:1px dashed #000; margin:6px 0; } .bold{font-weight:bold;}
-        .row{display:flex;justify-content:space-between;}
+        html, body { width: ${width}; margin: 0; padding: 0; }
+        body { 
+          width: ${width}; 
+          padding: 2mm 2mm 4mm 2mm;
+          font-family: 'Courier New', monospace; 
+          font-size: ${fontSize}; 
+          color: #000; 
+          line-height: 1.35;
+          overflow-wrap: anywhere;
+        }
+        .center { text-align:center; word-break:break-word; } 
+        .line { border-top:1px dashed #000; margin:5px 0; } 
+        .bold{font-weight:bold;}
+        @media print {
+          html, body { width: ${width}; margin: 0; padding: 0; }
+          body { padding: 2mm 2mm 4mm 2mm; }
+        }
       </style></head><body>
-        <div class="center bold">GLOBALMIND E-SANTE</div>
+        <div class="center bold" style="font-size:13px;">GLOBALMIND E-SANTE</div>
         <div class="center">RDC - Kinshasa</div>
         <div class="center">Facture N° ${facture?.numero || facture?.id || '---'}</div>
         <div>Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
@@ -327,12 +352,12 @@ const FactureForm = () => {
         <div class="line"></div>
         ${lignesHtml}${examensHtml}${consultHtml}${medHtml}
         <div class="line"></div>
-        <div class="row"><span>Total HT</span><span>${totalGeneral.toFixed(2)} FC</span></div>
-        <div class="row"><span>Remise (${remise}%)</span><span>-${remiseAmount.toFixed(2)} FC</span></div>
-        <div class="row bold"><span>TOTAL TTC</span><span>${totalApresRemise.toFixed(2)} FC</span></div>
+        ${row('Total HT', fmt(totalGeneral) + ' FC')}
+        ${row('Remise ('+remise+'%)', '-' + fmt(remiseAmount) + ' FC')}
+        ${row('<b>TOTAL TTC</b>', '<b>' + fmt(totalApresRemise) + ' FC</b>')}
         <div class="line"></div>
         <div class="center">Merci de votre confiance</div>
-        <div class="center">*** Bon rétablissement ***</div>
+        <div class="center">*** Bon retablissement ***</div>
         <br><br>
       </body></html>
     `;
@@ -344,7 +369,7 @@ const FactureForm = () => {
     win.document.write(buildThermalHTML(facture));
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 300);
+    setTimeout(() => { win.print(); win.close(); }, 400);
   };
 
   // Soumission
@@ -379,7 +404,6 @@ const FactureForm = () => {
         tiers_payant: tiersPayant || null,
         notes: notes,
         type_facture: typeFacture,
-        // CORRIGÉ : prestation_id seulement si fromTarif
         lignes: prestations.filter(p => p.libelle).map(p => ({
           libelle: p.libelle,
           quantite: p.quantite,
@@ -390,7 +414,6 @@ const FactureForm = () => {
         examens_ids: selectedExamensIds,
         consultations_ids: selectedConsultationsIds,
         medicament_ids: selectedMedicamentsIds,
-        // Pour que le backend calcule le bon total si besoin
         total_calcule: totalApresRemise,
       };
       const res = await api.post('/billing/factures', payload);
@@ -399,7 +422,6 @@ const FactureForm = () => {
       setToast('✅ Facture créée avec succès');
       setTimeout(() => {
         setToast(null);
-        // Impression auto thermique - c'est la solution la plus fiable car le logiciel est conçu pour gérer cette contrainte de largeur dès le départ.
         if (window.confirm(`Facture créée ! Voulez-vous imprimer le reçu thermique ${formatImpression}mm ?`)) {
           printThermal(created);
         }

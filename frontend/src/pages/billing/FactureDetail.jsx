@@ -20,7 +20,6 @@ const FactureDetail = () => {
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
 
-  // NOUVEAU : Format thermique
   const [formatImpression, setFormatImpression] = useState('80');
 
   const HOPITAL_NOM = hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
@@ -115,33 +114,58 @@ const FactureDetail = () => {
     }
   };
 
-  // ========== IMPRESSION THERMIQUE 58mm / 80mm - SANS IMAGE SYSTEME ==========
-  // C'est la solution la plus fiable car le logiciel est conçu pour gérer cette contrainte de largeur dès le départ.
+  // ========== IMPRESSION THERMIQUE 58mm / 80mm - CORRIGÉ ANTI-COUPURE ==========
   const printThermal = () => {
     if (!facture) return;
-    const width = formatImpression === '58' ? '58mm' : '80mm';
-    const fontSize = formatImpression === '58' ? '11px' : '12px';
+    const is58 = formatImpression === '58';
+    const width = is58 ? '58mm' : '80mm';
+    const fontSize = is58 ? '10px' : '12px';
+    const prixWidth = is58 ? '20mm' : '28mm';
 
-    const lignesHtml = lignes.map(l => `
-      <div style="display:flex;justify-content:space-between;gap:4px;">
-        <span style="flex:1;">${l.libelle || 'Prestation'}${l.code ? ' ('+l.code+')' : ''} x${l.quantite}</span>
-        <span>${parseFloat(l.total_ligne || 0).toFixed(2)}</span>
-      </div>
-    `).join('');
+    const fmt = (n) => parseFloat(n || 0).toFixed(2);
+
+    // TABLEAU FIXE : le prix a une largeur fixe, il ne sort jamais du papier
+    const row = (libelle, prix) => `
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+        <tr>
+          <td style="width:auto;word-break:break-word;overflow-wrap:anywhere;padding:1px 0;vertical-align:top;">${libelle}</td>
+          <td style="width:${prixWidth};text-align:right;white-space:nowrap;vertical-align:top;padding:1px 0;">${prix}</td>
+        </tr>
+      </table>
+    `;
+
+    const lignesHtml = lignes.map(l =>
+      row(`${l.libelle || 'Prestation'}${l.code ? ' ('+l.code+')' : ''} x${l.quantite}`, fmt(l.total_ligne) + ' FC')
+    ).join('');
 
     const adresseLigne = [HOPITAL_ADRESSE, HOPITAL_VILLE, HOPITAL_PAYS].filter(Boolean).join(', ');
     const contactLigne = [HOPITAL_TEL ? 'Tel: '+HOPITAL_TEL : '', HOPITAL_EMAIL ? HOPITAL_EMAIL : ''].filter(Boolean).join(' - ');
 
     const html = `
       <html><head><meta charset="utf-8"><style>
+        * { box-sizing: border-box; max-width: 100%; }
         @page { size: ${width} auto; margin: 0; }
-        * { box-sizing: border-box; }
-        body { width: ${width}; margin:0; padding:8px; font-family: monospace, Arial, sans-serif; font-size:${fontSize}; color:#000; line-height:1.4; }
-        .center { text-align:center; } .line { border-top:1px dashed #000; margin:8px 0; } .bold{font-weight:bold;}
-        .row{display:flex;justify-content:space-between;gap:8px;}
-        .small{font-size:10px;}
+        html, body { width: ${width}; margin: 0; padding: 0; }
+        body { 
+          width: ${width}; 
+          margin: 0; 
+          padding: 2mm 2mm 4mm 2mm;
+          font-family: 'Courier New', monospace; 
+          font-size: ${fontSize}; 
+          color: #000; 
+          line-height: 1.35;
+          overflow-wrap: anywhere;
+        }
+        .center { text-align:center; word-break:break-word; } 
+        .line { border-top:1px dashed #000; margin:5px 0; } 
+        .bold{font-weight:bold;}
+        .small{font-size:9px;}
+        @media print {
+          html, body { width: ${width}; margin: 0; padding: 0; }
+          body { padding: 2mm 2mm 4mm 2mm; }
+        }
       </style></head><body>
-        <div class="center bold" style="font-size:14px;">${HOPITAL_NOM}</div>
+        <div class="center bold" style="font-size:13px;">${HOPITAL_NOM}</div>
         ${adresseLigne ? `<div class="center small">${adresseLigne}</div>` : ''}
         ${contactLigne ? `<div class="center small">${contactLigne}</div>` : ''}
         <div class="center small">Systeme integre de gestion hospitaliere</div>
@@ -154,10 +178,10 @@ const FactureDetail = () => {
         <div class="line"></div>
         ${lignesHtml || '<div>Aucune ligne</div>'}
         <div class="line"></div>
-        <div class="row"><span>Total</span><span>${parseFloat(facture.montant_total || 0).toFixed(2)} FC</span></div>
-        ${facture.remise > 0 ? `<div class="row"><span>Remise (${facture.remise}%)</span><span>-</span></div>` : ''}
-        <div class="row"><span>Montant paye</span><span>${parseFloat(facture.montant_paye || 0).toFixed(2)} FC</span></div>
-        <div class="row bold"><span>Reste a payer</span><span>${(parseFloat(facture.montant_total || 0) - parseFloat(facture.montant_paye || 0)).toFixed(2)} FC</span></div>
+        ${row('Total', '<b>' + fmt(facture.montant_total) + ' FC</b>')}
+        ${facture.remise > 0 ? row('Remise ('+facture.remise+'%)', '-' + fmt((parseFloat(facture.montant_total||0) * parseFloat(facture.remise||0))/100) + ' FC') : ''}
+        ${row('Montant paye', fmt(facture.montant_paye) + ' FC')}
+        ${row('<b>Reste a payer</b>', '<b>' + fmt(parseFloat(facture.montant_total || 0) - parseFloat(facture.montant_paye || 0)) + ' FC</b>')}
         <div class="line"></div>
         <div class="center">Merci de votre confiance</div>
         <div class="center">*** Bon retablissement ***</div>
@@ -172,7 +196,6 @@ const FactureDetail = () => {
     setTimeout(() => { win.print(); win.close(); }, 400);
   };
 
-  // A4 classique - garde ton ancien comportement mais seulement sur la facture
   const handlePrintA4 = () => { window.print(); };
 
   const handleDownloadPDF = () => {
@@ -224,7 +247,6 @@ const FactureDetail = () => {
           </div>
         </div>
 
-        {/* NOUVEAU BLOC : Format thermique - c'est ici que tu choisis */}
         <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
           <h4 style={{ margin: '0 0 10px', fontWeight: 'bold' }}><FaPrint /> Impression Thermique - Reçu caisse</h4>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
