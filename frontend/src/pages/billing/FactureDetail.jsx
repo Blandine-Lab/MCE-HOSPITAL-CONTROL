@@ -7,9 +7,7 @@ import html2pdf from 'html2pdf.js';
 import { useAuth } from '../../context/AuthContext';
 
 const FactureDetail = () => {
-  // 🔧 Récupère l'hôpital courant depuis le contexte auth (multi-tenant)
   const { hopital } = useAuth();
-
   const { id } = useParams();
   const navigate = useNavigate();
   const [facture, setFacture] = useState(null);
@@ -22,26 +20,16 @@ const FactureDetail = () => {
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
 
-  // 🔧 Infos tenant-aware (fallbacks si contexte vide)
-  const HOPITAL_NOM =
-    hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
+  // NOUVEAU : Format thermique
+  const [formatImpression, setFormatImpression] = useState('80');
 
-  const HOPITAL_ADRESSE =
-    hopital?.adresse || hopital?.address || '';
-
-  const HOPITAL_VILLE =
-    hopital?.ville || hopital?.city || '';
-
-  const HOPITAL_PAYS =
-    hopital?.pays || hopital?.country || '';
-
-  const HOPITAL_TEL   = hopital?.telephone || hopital?.phone || '';
+  const HOPITAL_NOM = hopital?.nom || import.meta.env.VITE_HOPITAL_NOM || 'Hôpital';
+  const HOPITAL_ADRESSE = hopital?.adresse || hopital?.address || '';
+  const HOPITAL_VILLE = hopital?.ville || hopital?.city || '';
+  const HOPITAL_PAYS = hopital?.pays || hopital?.country || '';
+  const HOPITAL_TEL = hopital?.telephone || hopital?.phone || '';
   const HOPITAL_EMAIL = hopital?.email || hopital?.email_contact || '';
 
-  // 🔧 Résout le logo :
-  //  - URL absolue (https://...) → utilisée telle quelle
-  //  - chemin relatif (/logo.jpeg) → préfixé par l'origine
-  //  - fallback → /logo.jpeg
   const resolveLogoUrl = (rawLogo) => {
     if (!rawLogo) return `${window.location.origin}/logo.jpeg`;
     if (/^https?:\/\//i.test(rawLogo)) return rawLogo;
@@ -127,7 +115,66 @@ const FactureDetail = () => {
     }
   };
 
-  const handlePrint = () => { window.print(); };
+  // ========== IMPRESSION THERMIQUE 58mm / 80mm - SANS IMAGE SYSTEME ==========
+  // C'est la solution la plus fiable car le logiciel est conçu pour gérer cette contrainte de largeur dès le départ.
+  const printThermal = () => {
+    if (!facture) return;
+    const width = formatImpression === '58' ? '58mm' : '80mm';
+    const fontSize = formatImpression === '58' ? '11px' : '12px';
+
+    const lignesHtml = lignes.map(l => `
+      <div style="display:flex;justify-content:space-between;gap:4px;">
+        <span style="flex:1;">${l.libelle || 'Prestation'}${l.code ? ' ('+l.code+')' : ''} x${l.quantite}</span>
+        <span>${parseFloat(l.total_ligne || 0).toFixed(2)}</span>
+      </div>
+    `).join('');
+
+    const adresseLigne = [HOPITAL_ADRESSE, HOPITAL_VILLE, HOPITAL_PAYS].filter(Boolean).join(', ');
+    const contactLigne = [HOPITAL_TEL ? 'Tel: '+HOPITAL_TEL : '', HOPITAL_EMAIL ? HOPITAL_EMAIL : ''].filter(Boolean).join(' - ');
+
+    const html = `
+      <html><head><meta charset="utf-8"><style>
+        @page { size: ${width} auto; margin: 0; }
+        * { box-sizing: border-box; }
+        body { width: ${width}; margin:0; padding:8px; font-family: monospace, Arial, sans-serif; font-size:${fontSize}; color:#000; line-height:1.4; }
+        .center { text-align:center; } .line { border-top:1px dashed #000; margin:8px 0; } .bold{font-weight:bold;}
+        .row{display:flex;justify-content:space-between;gap:8px;}
+        .small{font-size:10px;}
+      </style></head><body>
+        <div class="center bold" style="font-size:14px;">${HOPITAL_NOM}</div>
+        ${adresseLigne ? `<div class="center small">${adresseLigne}</div>` : ''}
+        ${contactLigne ? `<div class="center small">${contactLigne}</div>` : ''}
+        <div class="center small">Systeme integre de gestion hospitaliere</div>
+        <div class="line"></div>
+        <div>Facture N: ${facture.numero_facture || facture.id}</div>
+        <div>Date: ${facture.date_emission ? new Date(facture.date_emission).toLocaleDateString() : new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
+        <div>Patient: ${facture.patient_nom || ''} ${facture.patient_prenom || ''}</div>
+        ${facture.type_facture ? `<div>Type: ${facture.type_facture}</div>` : ''}
+        ${facture.assurance_nom ? `<div>Assurance: ${facture.assurance_nom}</div>` : ''}
+        <div class="line"></div>
+        ${lignesHtml || '<div>Aucune ligne</div>'}
+        <div class="line"></div>
+        <div class="row"><span>Total</span><span>${parseFloat(facture.montant_total || 0).toFixed(2)} FC</span></div>
+        ${facture.remise > 0 ? `<div class="row"><span>Remise (${facture.remise}%)</span><span>-</span></div>` : ''}
+        <div class="row"><span>Montant paye</span><span>${parseFloat(facture.montant_paye || 0).toFixed(2)} FC</span></div>
+        <div class="row bold"><span>Reste a payer</span><span>${(parseFloat(facture.montant_total || 0) - parseFloat(facture.montant_paye || 0)).toFixed(2)} FC</span></div>
+        <div class="line"></div>
+        <div class="center">Merci de votre confiance</div>
+        <div class="center">*** Bon retablissement ***</div>
+        <br><br><br>
+      </body></html>
+    `;
+    const win = window.open('', '_blank', 'width=320,height=600');
+    if (!win) { setToast('Autorisez les popups pour imprimer'); setTimeout(() => setToast(null), 3000); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 400);
+  };
+
+  // A4 classique - garde ton ancien comportement mais seulement sur la facture
+  const handlePrintA4 = () => { window.print(); };
+
   const handleDownloadPDF = () => {
     const element = document.getElementById('facture-print');
     const opt = {
@@ -141,23 +188,12 @@ const FactureDetail = () => {
   };
 
   const getTypeLabel = (type) => {
-    const labels = {
-      mixte: 'Mixte',
-      consultation: 'Consultation',
-      laboratoire: 'Laboratoire',
-      sejour: 'Séjour',
-      pharmacie: 'Pharmacie'
-    };
+    const labels = { mixte: 'Mixte', consultation: 'Consultation', laboratoire: 'Laboratoire', sejour: 'Séjour', pharmacie: 'Pharmacie' };
     return labels[type] || type || 'Mixte';
   };
 
-  const containerStyle = {
-    minHeight: '100vh', backgroundColor: '#f3f4f6', padding: '32px', fontFamily: 'system-ui'
-  };
-  const titleStyle = {
-    fontSize: '28px', fontWeight: 'bold', color: '#1e3a8a', marginBottom: '20px',
-    opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(-20px)', transition: 'all 0.5s'
-  };
+  const containerStyle = { minHeight: '100vh', backgroundColor: '#f3f4f6', padding: '32px', fontFamily: 'system-ui' };
+  const titleStyle = { fontSize: '28px', fontWeight: 'bold', color: '#1e3a8a', marginBottom: '20px', opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(-20px)', transition: 'all 0.5s' };
   const cardStyle = { backgroundColor: 'white', borderRadius: '16px', padding: '24px', marginBottom: '24px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' };
   const badgeStyle = (statut) => {
     const colors = { impayee: '#ef4444', partielle: '#f59e0b', payee: '#10b981' };
@@ -171,17 +207,7 @@ const FactureDetail = () => {
   return (
     <div style={containerStyle}>
       {toast && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          backgroundColor: toast.includes('✅') ? '#10b981' : '#ef4444',
-          color: 'white',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          zIndex: 1000,
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-        }}>
+        <div style={{ position: 'fixed', top: '20px', right: '20px', backgroundColor: toast.includes('✅') ? '#10b981' : '#ef4444', color: 'white', padding: '12px 24px', borderRadius: '8px', zIndex: 1000, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
           {toast}
         </div>
       )}
@@ -189,9 +215,6 @@ const FactureDetail = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
           <h1 style={titleStyle}>Facture n° {facture.numero_facture || facture.id}</h1>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button onClick={handlePrint} style={{ padding: '8px 16px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-              <FaPrint /> Imprimer
-            </button>
             <button onClick={handleDownloadPDF} style={{ padding: '8px 16px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
               <FaFilePdf /> PDF
             </button>
@@ -201,21 +224,32 @@ const FactureDetail = () => {
           </div>
         </div>
 
-        {/* Partie à imprimer / PDF */}
+        {/* NOUVEAU BLOC : Format thermique - c'est ici que tu choisis */}
+        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
+          <h4 style={{ margin: '0 0 10px', fontWeight: 'bold' }}><FaPrint /> Impression Thermique - Reçu caisse</h4>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+              <input type="radio" value="58" checked={formatImpression === '58'} onChange={() => setFormatImpression('58')} /> Ticket 58mm
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+              <input type="radio" value="80" checked={formatImpression === '80'} onChange={() => setFormatImpression('80')} /> Ticket 80mm
+            </label>
+            <button onClick={printThermal} style={{ backgroundColor: '#f59e0b', color: 'white', padding: '10px 18px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+              🖨️ Imprimer Ticket Thermique {formatImpression}mm
+            </button>
+            <button onClick={handlePrintA4} style={{ backgroundColor: '#2563eb', color: 'white', padding: '10px 14px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+              Imprimer A4
+            </button>
+          </div>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: '8px 0 0' }}>C'est la solution la plus fiable car le logiciel est conçu pour gérer cette contrainte de largeur dès le départ. Le ticket thermique n'imprime que le reçu, sans le menu ni le logo système.</p>
+        </div>
+
         <div id="facture-print">
-          {/* 🔧 En-tête tenant-aware (logo + nom + adresse + contact) */}
           <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px' }}>
-            <img
-              src={LOGO_PATH}
-              alt={`Logo ${HOPITAL_NOM}`}
-              style={{ height: '60px', width: 'auto', marginBottom: '10px' }}
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
+            <img src={LOGO_PATH} alt={`Logo ${HOPITAL_NOM}`} style={{ height: '60px', width: 'auto', marginBottom: '10px' }} onError={(e) => { e.target.style.display = 'none'; }} />
             <h2 style={{ margin: 0, color: '#1e3a8a' }}>{HOPITAL_NOM}</h2>
             {(HOPITAL_ADRESSE || HOPITAL_VILLE) && (
-              <p style={{ margin: '5px 0 0', color: '#4b5563', fontSize: '13px' }}>
-                {[HOPITAL_ADRESSE, HOPITAL_VILLE, HOPITAL_PAYS].filter(Boolean).join(', ')}
-              </p>
+              <p style={{ margin: '5px 0 0', color: '#4b5563', fontSize: '13px' }}>{[HOPITAL_ADRESSE, HOPITAL_VILLE, HOPITAL_PAYS].filter(Boolean).join(', ')}</p>
             )}
             {(HOPITAL_TEL || HOPITAL_EMAIL) && (
               <p style={{ margin: '2px 0 0', color: '#4b5563', fontSize: '12px' }}>
@@ -227,33 +261,20 @@ const FactureDetail = () => {
             <p style={{ margin: '5px 0 0', color: '#4b5563' }}>Système intégré de gestion hospitalière</p>
           </div>
 
-          {/* Infos facture */}
           <div style={cardStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
               <div><strong>Patient :</strong> {facture.patient_nom} {facture.patient_prenom}</div>
               <div><strong>Date :</strong> {new Date(facture.date_emission).toLocaleDateString()}</div>
-              <div><span style={badgeStyle(facture.statut)}>
-                {facture.statut === 'impayee' ? 'Impayée' : facture.statut === 'partielle' ? 'Partielle' : 'Payée'}
-              </span></div>
+              <div><span style={badgeStyle(facture.statut)}>{facture.statut === 'impayee' ? 'Impayée' : facture.statut === 'partielle' ? 'Partielle' : 'Payée'}</span></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
               <div><strong>Type :</strong> {getTypeLabel(facture.type_facture)}</div>
               <div><strong>Assurance :</strong> {facture.assurance_nom || 'Aucune'}</div>
-              {facture.date_echeance && (
-                <div><strong>Échéance :</strong> {new Date(facture.date_echeance).toLocaleDateString()}</div>
-              )}
-              {facture.tiers_payant && (
-                <div><strong>Tiers payant :</strong> {facture.tiers_payant}</div>
-              )}
-              {facture.mode && (
-                <div><strong>Mode :</strong> {facture.mode === 'hospitalisation' ? 'Hospitalisation' : 'Ambulatoire'}</div>
-              )}
-              {facture.sejour_id && (
-                <div><strong>Séjour :</strong> #{facture.sejour_id}</div>
-              )}
-              {facture.consultation_id && (
-                <div><strong>Consultation :</strong> #{facture.consultation_id}</div>
-              )}
+              {facture.date_echeance && (<div><strong>Échéance :</strong> {new Date(facture.date_echeance).toLocaleDateString()}</div>)}
+              {facture.tiers_payant && (<div><strong>Tiers payant :</strong> {facture.tiers_payant}</div>)}
+              {facture.mode && (<div><strong>Mode :</strong> {facture.mode === 'hospitalisation' ? 'Hospitalisation' : 'Ambulatoire'}</div>)}
+              {facture.sejour_id && (<div><strong>Séjour :</strong> #{facture.sejour_id}</div>)}
+              {facture.consultation_id && (<div><strong>Consultation :</strong> #{facture.consultation_id}</div>)}
             </div>
             {facture.notes && (
               <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
@@ -262,7 +283,6 @@ const FactureDetail = () => {
             )}
           </div>
 
-          {/* Détail des prestations */}
           <div style={cardStyle}>
             <h2 style={{ marginBottom: '16px' }}>Détail des prestations</h2>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -287,57 +307,26 @@ const FactureDetail = () => {
                 ))}
               </tbody>
             </table>
-            <div style={{ textAlign: 'right', marginTop: '16px', fontSize: '18px', fontWeight: 'bold' }}>
-              Total : {parseFloat(facture.montant_total).toFixed(2)} FC
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              Montant payé : {parseFloat(facture.montant_paye).toFixed(2)} FC
-            </div>
-            <div style={{ textAlign: 'right', color: resteAPayer > 0 ? '#dc2626' : '#10b981', fontWeight: 'bold' }}>
-              Reste à payer : {resteAPayer.toFixed(2)} FC
-            </div>
-            {facture.remise > 0 && (
-              <div style={{ textAlign: 'right', color: '#6b7280' }}>
-                Remise appliquée : {facture.remise}%
-              </div>
-            )}
+            <div style={{ textAlign: 'right', marginTop: '16px', fontSize: '18px', fontWeight: 'bold' }}>Total : {parseFloat(facture.montant_total).toFixed(2)} FC</div>
+            <div style={{ textAlign: 'right' }}>Montant payé : {parseFloat(facture.montant_paye).toFixed(2)} FC</div>
+            <div style={{ textAlign: 'right', color: resteAPayer > 0 ? '#dc2626' : '#10b981', fontWeight: 'bold' }}>Reste à payer : {resteAPayer.toFixed(2)} FC</div>
+            {facture.remise > 0 && (<div style={{ textAlign: 'right', color: '#6b7280' }}>Remise appliquée : {facture.remise}%</div>)}
           </div>
         </div>
 
-        {/* Paiement et relances (non inclus dans le PDF) */}
         {facture.statut !== 'payee' && (
           <div style={cardStyle}>
             <h2 style={{ marginBottom: '16px' }}>💳 Enregistrer un paiement</h2>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Montant"
-                value={paiement.montant}
-                onChange={e => setPaiement({ ...paiement, montant: e.target.value })}
-                style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '8px', width: '150px' }}
-              />
-              <select
-                value={paiement.mode}
-                onChange={e => setPaiement({ ...paiement, mode: e.target.value })}
-                style={{ padding: '8px', borderRadius: '8px' }}
-              >
+              <input type="number" step="0.01" placeholder="Montant" value={paiement.montant} onChange={e => setPaiement({ ...paiement, montant: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '8px', width: '150px' }} />
+              <select value={paiement.mode} onChange={e => setPaiement({ ...paiement, mode: e.target.value })} style={{ padding: '8px', borderRadius: '8px' }}>
                 <option value="carte">Carte bancaire</option>
                 <option value="especes">Espèces</option>
                 <option value="virement">Virement</option>
                 <option value="cheque">Chèque</option>
               </select>
-              <input
-                type="text"
-                placeholder="Référence"
-                value={paiement.reference}
-                onChange={e => setPaiement({ ...paiement, reference: e.target.value })}
-                style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '8px', width: '200px' }}
-              />
-              <button
-                onClick={handlePaiement}
-                style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-              >
+              <input type="text" placeholder="Référence" value={paiement.reference} onChange={e => setPaiement({ ...paiement, reference: e.target.value })} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '8px', width: '200px' }} />
+              <button onClick={handlePaiement} style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
                 <FaEuroSign /> Payer
               </button>
             </div>
@@ -347,26 +336,13 @@ const FactureDetail = () => {
         <div style={cardStyle}>
           <h2 style={{ marginBottom: '16px' }}>📋 Historique des relances</h2>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <select
-              value={relanceMode}
-              onChange={e => setRelanceMode(e.target.value)}
-              style={{ padding: '8px', borderRadius: '8px' }}
-            >
+            <select value={relanceMode} onChange={e => setRelanceMode(e.target.value)} style={{ padding: '8px', borderRadius: '8px' }}>
               <option value="email">Email</option>
               <option value="courrier">Courrier</option>
               <option value="telephone">Téléphone</option>
             </select>
-            <input
-              type="text"
-              placeholder="Commentaire"
-              value={relanceComment}
-              onChange={e => setRelanceComment(e.target.value)}
-              style={{ flex: 1, padding: '8px', border: '1px solid #ccc', borderRadius: '8px', minWidth: '200px' }}
-            />
-            <button
-              onClick={handleRelance}
-              style={{ backgroundColor: '#f59e0b', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-            >
+            <input type="text" placeholder="Commentaire" value={relanceComment} onChange={e => setRelanceComment(e.target.value)} style={{ flex: 1, padding: '8px', border: '1px solid #ccc', borderRadius: '8px', minWidth: '200px' }} />
+            <button onClick={handleRelance} style={{ backgroundColor: '#f59e0b', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
               <FaEnvelope /> Ajouter relance
             </button>
           </div>
