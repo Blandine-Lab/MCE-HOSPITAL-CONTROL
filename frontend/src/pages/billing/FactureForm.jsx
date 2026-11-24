@@ -290,23 +290,23 @@ const FactureForm = () => {
     setPrestations(prev => prev.filter((_, i) => i !== index));
   };
 
-  // ========== IMPRESSION THERMIQUE - CORRIGÉ ALIGNÉ À GAUCHE ==========
-  // Avant : margin: 0 auto + width 48mm = bloc au milieu, imprimante imprime dans le vide = rien ne sort.
-  // Maintenant : tout à gauche, margin 0, padding 2mm. 58mm papier = 54mm utile, assez pour 75000.00 FC.
+  // ========== IMPRESSION THERMIQUE - LISIBLE / NET ==========
+  // Arial 11px + gras 600 + line-height 1.5 = net sur thermique. Courier 9px bavait.
+  // Aligné à gauche, margin 0, padding 2mm. 58mm papier = 54mm utile.
   const buildThermalHTML = (facture) => {
     const is58 = formatImpression === '58';
     const widthPage = is58 ? '58mm' : '80mm';
     const widthPrint = is58 ? '58mm' : '80mm';
-    const fontSize = is58 ? '9px' : '11px';
-    const prixWidth = is58 ? '18mm' : '24mm';
+    const fontSize = is58 ? '11px' : '13px';
+    const prixWidth = is58 ? '21mm' : '26mm';
 
     const fmt = (n) => parseFloat(n || 0).toFixed(2);
 
     const row = (libelle, prix) => `
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-          <td style="width:auto;word-break:break-word;overflow-wrap:anywhere;padding:1px 0;vertical-align:top;text-align:left;font-size:${fontSize};">${libelle}</td>
-          <td style="width:${prixWidth};text-align:right;white-space:nowrap;vertical-align:top;padding:1px 0;font-size:${fontSize};">${prix}</td>
+          <td style="width:auto;word-break:break-word;overflow-wrap:anywhere;padding:2px 0;vertical-align:top;text-align:left;font-size:${fontSize};font-weight:600;">${libelle}</td>
+          <td style="width:${prixWidth};text-align:right;white-space:nowrap;vertical-align:top;padding:2px 0;font-size:${fontSize};font-weight:700;">${prix}</td>
         </tr>
       </table>
     `;
@@ -333,26 +333,29 @@ const FactureForm = () => {
         body {
           width: ${widthPrint};
           margin: 0;
-          padding: 1mm 2mm 4mm 2mm;
-          font-family: 'Courier New', monospace;
+          padding: 2mm 2mm 4mm 2mm;
+          font-family: Arial, Helvetica, sans-serif;
           font-size: ${fontSize};
+          font-weight: 600;
           color: #000;
-          line-height: 1.3;
-          letter-spacing: 0;
+          line-height: 1.5;
+          letter-spacing: 0.1px;
           text-align: left;
           overflow-wrap: anywhere;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         .center { text-align: center; word-break: break-word; }
         .left { text-align: left; }
-        .line { border-top: 1px dashed #000; margin: 4px 0; }
-        .bold { font-weight: bold; }
-        .small { font-size: 8px; }
+        .line { border-top: 1.5px dashed #000; margin: 6px 0; }
+        .bold { font-weight: 800; }
+        .small { font-size: 9px; font-weight: 600; }
         @media print {
           html, body { width: ${widthPrint}; margin: 0; padding: 0; }
-          body { padding: 1mm 2mm 4mm 2mm; }
+          body { padding: 2mm 2mm 4mm 2mm; }
         }
       </style></head><body>
-        <div class="center bold" style="font-size:12px;">GLOBALMIND E-SANTE</div>
+        <div class="center bold" style="font-size:14px;">GLOBALMIND E-SANTE</div>
         <div class="center">RDC - Kinshasa</div>
         <div class="center">Facture N° ${facture?.numero || facture?.id || '---'}</div>
         <div class="left">Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
@@ -378,7 +381,6 @@ const FactureForm = () => {
     win.document.write(buildThermalHTML(facture));
     win.document.close();
     win.focus();
-    // On attend que la page soit vraiment chargée avant d'imprimer, sinon page blanche
     let printed = false;
     const doPrint = () => {
       if (printed) return;
@@ -387,7 +389,6 @@ const FactureForm = () => {
       setTimeout(() => { try { win.close(); } catch(e) {} }, 600);
     };
     win.onload = () => setTimeout(doPrint, 500);
-    // Sécurité si onload ne se déclenche pas
     setTimeout(doPrint, 1200);
   };
 
