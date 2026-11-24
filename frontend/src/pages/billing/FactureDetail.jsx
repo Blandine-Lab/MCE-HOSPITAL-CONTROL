@@ -114,22 +114,24 @@ const FactureDetail = () => {
     }
   };
 
-  // ========== IMPRESSION THERMIQUE 58mm / 80mm - CORRIGÉ ANTI-COUPURE ==========
+  // ========== IMPRESSION THERMIQUE - CORRIGÉ 48mm RÉEL ==========
+  // Papier 58mm = zone imprimable 48mm seulement. Papier 80mm = 72mm.
+  // C'est pour ça que 75000.00 FC était coupé à droite avant.
   const printThermal = () => {
     if (!facture) return;
     const is58 = formatImpression === '58';
-    const width = is58 ? '58mm' : '80mm';
-    const fontSize = is58 ? '10px' : '12px';
-    const prixWidth = is58 ? '20mm' : '28mm';
+    const widthPage = is58 ? '58mm' : '80mm';
+    const widthPrint = is58 ? '48mm' : '72mm';
+    const fontSize = is58 ? '9px' : '11px';
+    const prixWidth = is58 ? '18mm' : '24mm';
 
     const fmt = (n) => parseFloat(n || 0).toFixed(2);
 
-    // TABLEAU FIXE : le prix a une largeur fixe, il ne sort jamais du papier
     const row = (libelle, prix) => `
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-          <td style="width:auto;word-break:break-word;overflow-wrap:anywhere;padding:1px 0;vertical-align:top;">${libelle}</td>
-          <td style="width:${prixWidth};text-align:right;white-space:nowrap;vertical-align:top;padding:1px 0;">${prix}</td>
+          <td style="width:auto;word-break:break-word;overflow-wrap:anywhere;padding:1px 0;vertical-align:top;font-size:${fontSize};">${libelle}</td>
+          <td style="width:${prixWidth};text-align:right;white-space:nowrap;vertical-align:top;padding:1px 0;font-size:${fontSize};">${prix}</td>
         </tr>
       </table>
     `;
@@ -143,29 +145,29 @@ const FactureDetail = () => {
 
     const html = `
       <html><head><meta charset="utf-8"><style>
-        * { box-sizing: border-box; max-width: 100%; }
-        @page { size: ${width} auto; margin: 0; }
-        html, body { width: ${width}; margin: 0; padding: 0; }
-        body { 
-          width: ${width}; 
-          margin: 0; 
-          padding: 2mm 2mm 4mm 2mm;
-          font-family: 'Courier New', monospace; 
-          font-size: ${fontSize}; 
-          color: #000; 
-          line-height: 1.35;
+        @page { size: ${widthPage} auto; margin: 0; }
+        html, body { width: ${widthPrint}; margin: 0 auto; padding: 0; }
+        body {
+          width: ${widthPrint};
+          margin: 0 auto;
+          padding: 1mm 0 4mm 0;
+          font-family: 'Courier New', monospace;
+          font-size: ${fontSize};
+          color: #000;
+          line-height: 1.3;
+          letter-spacing: 0;
           overflow-wrap: anywhere;
         }
-        .center { text-align:center; word-break:break-word; } 
-        .line { border-top:1px dashed #000; margin:5px 0; } 
+        .center { text-align:center; word-break:break-word; }
+        .line { border-top:1px dashed #000; margin:4px 0; }
         .bold{font-weight:bold;}
-        .small{font-size:9px;}
+        .small{font-size:8px;}
         @media print {
-          html, body { width: ${width}; margin: 0; padding: 0; }
-          body { padding: 2mm 2mm 4mm 2mm; }
+          html, body { width: ${widthPrint}; margin: 0 auto; }
+          body { padding: 1mm 0 4mm 0; }
         }
       </style></head><body>
-        <div class="center bold" style="font-size:13px;">${HOPITAL_NOM}</div>
+        <div class="center bold" style="font-size:12px;">${HOPITAL_NOM}</div>
         ${adresseLigne ? `<div class="center small">${adresseLigne}</div>` : ''}
         ${contactLigne ? `<div class="center small">${contactLigne}</div>` : ''}
         <div class="center small">Systeme integre de gestion hospitaliere</div>

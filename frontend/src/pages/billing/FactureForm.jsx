@@ -290,61 +290,65 @@ const FactureForm = () => {
     setPrestations(prev => prev.filter((_, i) => i !== index));
   };
 
-  // ========== IMPRESSION THERMIQUE 58mm / 80mm - CORRIGÉ ANTI-COUPURE ==========
+  // ========== IMPRESSION THERMIQUE - CORRIGÉ 48mm RÉEL ==========
+  // Papier 58mm = zone imprimable 48mm seulement. Papier 80mm = 72mm.
+  // C'est pour ça que 75000.00 FC était coupé à droite avant.
   const buildThermalHTML = (facture) => {
     const is58 = formatImpression === '58';
-    const width = is58 ? '58mm' : '80mm';
-    const fontSize = is58 ? '10px' : '12px';
-    const prixWidth = is58 ? '20mm' : '28mm';
+    const widthPage = is58 ? '58mm' : '80mm';
+    const widthPrint = is58 ? '48mm' : '72mm';
+    const fontSize = is58 ? '9px' : '11px';
+    const prixWidth = is58 ? '18mm' : '24mm';
 
     const fmt = (n) => parseFloat(n || 0).toFixed(2);
 
-    // TABLEAU FIXE : ne dépasse jamais la largeur, le prix ne sera plus coupé
     const row = (libelle, prix) => `
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-          <td style="width:auto;word-break:break-word;overflow-wrap:anywhere;padding:1px 0;vertical-align:top;">${libelle}</td>
-          <td style="width:${prixWidth};text-align:right;white-space:nowrap;vertical-align:top;padding:1px 0;">${prix}</td>
+          <td style="width:auto;word-break:break-word;overflow-wrap:anywhere;padding:1px 0;vertical-align:top;font-size:${fontSize};">${libelle}</td>
+          <td style="width:${prixWidth};text-align:right;white-space:nowrap;vertical-align:top;padding:1px 0;font-size:${fontSize};">${prix}</td>
         </tr>
       </table>
     `;
 
     const lignesHtml = prestations.filter(p => p.libelle).map(p =>
-      row(`${p.libelle} x${p.quantite}`, fmt(p.total))
+      row(`${p.libelle} x${p.quantite}`, fmt(p.total) + ' FC')
     ).join('');
     const examensHtml = examensDisponibles.filter(e => selectedExamensIds.includes(e.id)).map(e =>
-      row(`${e.type_examen || e.type_nom || 'Examen'}`, fmt(e.prix))
+      row(`${e.type_examen || e.type_nom || 'Examen'}`, fmt(e.prix) + ' FC')
     ).join('');
     const consultHtml = consultationsDisponibles.filter(c => selectedConsultationsIds.includes(c.id)).map(c =>
-      row(`Consult. ${c.motif || ''}`, fmt(c.prix || 50))
+      row(`Consult. ${c.motif || ''}`, fmt(c.prix || 50) + ' FC')
     ).join('');
     const medHtml = medicamentsDisponibles.filter(m => selectedMedicamentsIds.includes(m.mouvement_id)).map(m =>
-      row(`${m.libelle} x${m.quantite}`, fmt((parseFloat(m.prix_unitaire) || 0) * (m.quantite || 1)))
+      row(`${m.libelle} x${m.quantite}`, fmt((parseFloat(m.prix_unitaire) || 0) * (m.quantite || 1)) + ' FC')
     ).join('');
 
     return `
       <html><head><meta charset="utf-8"><style>
-        * { box-sizing: border-box; max-width: 100%; }
-        @page { size: ${width} auto; margin: 0; }
-        html, body { width: ${width}; margin: 0; padding: 0; }
-        body { 
-          width: ${width}; 
-          padding: 2mm 2mm 4mm 2mm;
-          font-family: 'Courier New', monospace; 
-          font-size: ${fontSize}; 
-          color: #000; 
-          line-height: 1.35;
+        @page { size: ${widthPage} auto; margin: 0; }
+        html, body { width: ${widthPrint}; margin: 0 auto; padding: 0; }
+        body {
+          width: ${widthPrint};
+          margin: 0 auto;
+          padding: 1mm 0 4mm 0;
+          font-family: 'Courier New', monospace;
+          font-size: ${fontSize};
+          color: #000;
+          line-height: 1.3;
+          letter-spacing: 0;
           overflow-wrap: anywhere;
         }
-        .center { text-align:center; word-break:break-word; } 
-        .line { border-top:1px dashed #000; margin:5px 0; } 
+        .center { text-align:center; word-break:break-word; }
+        .line { border-top:1px dashed #000; margin:4px 0; }
         .bold{font-weight:bold;}
+        .small{font-size:8px;}
         @media print {
-          html, body { width: ${width}; margin: 0; padding: 0; }
-          body { padding: 2mm 2mm 4mm 2mm; }
+          html, body { width: ${widthPrint}; margin: 0 auto; }
+          body { padding: 1mm 0 4mm 0; }
         }
       </style></head><body>
-        <div class="center bold" style="font-size:13px;">GLOBALMIND E-SANTE</div>
+        <div class="center bold" style="font-size:12px;">GLOBALMIND E-SANTE</div>
         <div class="center">RDC - Kinshasa</div>
         <div class="center">Facture N° ${facture?.numero || facture?.id || '---'}</div>
         <div>Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
